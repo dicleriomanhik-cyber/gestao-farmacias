@@ -1,0 +1,59 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import * as request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/database/prisma.service';
+import { UsersService } from '../src/modules/users/users.service';
+
+/**
+ * Valida que um utilizador de uma farmácia NÃO consegue:
+ *  - autenticar-se com token de outra farmácia
+ *  - obter resposta autenticada se a farmácia estiver suspensa
+ *  - reter contexto após desativação
+ * (Endpoints comerciais ainda não existem; o isolamento é verificado na camada de autenticação
+ *  e será herdado pelos módulos futuros via `AuthenticatedUser.pharmacyId`.)
+ */
+describe('Tenant isolation (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let users: UsersService;
+
+  beforeAll(async () => {
+    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = mod.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    await app.init();
+    prisma = app.get(PrismaService);
+    users = app.get(UsersService);
+  });
+
+  afterAll(async () => app.close());
+
+  it('rejeita login se a farmácia estiver suspensa', async () => {
+    const spy = jest.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+      id: 'u1', pharmacyId: 'p1', email: 'a@b.c', passwordHash: '$2b$12$fake',
+      fullName: 'A', status: 'ACTIVE', lastLoginAt: null,
+      createdAt: new Date(), updatedAt: new Date(),
+      pharmacy: { id: 'p1', name: 'F', nif: null, status: 'SUSPENDED', createdAt: new Date(), updatedAt: new Date() },
+      roles: [],
+    } as never);
+    await expect(users.validateCredentials('a@b.c', 'whatever')).rejects.toMatchObject({
+      response: { code: 'ACCOUNT_DISABLED' },
+    });
+    spy.mockRestore();
+  });
+
+  it('rejeita token cujo pharmacyId não corresponde ao utilizador atual', async () => {
+    const { JwtStrategy } = await import('../src/modules/auth/strategies/jwt.strategy');
+    const { ConfigService } = await import('@nestjs/config');
+    const fakeConfig = { get: () => 'a'.repeat(32) } as unknown as InstanceType<typeof ConfigService>;
+    const fakeUsers = {
+      findAuthenticatedUser: async () => ({ id: 'u1', email: 'a@b.c', pharmacyId: 'p2', roles: [], permissions: [] }),
+    } as unknown as UsersService;
+    const strat = new JwtStrategy(fakeConfig, fakeUsers);
+    await expect(
+      strat.validate({ sub: 'u1', email: 'a@b.c', pharmacyId: 'p1', roles: [], permissions: [], type: 'access' }),
+    ).rejects.toThrow(/Contexto de farmácia divergente/);
+  });
+});

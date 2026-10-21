@@ -1,0 +1,40 @@
+﻿# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Back-end
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
+
+# Front-end
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.*.example
+
+# Dependências
+node_modules/
+**/node_modules/
+
+# Ficheiros gerados
+dist/
+**/dist/
+coverage/
+**/coverage/
+*.tsbuildinfo
+
+# Registos
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Sistema operativo e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

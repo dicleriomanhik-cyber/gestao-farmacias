@@ -1,0 +1,711 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PharmacyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PurchaseStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum LotStatus {
+  ACTIVE
+  DEPLETED
+  EXPIRED
+}
+
+enum MovementType {
+  PURCHASE_ENTRY
+  SALE
+  SALE_RETURN
+  PURCHASE_RETURN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  LOSS
+  EXPIRY
+  INVENTORY_ADJUSTMENT
+}
+
+enum SaleStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MPESA
+  EMOLA
+  TRANSFER
+  OTHER
+}
+
+enum ReturnStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum ReturnLineCondition {
+  PENDING_INSPECTION
+  RESELLABLE
+  DAMAGED
+  EXPIRED
+  LOST
+}
+
+enum RefundMethod {
+  CASH
+  CARD
+  MPESA
+  EMOLA
+  TRANSFER
+  OTHER
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExpenseStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  TRANSPORT
+  CONSUMABLES
+  MAINTENANCE
+  SALARIES
+  TAXES
+  OTHER
+}
+
+model Pharmacy {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String
+  tradeName     String?
+  legalName     String?
+  nif           String?        @unique
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+  province      String?
+  status        PharmacyStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  users         User[]
+  categories    Category[]
+  products      Product[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  stockLots     StockLot[]
+  movements     StockMovement[]
+  sales         Sale[]
+  cashSessions  CashSession[]
+  returns       SaleReturn[]
+  quarantine    QuarantineStock[]
+  expenses      Expense[]
+
+  @@map("pharmacies")
+}
+
+model Category {
+  id          String     @id @default(uuid()) @db.Uuid
+  pharmacyId  String     @db.Uuid
+  name        String
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  pharmacy    Pharmacy   @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([pharmacyId, name])
+  @@index([pharmacyId])
+  @@map("categories")
+}
+
+model Product {
+  id                 String        @id @default(uuid()) @db.Uuid
+  pharmacyId         String        @db.Uuid
+  categoryId         String?       @db.Uuid
+  name               String
+  description        String?
+  sku                String?
+  barcode            String?
+  activeIngredient   String?
+  dosageForm         String?
+  strength           String?
+  unit               String        @default("UN")
+  salePrice          Decimal       @db.Decimal(10, 2)
+  referenceCost      Decimal?      @db.Decimal(10, 2)
+  status             ProductStatus @default(ACTIVE)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  pharmacy           Pharmacy      @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  category           Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  purchaseLines      PurchaseLine[]
+  stockLots          StockLot[]
+  movements          StockMovement[]
+  saleLines          SaleLine[]
+  returnLines        SaleReturnLine[]
+  quarantine         QuarantineStock[]
+
+  @@unique([pharmacyId, sku])
+  @@unique([pharmacyId, barcode])
+  @@index([pharmacyId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model Supplier {
+  id            String         @id @default(uuid()) @db.Uuid
+  pharmacyId    String         @db.Uuid
+  name          String
+  taxId         String?
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+  province      String?
+  notes         String?
+  status        SupplierStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  pharmacy      Pharmacy       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  purchases     Purchase[]
+
+  @@index([pharmacyId])
+  @@map("suppliers")
+}
+
+model Purchase {
+  id              String         @id @default(uuid()) @db.Uuid
+  pharmacyId      String         @db.Uuid
+  supplierId      String         @db.Uuid
+  documentNumber  String
+  purchaseDate    DateTime       @default(now())
+  status          PurchaseStatus @default(DRAFT)
+  notes           String?
+  totalAmount     Decimal        @db.Decimal(12, 2)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  pharmacy        Pharmacy       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines           PurchaseLine[]
+
+  @@unique([pharmacyId, supplierId, documentNumber])
+  @@index([pharmacyId])
+  @@index([supplierId])
+  @@map("purchases")
+}
+
+model PurchaseLine {
+  id            String    @id @default(uuid()) @db.Uuid
+  purchaseId    String    @db.Uuid
+  productId     String    @db.Uuid
+  quantity      Int
+  unitCost      Decimal   @db.Decimal(10, 2)
+  discount      Decimal   @default(0) @db.Decimal(10, 2)
+  subtotal      Decimal   @db.Decimal(10, 2)
+
+  purchase      Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  stockLots     StockLot[]
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("purchase_lines")
+}
+
+model StockLot {
+  id                        String      @id @default(uuid()) @db.Uuid
+  pharmacyId                String      @db.Uuid
+  productId                 String      @db.Uuid
+  purchaseLineId            String?     @db.Uuid
+  lotNumber                 String
+  expiryDate                DateTime
+  quantityReceived          Int
+  quantityReceivedFromLine  Int         @default(0)
+  quantityAvailable         Int         @default(0)
+  unitCost                  Decimal     @db.Decimal(10, 2)
+  status                    LotStatus   @default(ACTIVE)
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+
+  pharmacy                  Pharmacy    @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  product                   Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseLine              PurchaseLine? @relation(fields: [purchaseLineId], references: [id], onDelete: SetNull)
+  movements                 StockMovement[]
+  saleLineLots              SaleLineLot[]
+  returnLines               SaleReturnLine[]
+
+  @@unique([pharmacyId, productId, lotNumber])
+  @@index([pharmacyId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@map("stock_lots")
+}
+
+model StockMovement {
+  id              String       @id @default(uuid()) @db.Uuid
+  pharmacyId      String       @db.Uuid
+  productId       String       @db.Uuid
+  lotId           String?      @db.Uuid
+  type            MovementType
+  quantity        Int
+  referenceId     String?
+  referenceType   String?
+  notes           String?
+  userId          String?      @db.Uuid
+  createdAt       DateTime     @default(now())
+
+  pharmacy        Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lot             StockLot?    @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([pharmacyId])
+  @@index([productId])
+  @@index([lotId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model Sale {
+  id            String     @id @default(uuid()) @db.Uuid
+  pharmacyId    String     @db.Uuid
+  saleNumber    String
+  status        SaleStatus @default(DRAFT)
+  subtotal      Decimal    @db.Decimal(12, 2)
+  discount      Decimal    @default(0) @db.Decimal(12, 2)
+  total         Decimal    @db.Decimal(12, 2)
+  notes         String?
+  userId        String     @db.Uuid
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  pharmacy      Pharmacy   @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lines         SaleLine[]
+  payments      SalePayment[]
+  returns       SaleReturn[]
+
+  @@unique([pharmacyId, saleNumber])
+  @@index([pharmacyId])
+  @@map("sales")
+}
+
+model SaleLine {
+  id        String   @id @default(uuid()) @db.Uuid
+  saleId    String   @db.Uuid
+  productId String   @db.Uuid
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  discount  Decimal  @default(0) @db.Decimal(10, 2)
+  subtotal  Decimal  @db.Decimal(12, 2)
+
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lots      SaleLineLot[]
+  returns   SaleReturnLine[]
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_lines")
+}
+
+model SaleLineLot {
+  id          String   @id @default(uuid()) @db.Uuid
+  saleLineId  String   @db.Uuid
+  lotId       String   @db.Uuid
+  quantity    Int
+
+  saleLine    SaleLine @relation(fields: [saleLineId], references: [id], onDelete: Cascade)
+  lot         StockLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@index([saleLineId])
+  @@index([lotId])
+  @@map("sale_line_lots")
+}
+
+model CashSession {
+  id              String            @id @default(uuid()) @db.Uuid
+  pharmacyId      String            @db.Uuid
+  userId          String            @db.Uuid
+  openedAt        DateTime          @default(now())
+  closedAt        DateTime?
+  openingBalance  Decimal           @db.Decimal(12, 2)
+  expectedBalance Decimal?          @db.Decimal(12, 2)
+  countedBalance  Decimal?          @db.Decimal(12, 2)
+  difference      Decimal?          @db.Decimal(12, 2)
+  status          CashSessionStatus @default(OPEN)
+
+  pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  payments        SalePayment[]
+  movements       CashMovement[]
+  refunds         ReturnRefund[]
+  expenses        Expense[]
+
+  @@index([pharmacyId])
+  @@index([userId])
+  @@index([status])
+  @@map("cash_sessions")
+}
+
+model SalePayment {
+  id             String        @id @default(uuid()) @db.Uuid
+  saleId         String        @db.Uuid
+  cashSessionId  String        @db.Uuid
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(12, 2)
+  idempotencyKey String?       @unique
+  createdAt      DateTime      @default(now())
+  userId         String        @db.Uuid
+
+  sale           Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  cashSession    CashSession   @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  refunds        ReturnRefund[]
+
+  @@index([saleId])
+  @@index([cashSessionId])
+  @@map("sale_payments")
+}
+
+model CashMovement {
+  id            String        @id @default(uuid()) @db.Uuid
+  cashSessionId String        @db.Uuid
+  type          String
+  amount        Decimal       @db.Decimal(12, 2)
+  reason        String
+  expenseId     String?       @unique @db.Uuid
+  createdAt     DateTime      @default(now())
+  userId        String        @db.Uuid
+
+  cashSession   CashSession   @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  expense       Expense?      @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  @@index([cashSessionId])
+  @@map("cash_movements")
+}
+
+model SaleReturn {
+  id              String         @id @default(uuid()) @db.Uuid
+  pharmacyId      String         @db.Uuid
+  saleId          String         @db.Uuid
+  returnNumber    String
+  status          ReturnStatus   @default(DRAFT)
+  reason          String
+  totalRefund     Decimal        @db.Decimal(12, 2)
+  userId          String         @db.Uuid
+  confirmationKey String?        @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  pharmacy        Pharmacy       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  sale            Sale           @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lines           SaleReturnLine[]
+
+  @@unique([pharmacyId, returnNumber])
+  @@index([pharmacyId])
+  @@index([saleId])
+  @@map("sale_returns")
+}
+
+model SaleReturnLine {
+  id              String              @id @default(uuid()) @db.Uuid
+  returnId        String              @db.Uuid
+  saleLineId      String              @db.Uuid
+  productId       String              @db.Uuid
+  quantity        Int
+  quantityInspected Int               @default(0)
+  unitPrice       Decimal             @db.Decimal(10, 2)
+  discount        Decimal             @default(0) @db.Decimal(10, 2)
+  subtotal        Decimal             @db.Decimal(12, 2)
+  condition       ReturnLineCondition @default(PENDING_INSPECTION)
+  lotId           String?             @db.Uuid
+  lotNumber       String?
+  expiryDate      DateTime?
+
+  return          SaleReturn          @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  saleLine        SaleLine            @relation(fields: [saleLineId], references: [id], onDelete: Restrict)
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lot             StockLot?           @relation(fields: [lotId], references: [id], onDelete: SetNull)
+  refunds         ReturnRefund[]
+  quarantine      QuarantineStock[]
+
+  @@index([returnId])
+  @@index([saleLineId])
+  @@map("sale_return_lines")
+}
+
+model QuarantineStock {
+  id              String              @id @default(uuid()) @db.Uuid
+  pharmacyId      String              @db.Uuid
+  productId       String              @db.Uuid
+  saleReturnLineId String             @db.Uuid
+  lotNumber       String
+  expiryDate      DateTime
+  quantityReceived Int
+  quantityInspected Int               @default(0)
+  quantityReleased Int                @default(0)
+  quantityDamaged Int                 @default(0)
+  quantityLost    Int                 @default(0)
+  unitCost        Decimal             @db.Decimal(10, 2)
+  status          ReturnLineCondition @default(PENDING_INSPECTION)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  pharmacy        Pharmacy            @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  saleReturnLine  SaleReturnLine      @relation(fields: [saleReturnLineId], references: [id], onDelete: Restrict)
+
+  @@index([pharmacyId])
+  @@index([productId])
+  @@map("quarantine_stock")
+}
+
+model ReturnRefund {
+  id              String         @id @default(uuid()) @db.Uuid
+  returnLineId    String         @db.Uuid
+  salePaymentId   String?        @db.Uuid
+  method          RefundMethod
+  status          RefundStatus   @default(PENDING)
+  amount          Decimal        @db.Decimal(12, 2)
+  idempotencyKey  String?        @unique
+  cashSessionId   String?        @db.Uuid
+  userId          String         @db.Uuid
+  confirmedBy     String?        @db.Uuid
+  confirmedAt     DateTime?
+  externalReference String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  returnLine      SaleReturnLine @relation(fields: [returnLineId], references: [id], onDelete: Cascade)
+  salePayment     SalePayment?   @relation(fields: [salePaymentId], references: [id], onDelete: SetNull)
+  cashSession     CashSession?   @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  user            User           @relation("RefundCreator", fields: [userId], references: [id], onDelete: Restrict)
+  confirmer       User?          @relation("RefundConfirmer", fields: [confirmedBy], references: [id], onDelete: SetNull)
+
+  @@index([returnLineId])
+  @@index([salePaymentId])
+  @@map("return_refunds")
+}
+
+model Expense {
+  id              String          @id @default(uuid()) @db.Uuid
+  pharmacyId      String          @db.Uuid
+  description     String
+  category        ExpenseCategory @default(OTHER)
+  amount          Decimal         @db.Decimal(12, 2)
+  method          PaymentMethod
+  status          ExpenseStatus   @default(DRAFT)
+  expenseDate     DateTime        @default(now())
+  externalReference String?
+  notes           String?
+  cashSessionId   String?         @db.Uuid
+  userId          String          @db.Uuid
+  confirmedBy     String?         @db.Uuid
+  confirmedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  pharmacy        Pharmacy        @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  user            User            @relation("ExpenseCreator", fields: [userId], references: [id], onDelete: Restrict)
+  confirmer       User?           @relation("ExpenseConfirmer", fields: [confirmedBy], references: [id], onDelete: SetNull)
+  cashSession     CashSession?    @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  cashMovement    CashMovement?
+
+  @@index([pharmacyId])
+  @@index([status])
+  @@index([category])
+  @@index([method])
+  @@index([expenseDate])
+  @@map("expenses")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  pharmacyId   String     @db.Uuid
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  pharmacy          Pharmacy       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  roles             UserRole[]
+  auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
+  loginAttempts     LoginAttempt[]
+  movements         StockMovement[]
+  sales             Sale[]
+  cashSessions      CashSession[]
+  payments          SalePayment[]
+  cashMovements     CashMovement[]
+  returnsCreated    SaleReturn[]
+  refundsCreated    ReturnRefund[] @relation("RefundCreator")
+  refundsConfirmed  ReturnRefund[] @relation("RefundConfirmer")
+  expensesCreated   Expense[]      @relation("ExpenseCreator")
+  expensesConfirmed Expense[]      @relation("ExpenseConfirmer")
+
+  @@index([pharmacyId])
+  @@map("users")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  jti           String    @unique
+  familyId      String    @db.Uuid
+  userId        String    @db.Uuid
+  tokenHash     String
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  replacedById  String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  ipAddress     String?
+  userAgent     String?
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy    RefreshToken? @relation("RefreshChain", fields: [replacedById], references: [id])
+  replaces      RefreshToken[] @relation("RefreshChain")
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model LoginAttempt {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  email      String
+  ipAddress  String
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_attempts")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  pharmacyId String?  @db.Uuid
+  userId     String?  @db.Uuid
+  action     String
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([pharmacyId])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
