@@ -155,7 +155,7 @@ export class UsersService {
         if (isTargetAdmin) {
           const activeAdmins = await this.repo.countActiveAdminsForUpdate(tx, pharmacyId);
           if (activeAdmins <= 1) {
-            throw new ForbiddenException('ProtecÃ§Ã£o: nÃ£o Ã© possÃ­vel suspender a Ãºltima conta de administrador activa.');
+            throw new ForbiddenException('Protecção: não é possível suspender a última conta de administrador activa.');
           }
         }
       }

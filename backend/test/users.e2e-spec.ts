@@ -65,7 +65,7 @@ describe('Users (e2e)', () => {
     expect(res.body.data.email).toBe('caixa@teste.com');
   });
 
-  it('deve impedir suspender o ÃƒÂºltimo admin activo', async () => {
+  it('deve impedir suspender o último admin activo', async () => {
     const passwordHash = await bcrypt.hash('admin2_pass_123456', 12);
     const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
     const admin2 = await prisma.user.create({
@@ -145,14 +145,14 @@ describe('Users (e2e)', () => {
     // Obter o id do utilizador caixa da farmÃƒÂ¡cia A
     const caixa = await prisma.user.findFirst({ where: { email: 'caixa@teste.com' } });
 
-    // Admin B tenta actualizar caixa da farmÃƒÂ¡cia A Ã¢â€ â€™ 404
+    // Admin B tenta actualizar caixa da farmácia A → 404
     await request(app.getHttpServer())
       .patch(`/api/v1/users/${caixa!.id}`)
       .set('Authorization', `Bearer ${tokenB}`)
       .send({ fullName: 'Tentativa Cross Tenant' })
       .expect(404);
 
-    // Admin A tenta actualizar admin B Ã¢â€ â€™ 404
+    // Admin A tenta actualizar admin B → 404
     await request(app.getHttpServer())
       .patch(`/api/v1/users/${adminB.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
