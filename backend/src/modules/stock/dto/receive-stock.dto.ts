@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsString, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ReceiveStockDto {

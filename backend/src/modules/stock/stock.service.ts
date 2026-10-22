@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
@@ -10,32 +9,31 @@ export class StockService {
 
   async receiveStock(pharmacyId: string, actorId: string, dto: ReceiveStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Bloquear a PurchaseLine para evitar concorrência na receção
+      // Lock na purchase line para evitar recepções concorrentes
       const lines = await tx.$queryRaw`
         SELECT id, "purchaseId", "productId", quantity 
         FROM "purchase_lines" 
         WHERE id = ${dto.purchaseLineId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; purchaseId: string; productId: string; quantity: number }>;
       const line = lines[0];
       if (!line) throw new NotFoundException('Linha de compra não encontrada.');
 
-      // Validar se a compra está confirmada
       const purchase = await tx.purchase.findUnique({ where: { id: line.purchaseId } });
       if (purchase?.pharmacyId !== pharmacyId) throw new NotFoundException('Compra não encontrada.');
       if (purchase.status !== 'CONFIRMED') throw new BadRequestException('A compra precisa estar CONFIRMADA.');
 
-      // 2. Validar quantidade máxima recebida
       const totalReceived = await tx.stockLot.aggregate({
         where: { purchaseLineId: line.id },
         _sum: { quantityReceivedFromLine: true },
       });
       const alreadyReceived = totalReceived._sum.quantityReceivedFromLine || 0;
       if (alreadyReceived + dto.quantity > line.quantity) {
-        throw new BadRequestException(`Quantidade excede o total comprado (${line.quantity}).`);
+        throw new BadRequestException(
+          `Quantidade excede o total comprado. Comprado: ${line.quantity}, Já recebido: ${alreadyReceived}, Tentativa: ${dto.quantity}`,
+        );
       }
 
-      // 3. Lock do StockLot (se existir) ou criar novo
       let lot = await tx.stockLot.findFirst({
         where: { pharmacyId, productId: line.productId, lotNumber: dto.lotNumber },
       });
@@ -56,7 +54,7 @@ export class StockService {
           },
         });
       } else {
-        // Bloquear o lote existente para a atualização
+        // Lock no lote existente
         await tx.$queryRaw`SELECT id FROM "stock_lots" WHERE id = ${lot.id}::uuid FOR UPDATE`;
         await tx.stockLot.update({
           where: { id: lot.id },
@@ -67,7 +65,6 @@ export class StockService {
         });
       }
 
-      // 4. Criar Movimento
       await tx.stockMovement.create({
         data: {
           pharmacyId,
@@ -81,13 +78,11 @@ export class StockService {
         },
       });
 
-      // 5. Atualizar quantidade disponível
       const updatedLot = await tx.stockLot.update({
         where: { id: lot.id },
         data: { quantityAvailable: { increment: dto.quantity } },
       });
 
-      // 6. Auditoria
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.receive', entity: 'StockLot', entityId: lot.id },
       });
@@ -98,12 +93,12 @@ export class StockService {
 
   async adjustStock(pharmacyId: string, actorId: string, dto: AdjustStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Lock explícito do lote (FOR UPDATE)
+      // Lock explícito do lote para evitar concorrência
       const lots = await tx.$queryRaw`
         SELECT * FROM "stock_lots" 
         WHERE id = ${dto.lotId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; productId: string; quantityAvailable: number }>;
       const lot = lots[0];
       if (!lot) throw new NotFoundException('Lote não encontrado.');
 
@@ -112,7 +107,6 @@ export class StockService {
         throw new BadRequestException('Ajuste resultaria em stock negativo.');
       }
 
-      // 2. Criar Movimento
       await tx.stockMovement.create({
         data: {
           pharmacyId,
@@ -125,13 +119,11 @@ export class StockService {
         },
       });
 
-      // 3. Atualizar quantidade disponível
       const updatedLot = await tx.stockLot.update({
         where: { id: lot.id },
         data: { quantityAvailable: { increment: dto.quantity } },
       });
 
-      // 4. Auditoria
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.adjust', entity: 'StockLot', entityId: lot.id },
       });
