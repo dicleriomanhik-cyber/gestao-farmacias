@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -135,61 +134,89 @@ export class ExpensesService {
   }
 
   async confirm(pharmacyId: string, userId: string, id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      // Lock da despesa para evitar dupla confirmação
-      const expenses = await tx.$queryRaw`
-        SELECT * FROM "expenses" 
-        WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
-        FOR UPDATE
-      `;
-      const expense = expenses[0];
-      if (!expense) throw new NotFoundException('Despesa não encontrada.');
-      if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser confirmadas.');
-      if (Number(expense.amount) <= 0) throw new BadRequestException('Valor da despesa deve ser positivo.');
-
-      let cashSessionId: string | null = null;
-
-      if (expense.method === 'CASH') {
-        // Lock da sessão de caixa aberta do utilizador/farmácia
-        const sessions = await tx.$queryRaw`
-          SELECT * FROM "cash_sessions" 
-          WHERE "pharmacyId" = ${pharmacyId}::uuid 
-            AND "userId" = ${userId}::uuid 
-            AND status = 'OPEN'
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const expenses = await tx.$queryRaw`
+          SELECT * FROM "expenses" 
+          WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
           FOR UPDATE
-        `;
-        const session = sessions[0];
-        if (!session) throw new BadRequestException('Não tem sessão de caixa aberta para despesas em dinheiro.');
-        cashSessionId = session.id;
+        ` as Array<{ id: string; status: string; amount: number; method: string; description: string; cashSessionId: string | null }>;
+        const expense = expenses[0];
+        if (!expense) throw new NotFoundException('Despesa não encontrada.');
 
-        // Criar CashMovement OUT
-        await tx.cashMovement.create({
+        // Idempotência: se já está CONFIRMED, devolver o estado actual sem efeitos.
+        if (expense.status === 'CONFIRMED') {
+          const existing = await tx.expense.findUnique({ where: { id } });
+          return existing;
+        }
+
+        if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser confirmadas.');
+        if (expense.amount <= 0) throw new BadRequestException('Valor da despesa deve ser positivo.');
+
+        let cashSessionId: string | null = null;
+
+        if (expense.method === 'CASH') {
+          const sessions = await tx.$queryRaw`
+            SELECT * FROM "cash_sessions" 
+            WHERE "pharmacyId" = ${pharmacyId}::uuid 
+              AND "userId" = ${userId}::uuid 
+              AND status = 'OPEN'
+            FOR UPDATE
+          ` as Array<{ id: string }>;
+          const session = sessions[0];
+          if (!session) throw new BadRequestException('Não tem sessão de caixa aberta para despesas em dinheiro.');
+          cashSessionId = session.id;
+
+          // Defesa em profundidade: verificar se já existe cashMovement para esta despesa.
+          const existingMovement = await tx.cashMovement.findUnique({ where: { expenseId: expense.id } });
+          if (!existingMovement) {
+            await tx.cashMovement.create({
+              data: {
+                cashSessionId: session.id,
+                type: 'OUT',
+                amount: expense.amount,
+                reason: `Despesa: ${expense.description}`,
+                expenseId: expense.id,
+                userId,
+              },
+            });
+          }
+        }
+
+        const updated = await tx.expense.update({
+          where: { id },
           data: {
-            cashSessionId: session.id,
-            type: 'OUT',
-            amount: expense.amount,
-            reason: `Despesa: ${expense.description}`,
-            expenseId: expense.id,
-            userId,
+            status: 'CONFIRMED',
+            confirmedBy: userId,
+            confirmedAt: new Date(),
+            cashSessionId,
           },
         });
+
+        await tx.auditLog.create({
+          data: { pharmacyId, userId, action: 'expense.confirm', entity: 'Expense', entityId: id },
+        });
+
+        return updated;
+      });
+    } catch (error) {
+      // Se a transacção falhou por violação de unicidade em cashMovement.expenseId,
+      // é sinal de que outra transacção concorrente já criou o movimento.
+      // Nesse caso, ler o estado actual (fora da transacção) e devolver idempotente.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const current = await this.prisma.expense.findFirst({
+          where: { id, pharmacyId },
+          include: { user: { select: { fullName: true } }, cashMovement: true },
+        });
+        if (current && current.status === 'CONFIRMED' && current.cashMovement) {
+          return current;
+        }
+        throw new ConflictException('Não foi possível confirmar a despesa devido a um conflito concorrente. Tente novamente.');
       }
-
-      const updated = await tx.expense.update({
-        where: { id },
-        data: {
-          status: 'CONFIRMED',
-          confirmedBy: userId,
-          confirmedAt: new Date(),
-          cashSessionId,
-        },
-      });
-
-      await tx.auditLog.create({
-        data: { pharmacyId, userId, action: 'expense.confirm', entity: 'Expense', entityId: id },
-      });
-
-      return updated;
-    });
+      throw error;
+    }
   }
 }
