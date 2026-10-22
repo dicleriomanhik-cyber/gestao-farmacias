@@ -1,0 +1,89 @@
+﻿name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: farmacia_user
+          POSTGRES_PASSWORD: farmacia_pass
+          POSTGRES_DB: farmacia_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://farmacia_user:farmacia_pass@localhost:5432/farmacia_db_test?schema=public
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: ci_access_secret_min_32_chars_long_abcdef
+      JWT_REFRESH_SECRET: ci_refresh_secret_min_32_chars_long_abcdef
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      BCRYPT_SALT_ROUNDS: 10
+      ADMIN_PASSWORD: ci_admin_password_123456
+      TEST_ADMIN_EMAIL: admin@test.local
+      TEST_ADMIN_PASSWORD: ci_admin_password_123456
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: Apply migrations
+        run: npm run prisma:migrate:deploy
+
+      - name: Seed
+        run: npm run prisma:seed
+
+      - name: Create test admin
+        run: npm run admin:create -- --email "${{ env.TEST_ADMIN_EMAIL }}" --pharmacy-name "Farmacia CI"
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e -- --runInBand --forceExit --testTimeout=30000
+
+      - name: Build
+        run: npm run build
