@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { PrismaClient } from '@prisma/client';
 import { PERMISSIONS, ROLE_NAMES, ROLE_PERMISSIONS } from '../src/common/constants/permissions';
 

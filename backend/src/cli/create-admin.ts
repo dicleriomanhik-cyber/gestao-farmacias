@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as readline from 'readline';
@@ -13,7 +12,9 @@ function arg(name: string): string | undefined {
 async function promptHidden(query: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    (rl as any)._writeToOutput = (s: string) => { if (s.includes(query)) rl.output.write(query); };
+    (rl as any)._writeToOutput = (s: string) => { 
+      if (s.includes(query)) (rl as any).output.write(query); 
+    };
     rl.question(query, (answer) => { rl.close(); resolve(answer); });
   });
 }
@@ -29,8 +30,8 @@ async function main(): Promise<void> {
 
   let password = process.env.ADMIN_PASSWORD;
   if (!password) password = await promptHidden('Password do administrador: ');
-  if (!password || password.length < 8) {
-    throw new Error('Password deve ter pelo menos 8 caracteres.');
+  if (!password || password.length < 12) {
+    throw new Error('Password deve ter pelo menos 12 caracteres.');
   }
 
   const rounds = parseInt(process.env.BCRYPT_SALT_ROUNDS ?? '12', 10);
