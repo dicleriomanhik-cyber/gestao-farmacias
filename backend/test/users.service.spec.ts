@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../src/modules/users/users.service';
+import { PrismaService } from '../src/database/prisma.service';
 
 describe('UsersService (unit)', () => {
   const repo = {
@@ -12,7 +13,10 @@ describe('UsersService (unit)', () => {
     get: (k: string) => (k === 'bcryptSaltRounds' ? 4 : undefined),
   } as unknown as ConfigService;
 
-  const service = new UsersService(repo, config);
+  // Mock do PrismaService para satisfazer o construtor
+  const prisma = {} as PrismaService;
+
+  const service = new UsersService(repo, config, prisma);
 
   it('hashPassword devolve hash verificável', async () => {
     const hash = await service.hashPassword('S3nh4Forte!');

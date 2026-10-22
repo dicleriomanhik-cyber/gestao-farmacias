@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -19,18 +18,19 @@ describe('Concorrência de Caixa (e2e)', () => {
     await app.init();
     prisma = app.get(PrismaService);
 
-    // Limpar
+    // Limpar (Ordem correcta: filhos → pais)
     await prisma.returnRefund.deleteMany({});
     await prisma.quarantineStock.deleteMany({});
     await prisma.saleReturnLine.deleteMany({});
     await prisma.saleReturn.deleteMany({});
     await prisma.salePayment.deleteMany({});
     await prisma.cashMovement.deleteMany({});
-    await prisma.stockMovement.deleteMany({});
+    await prisma.expense.deleteMany({});
+    await prisma.cashSession.deleteMany({});
     await prisma.saleLineLot.deleteMany({});
     await prisma.saleLine.deleteMany({});
     await prisma.sale.deleteMany({});
-    await prisma.cashSession.deleteMany({});
+    await prisma.stockMovement.deleteMany({});
     await prisma.stockLot.deleteMany({});
     await prisma.product.deleteMany({ where: { sku: 'CASH-CONC-01' } });
 
@@ -97,10 +97,10 @@ describe('Concorrência de Caixa (e2e)', () => {
     const successClose = resClose.status === 200;
 
     const session = await prisma.cashSession.findUnique({ where: { id: newSessionId } });
+    const expected = successPayment ? 2100 : 2000;
 
     if (successClose) {
-      const expected = successPayment ? 2100 : 2000;
-      expect(parseFloat(session.expectedBalance)).toBe(expected);
+      expect(session.expectedBalance?.toNumber()).toBe(expected);
     } else {
       expect(session.status).toBe('OPEN');
     }
@@ -140,7 +140,7 @@ describe('Concorrência de Caixa (e2e)', () => {
 
     if (successClose) {
       const expected = successMovement ? 3500 : 3000;
-      expect(parseFloat(session.expectedBalance)).toBe(expected);
+      expect(session.expectedBalance?.toNumber()).toBe(expected);
     } else {
       expect(session.status).toBe('OPEN');
     }

@@ -1,8 +1,6 @@
-// @ts-nocheck
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/database/prisma.service';
 
@@ -22,7 +20,7 @@ describe('Suppliers & Purchases (e2e)', () => {
     await app.init();
     prisma = app.get(PrismaService);
 
-    // Limpar dados de teste
+    // Limpar
     await prisma.purchaseLine.deleteMany({});
     await prisma.purchase.deleteMany({});
     await prisma.supplier.deleteMany({ where: { name: 'Fornecedor Teste' } });
@@ -32,7 +30,6 @@ describe('Suppliers & Purchases (e2e)', () => {
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASSWORD });
-    
     adminToken = loginRes.body.data.accessToken;
     pharmacyId = loginRes.body.data.user.pharmacyId;
 
@@ -48,7 +45,6 @@ describe('Suppliers & Purchases (e2e)', () => {
     await app.close();
   });
 
-  // --- FORNECEDORES ---
   describe('Suppliers', () => {
     it('deve criar um fornecedor', async () => {
       const res = await request(app.getHttpServer())
@@ -78,7 +74,6 @@ describe('Suppliers & Purchases (e2e)', () => {
     });
   });
 
-  // --- COMPRAS ---
   describe('Purchases', () => {
     it('deve criar uma compra (DRAFT) calculando os totais', async () => {
       const res = await request(app.getHttpServer())
@@ -94,8 +89,7 @@ describe('Suppliers & Purchases (e2e)', () => {
         .expect(201);
       
       expect(res.body.data.status).toBe('DRAFT');
-      // Total = (10 * 50) = 500
-      expect(parseFloat(res.body.data.totalAmount)).toBe(500.00);
+      expect(Number(res.body.data.totalAmount)).toBe(500.00);
     });
 
     it('deve confirmar uma compra', async () => {
@@ -112,17 +106,13 @@ describe('Suppliers & Purchases (e2e)', () => {
     });
   });
 
-  // --- INTEGRIDADE E ISOLAMENTO ---
   describe('Segurança e Integridade', () => {
     it('confirmar compra NÃO deve alterar stock ou criar movimentos', async () => {
-      // Não existe tabela de stock, logo não há como alterar. Apenas validamos
-      // que a operação não falha e o produto mantém-se inalterado.
       const product = await prisma.product.findUnique({ where: { id: productId } });
-      expect(parseFloat(product.salePrice)).toBe(100); // Preço original inalterado
+      expect(product.salePrice.toNumber()).toBe(100); // Preço original inalterado
     });
 
     it('deve rejeitar compra com fornecedor de outra farmácia', async () => {
-      // Criar Farmácia B
       const phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B', status: 'ACTIVE' } });
       
       const res = await request(app.getHttpServer())

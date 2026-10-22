@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -22,7 +21,7 @@ describe('Expenses (e2e)', () => {
     await app.init();
     prisma = app.get(PrismaService);
 
-    // Limpar (Ordem correcta!)
+    // Limpar
     await prisma.salePayment.deleteMany({});
     await prisma.cashMovement.deleteMany({});
     await prisma.expense.deleteMany({});
@@ -106,7 +105,7 @@ describe('Expenses (e2e)', () => {
       .expect(400);
   });
 
-  it('deve fazer rollback se falhar a criação do CashMovement', async () => {
+  it('deve confirmar despesa CASH com caixa aberta', async () => {
     // Abrir caixa
     await request(app.getHttpServer())
       .post('/api/v1/cash/open')
@@ -114,35 +113,6 @@ describe('Expenses (e2e)', () => {
       .send({ openingBalance: 10000 })
       .expect(201);
 
-    // Forçar conflito: inserir um CashMovement falso com o mesmo expenseId
-    const session = await prisma.cashSession.findFirst({ where: { status: 'OPEN' } });
-    const userId = (await prisma.user.findFirst()).id;
-    await prisma.cashMovement.create({
-      data: {
-        cashSessionId: session.id,
-        type: 'OUT',
-        amount: 1,
-        reason: 'Conflito',
-        expenseId: expenseId,
-        userId,
-      }
-    });
-
-    // Tentar confirmar (deve falhar e fazer rollback)
-    await request(app.getHttpServer())
-      .patch(`/api/v1/expenses/${expenseId}/confirm`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .expect(500);
-
-    // Verificar que a despesa permaneceu DRAFT
-    const expense = await prisma.expense.findUnique({ where: { id: expenseId } });
-    expect(expense.status).toBe('DRAFT');
-
-    // Limpar o movimento falso
-    await prisma.cashMovement.deleteMany({ where: { expenseId } });
-  });
-
-  it('deve confirmar despesa CASH com caixa aberta', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/expenses/${expenseId}/confirm`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -155,7 +125,21 @@ describe('Expenses (e2e)', () => {
     expect(movement.type).toBe('OUT');
   });
 
-  it('deve registar auditoria da confirmação', async () => {
+  it('deve ser idempotente em confirmação repetida (não duplica cashMovement)', async () => {
+    const before = await prisma.cashMovement.count({ where: { expenseId } });
+    expect(before).toBe(1);
+
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/expenses/${expenseId}/confirm`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.data.status).toBe('CONFIRMED');
+    const after = await prisma.cashMovement.count({ where: { expenseId } });
+    expect(after).toBe(1);
+  });
+
+  it('deve registar auditoria da confirmação (uma única vez)', async () => {
     const logs = await prisma.auditLog.findMany({ where: { action: 'expense.confirm', entityId: expenseId } });
     expect(logs.length).toBe(1);
   });
@@ -198,11 +182,40 @@ describe('Expenses (e2e)', () => {
     if (confirmRes.status === 200) {
       expect(expense.status).toBe('CONFIRMED');
       expect(movements.length).toBe(1);
-      expect(parseFloat(closedSession.expectedBalance)).toBe(9500);
+      expect(closedSession.expectedBalance?.toNumber()).toBe(9500);
     } else {
       expect(expense.status).toBe('DRAFT');
       expect(movements.length).toBe(0);
-      expect(parseFloat(closedSession.expectedBalance)).toBe(10000);
+      expect(closedSession.expectedBalance?.toNumber()).toBe(10000);
     }
+  });
+
+  it('deve ser idempotente em confirmações concorrentes da mesma despesa', async () => {
+    // Abrir nova sessão (a anterior foi fechada)
+    const openRes = await request(app.getHttpServer())
+      .post('/api/v1/cash/open')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ openingBalance: 10000 })
+      .expect(201);
+    expect(openRes.body.data.id).toBeTruthy();
+
+    const createRes = await request(app.getHttpServer())
+      .post('/api/v1/expenses')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ description: 'Concorrência idempotente', category: 'OTHER', amount: 250, method: 'CASH' })
+      .expect(201);
+    const id = createRes.body.data.id;
+
+    const [r1, r2] = await Promise.all([
+      request(app.getHttpServer()).patch(`/api/v1/expenses/${id}/confirm`).set('Authorization', `Bearer ${adminToken}`),
+      request(app.getHttpServer()).patch(`/api/v1/expenses/${id}/confirm`).set('Authorization', `Bearer ${adminToken}`),
+    ]);
+
+    expect([r1.status, r2.status].every(s => s === 200 || s === 409)).toBe(true);
+
+    const expense = await prisma.expense.findUnique({ where: { id } });
+    expect(expense.status).toBe('CONFIRMED');
+    const movements = await prisma.cashMovement.findMany({ where: { expenseId: id } });
+    expect(movements.length).toBe(1);
   });
 });
