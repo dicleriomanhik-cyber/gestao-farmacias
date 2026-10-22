@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { Module } from '@nestjs/common';
-import { CashService } from './cash.service';
 import { CashController } from './cash.controller';
+import { CashService } from './cash.service';
 
 @Module({
   controllers: [CashController],

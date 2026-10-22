@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { OpenCashDto } from './dto/open-cash.dto';
@@ -32,17 +31,15 @@ export class CashService {
 
   async closeCash(pharmacyId: string, userId: string, sessionId: string, dto: CloseCashDto) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock da sessão para evitar fechos duplos
       const sessions = await tx.$queryRaw`
         SELECT * FROM "cash_sessions" 
         WHERE id = ${sessionId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; openingBalance: Decimal; status: string }>;
       const session = sessions[0];
       if (!session) throw new NotFoundException('Sessão de caixa não encontrada.');
       if (session.status !== 'OPEN') throw new BadRequestException('Sessão já fechada.');
 
-      // Apenas pagamentos CASH contam para o saldo físico
       const cashPayments = await tx.salePayment.aggregate({
         where: { cashSessionId: sessionId, method: 'CASH' },
         _sum: { amount: true },
@@ -89,16 +86,14 @@ export class CashService {
   async createPayment(pharmacyId: string, userId: string, dto: CreatePaymentDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Lock da sessão para evitar pagamentos e fechos concorrentes
         const sessions = await tx.$queryRaw`
           SELECT * FROM "cash_sessions" 
           WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
           FOR UPDATE
-        `;
+        ` as Array<{ id: string }>;
         const session = sessions[0];
         if (!session) throw new BadRequestException('Não tem sessão de caixa aberta.');
 
-        // Idempotência: se a chave já foi usada, devolve o pagamento existente
         if (dto.idempotencyKey) {
           const existing = await tx.salePayment.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
           if (existing) return existing;
@@ -117,7 +112,6 @@ export class CashService {
           throw new BadRequestException(`Valor excede o saldo pendente (${pending.toFixed(2)}).`);
         }
 
-        // Lock da venda para evitar dupla confirmação
         await tx.$queryRaw`SELECT id FROM "sales" WHERE id = ${sale.id}::uuid FOR UPDATE`;
 
         const payment = await tx.salePayment.create({
@@ -138,7 +132,6 @@ export class CashService {
         return payment;
       });
     } catch (error) {
-      // Tratar conflito de idempotência concorrente (unique constraint)
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const existing = await this.prisma.salePayment.findUnique({
           where: { idempotencyKey: dto.idempotencyKey },
@@ -151,12 +144,11 @@ export class CashService {
 
   async createMovement(pharmacyId: string, userId: string, dto: CreateCashMovementDto) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock da sessão aberta para evitar concorrência com o fecho
       const sessions = await tx.$queryRaw`
         SELECT * FROM "cash_sessions" 
         WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
         FOR UPDATE
-      `;
+      ` as Array<{ id: string }>;
       const session = sessions[0];
       if (!session) throw new BadRequestException('Não tem sessão de caixa aberta.');
 
