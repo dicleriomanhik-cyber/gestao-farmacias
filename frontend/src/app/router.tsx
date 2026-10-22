@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import LoginPage from "../pages/auth/LoginPage";
@@ -25,39 +25,31 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
+        <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<DashboardPage />} />
 
-          <Route path="vendas" element={<SaleListPage />} />
-          <Route path="vendas/:id" element={<SaleDetailPage />} />
-          <Route path="vendas/novo" element={<PosPage />} />
-          <Route path="caixa" element={<CashSessionPage />} />
+          <Route path="vendas" element={<ProtectedRoute requiredPermission="sales:read"><SaleListPage /></ProtectedRoute>} />
+          <Route path="vendas/:id" element={<ProtectedRoute requiredPermission="sales:read"><SaleDetailPage /></ProtectedRoute>} />
+          <Route path="vendas/novo" element={<ProtectedRoute requiredPermission="sales:create"><PosPage /></ProtectedRoute>} />
+          <Route path="caixa" element={<ProtectedRoute requiredPermission="cash:open"><CashSessionPage /></ProtectedRoute>} />
 
-          <Route path="compras" element={<PurchaseListPage />} />
-          <Route path="compras/:id" element={<PurchaseDetailPage />} />
-          <Route path="compras/novo" element={<PurchaseFormPage />} />
+          <Route path="compras" element={<ProtectedRoute requiredPermission="purchases:read"><PurchaseListPage /></ProtectedRoute>} />
+          <Route path="compras/:id" element={<ProtectedRoute requiredPermission="purchases:read"><PurchaseDetailPage /></ProtectedRoute>} />
+          <Route path="compras/novo" element={<ProtectedRoute requiredPermission="purchases:write"><PurchaseFormPage /></ProtectedRoute>} />
 
-          <Route path="produtos" element={<ProductListPage />} />
-          <Route path="produtos/novo" element={<ProductFormPage />} />
-          <Route path="produtos/:id/editar" element={<ProductFormPage />} />
+          <Route path="produtos" element={<ProtectedRoute requiredPermission="products:read"><ProductListPage /></ProtectedRoute>} />
+          <Route path="produtos/novo" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
+          <Route path="produtos/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
 
-          <Route path="stock/lotes" element={<StockLotListPage />} />
-          <Route path="stock/movimentos" element={<StockMovementListPage />} />
-          <Route path="stock/receber" element={<StockReceiveFormPage />} />
-          <Route path="stock/ajustar" element={<StockAdjustFormPage />} />
+          <Route path="stock/lotes" element={<ProtectedRoute requiredPermission="stock:read"><StockLotListPage /></ProtectedRoute>} />
+          <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
+          <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
+          <Route path="stock/ajustar" element={<ProtectedRoute requiredPermission="stock:adjust"><StockAdjustFormPage /></ProtectedRoute>} />
 
-          <Route path="despesas" element={<ExpenseListPage />} />
-          <Route path="despesas/novo" element={<ExpenseFormPage />} />
-          <Route path="despesas/:id/editar" element={<ExpenseFormPage />} />
-
-          <Route path="relatorios" element={<ReportsPage />} />
+          <Route path="despesas" element={<ProtectedRoute requiredPermission="expenses:read"><ExpenseListPage /></ProtectedRoute>} />
+          <Route path="despesas/novo" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
+          <Route path="despesas/:id/editar" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
+          <Route path="relatorios" element={<ProtectedRoute requiredPermission="reports:read"><ReportsPage /></ProtectedRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,35 +1,66 @@
+﻿import PageHeader from "../../components/ui/PageHeader";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getProducts } from "../../services/productService";
-import type { Product } from "../../types/products";
+import type { Product, PaginatedMeta } from "../../types/products";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 
 export default function ProductListPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [meta, setMeta] = useState<PaginatedMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    getProducts()
-      .then(setProducts)
+  function load() {
+    setLoading(true);
+    setError(false);
+    getProducts({ page, limit: 5, search })
+      .then((res) => {
+        setProducts(res.data);
+        setMeta(res.meta);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  function onSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setPage(1);
+    load();
+  }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState onRetry={() => window.location.reload()} />;
-  if (products.length === 0) return <EmptyState message="Nenhum produto registado." actionLabel="Novo Produto" actionLink="/produtos/novo" />;
+  if (error) return <ErrorState onRetry={load} />;
+  if (products.length === 0 && page === 1 && !search) {
+    return <EmptyState message="Nenhum produto registado." actionLabel="Novo Produto" actionLink="/produtos/novo" />;
+  }
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Produtos</h1>
-        <Link to="/produtos/novo" style={{ backgroundColor: "#2563eb", color: "white", padding: "0.5rem 1rem", borderRadius: "4px", textDecoration: "none" }}>
-          + Novo Produto
-        </Link>
-      </div>
+      <PageHeader title="Produtos" actions={<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>} />
+
+      <form onSubmit={onSearch} style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
+        <input
+          type="text"
+          placeholder="Pesquisar por nome…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: 1, padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }}
+        />
+        <button type="submit" style={{ padding: "0.5rem 1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}>
+          Pesquisar
+        </button>
+      </form>
+
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
           <thead>
@@ -56,6 +87,29 @@ export default function ProductListPage() {
           </tbody>
         </table>
       </div>
+
+      {meta && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            style={{ padding: "0.5rem 1rem", cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}
+          >
+            Anterior
+          </button>
+          <span style={{ color: "#6b7280" }}>
+            Página {meta.page} de {meta.totalPages} — {meta.total} registos
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+            disabled={page >= meta.totalPages}
+            style={{ padding: "0.5rem 1rem", cursor: page >= meta.totalPages ? "not-allowed" : "pointer", opacity: page >= meta.totalPages ? 0.5 : 1 }}
+          >
+            Próxima
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+
