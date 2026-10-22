@@ -1,11 +1,11 @@
-export type PaymentMethod = "CASH" | "CARD" | "MPESA" | "EMOLA";
+﻿export type PaymentMethod = "CASH" | "CARD" | "MPESA" | "EMOLA";
 export type SaleStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
 export interface SaleItem {
   productId: string;
-  productName: string; // Apenas para UI
+  productName: string;
   quantity: number;
-  unitPrice: string; // String decimal ex: "1500.00"
+  unitPrice: string;
 }
 
 export interface Sale {
@@ -31,13 +31,8 @@ export interface CashSession {
   closedAt?: string;
 }
 
-export interface CashOpenRequest {
-  initialAmount: string;
-}
-
-export interface CashCloseRequest {
-  finalAmount: string;
-}
+export interface CashOpenRequest { initialAmount: string; }
+export interface CashCloseRequest { finalAmount: string; }
 
 export interface CashMovement {
   id: string;
@@ -45,4 +40,22 @@ export interface CashMovement {
   amount: string;
   reason: string;
   createdAt: string;
+}
+
+export interface PaginatedMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginatedMeta;
+}
+
+export interface SaleListParams {
+  page?: number;
+  limit?: number;
+  status?: SaleStatus;
 }

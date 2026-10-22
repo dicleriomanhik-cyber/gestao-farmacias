@@ -1,9 +1,11 @@
+﻿import { useToast } from "../../contexts/ToastContext";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSale, confirmSale } from "../../services/saleService";
 import type { SaleItem, PaymentMethod } from "../../types/sales";
 
 export default function PosPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
@@ -29,15 +31,15 @@ export default function PosPage() {
   const total = cart.reduce((acc, item) => acc + parseFloat(item.unitPrice) * item.quantity, 0).toFixed(2);
 
   async function handleCheckout() {
-    if (cart.length === 0) return alert("Carrinho vazio.");
+    if (cart.length === 0) return toast.error("Carrinho vazio.");
     setLoading(true);
     try {
       const sale = await createSale({ items: cart, paymentMethod });
       await confirmSale(sale.id);
-      alert("Venda concluída com sucesso!");
+      alert("Venda concluÃ­da com sucesso!");
       navigate("/vendas");
     } catch {
-      alert("Erro ao processar venda.");
+      toast.error("Erro ao processar venda.");
     } finally {
       setLoading(false);
     }
@@ -71,10 +73,10 @@ export default function PosPage() {
         )}
 
         <div style={{ marginTop: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem" }}>Método de Pagamento:</label>
+          <label style={{ display: "block", marginBottom: "0.5rem" }}>MÃ©todo de Pagamento:</label>
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={{ width: "100%", padding: "0.5rem" }}>
             <option value="CASH">Dinheiro</option>
-            <option value="CARD">Cartão</option>
+            <option value="CARD">CartÃ£o</option>
             <option value="MPESA">M-Pesa</option>
             <option value="EMOLA">e-Mola</option>
           </select>
@@ -93,3 +95,6 @@ export default function PosPage() {
     </div>
   );
 }
+
+
+

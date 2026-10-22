@@ -1,11 +1,11 @@
-export type PurchaseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+﻿export type PurchaseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
 export interface PurchaseItem {
   id?: string;
   productId: string;
-  productName: string; // Apenas para UI
+  productName: string;
   quantity: number;
-  unitPrice: string; // String decimal "1500.00"
+  unitPrice: string;
 }
 
 export interface Purchase {
@@ -18,6 +18,24 @@ export interface Purchase {
 }
 
 export interface PurchaseRequest {
-  supplierId: string; // Assumindo UUID do contrato
+  supplierId: string;
   items: { productId: string; quantity: number; unitPrice: string }[];
+}
+
+export interface PaginatedMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginatedMeta;
+}
+
+export interface PurchaseListParams {
+  page?: number;
+  limit?: number;
+  status?: PurchaseStatus;
 }

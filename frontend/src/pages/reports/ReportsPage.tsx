@@ -1,48 +1,56 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getReportSummary, getReportSales, getReportExpenses, getReportCash, getReportStock } from "../../services/reportService";
 import type { ReportSummary, ReportSales, ReportExpenses, ReportCash, ReportStock } from "../../types/reports";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import PageHeader from "../../components/ui/PageHeader";
+import { useAuth } from "../../hooks/useAuth";
+import { canAccessFinancialReports } from "../../utils/permissions";
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [sales, setSales] = useState<ReportSales | null>(null);
   const [expenses, setExpenses] = useState<ReportExpenses | null>(null);
   const [cash, setCash] = useState<ReportCash | null>(null);
   const [stock, setStock] = useState<ReportStock | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const canFinancial = canAccessFinancialReports(user?.role);
 
-  useEffect(() => {
+  function load() {
+    setLoading(true); setError(false);
     Promise.all([getReportSummary(), getReportSales(), getReportExpenses(), getReportCash(), getReportStock()])
-      .then(([s, sa, e, c, st]) => {
-        setSummary(s); setSales(sa); setExpenses(e); setCash(c); setStock(st);
-      })
+      .then(([s, sa, e, c, st]) => { setSummary(s); setSales(sa); setExpenses(e); setCash(c); setStock(st); })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }
+  useEffect(() => { load(); }, []);
 
   if (loading) return <LoadingState />;
+  if (error) return <ErrorState message="Não foi possível carregar os relatórios." onRetry={load} />;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Relatórios</h1>
-        <span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem" }}>
-          [MOCK] Dados Simulados
-        </span>
-      </div>
+      <PageHeader title="Relatórios" actions={<span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem" }}>[MOCK] Dados Simulados</span>} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{summary?.totalSales} MT</p>
         </div>
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Despesas</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>{summary?.totalExpenses} MT</p>
-        </div>
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lucro Líquido</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: parseFloat(summary?.netProfit || "0") >= 0 ? "#166534" : "#b91c1c" }}>{summary?.netProfit} MT</p>
-        </div>
+        {canFinancial && (
+          <>
+            <div className="card" style={{ padding: "1rem" }}>
+              <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Despesas</h3>
+              <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>{summary?.totalExpenses} MT</p>
+            </div>
+            <div className="card" style={{ padding: "1rem" }}>
+              <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lucro Líquido</h3>
+              <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: parseFloat(summary?.netProfit || "0") >= 0 ? "#166534" : "#b91c1c" }}>{summary?.netProfit} MT</p>
+            </div>
+          </>
+        )}
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo de Caixa</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{summary?.cashBalance} MT</p>
@@ -56,11 +64,13 @@ export default function ReportsPage() {
           <p>Nº de vendas: <strong>{sales?.countSales}</strong></p>
           <p>Ticket médio: <strong>{sales?.averageTicket} MT</strong></p>
         </div>
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Despesas</h2>
-          <p>Total: <strong>{expenses?.totalExpenses} MT</strong></p>
-          <p>Nº de despesas: <strong>{expenses?.countExpenses}</strong></p>
-        </div>
+        {canFinancial && (
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Despesas</h2>
+            <p>Total: <strong>{expenses?.totalExpenses} MT</strong></p>
+            <p>Nº de despesas: <strong>{expenses?.countExpenses}</strong></p>
+          </div>
+        )}
         <div className="card" style={{ padding: "1.5rem" }}>
           <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Caixa</h2>
           <p>Entradas: <strong style={{ color: "#166534" }}>{cash?.totalIn} MT</strong></p>
