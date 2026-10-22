@@ -12,6 +12,14 @@ export enum RefundMethodDto {
 }
 
 export class RefundDto {
+  @ApiProperty()
+  @IsUUID()
+  returnLineId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  salePaymentId!: string;
+
   @ApiProperty({ enum: RefundMethodDto })
   @IsEnum(RefundMethodDto)
   method!: RefundMethodDto;
@@ -26,11 +34,6 @@ export class RefundDto {
   @IsUUID()
   @IsOptional()
   cashSessionId?: string;
-
-  @ApiPropertyOptional()
-  @IsUUID()
-  @IsOptional()
-  salePaymentId?: string;
 
   @ApiPropertyOptional()
   @IsString()

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
@@ -17,7 +16,7 @@ export class ConfirmRefundDto {
   @IsString()
   externalReference!: string;
 
-  @ApiPropertyOptional({ example: 'Confirmado via extrato bancário' })
+  @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   notes?: string;

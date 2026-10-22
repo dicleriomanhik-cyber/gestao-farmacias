@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum ReturnLineConditionDto {

@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ReturnLineDto {
@@ -17,10 +16,10 @@ export class ReturnLineDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  lotNumber?: string; // Se o operador souber o lote devolvido
+  lotNumber?: string;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsDateString()
   @IsOptional()
   expiryDate?: string;
 }

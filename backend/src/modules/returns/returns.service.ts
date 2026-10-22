@@ -1,9 +1,8 @@
-// @ts-nocheck
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateReturnDto } from './dto/create-return.dto';
-import { InspectReturnDto, ReturnLineConditionDto } from './dto/inspect-return.dto';
-import { RefundDto, RefundMethodDto } from './dto/refund.dto';
+import { InspectReturnDto } from './dto/inspect-return.dto';
+import { RefundDto } from './dto/refund.dto';
 import { ConfirmRefundDto } from './dto/confirm-refund.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
@@ -53,8 +52,8 @@ export class ReturnsService {
           unitPrice,
           discount,
           subtotal,
-          lotNumber: lineDto.lotNumber, // <-- CORREÇÃO
-          expiryDate: lineDto.expiryDate ? new Date(lineDto.expiryDate) : null, // <-- CORREÇÃO
+          lotNumber: lineDto.lotNumber,
+          expiryDate: lineDto.expiryDate ? new Date(lineDto.expiryDate) : null,
         });
       }
 
@@ -98,7 +97,7 @@ export class ReturnsService {
         SELECT * FROM "sale_returns" 
         WHERE id = ${returnId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; saleId: string; status: string }>;
       const saleReturn = returns[0];
       if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
       if (saleReturn.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
@@ -154,7 +153,7 @@ export class ReturnsService {
         SELECT * FROM "quarantine_stock" 
         WHERE "saleReturnLineId" = ${lineId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; productId: string; lotNumber: string; expiryDate: Date; quantityReceived: number; quantityInspected: number; unitCost: Decimal }>;
       const q = quarantines[0];
       if (!q) throw new NotFoundException('Registo de quarentena não encontrado.');
       
@@ -164,7 +163,6 @@ export class ReturnsService {
       }
 
       if (dto.condition === 'RESELLABLE') {
-        // VALIDAÇÃO CRÍTICA
         if (q.lotNumber === 'DESCONHECIDO' || !q.expiryDate) {
           throw new BadRequestException('Não é possível libertar artigo sem lote e validade verificáveis.');
         }
@@ -242,7 +240,7 @@ export class ReturnsService {
           SELECT * FROM "sale_returns" 
           WHERE id = ${returnId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
           FOR UPDATE
-        `;
+        ` as Array<{ id: string; saleId: string; status: string; totalRefund: Decimal; returnNumber: string }>;
         const saleReturn = returns[0];
         if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
         if (saleReturn.status !== 'CONFIRMED') throw new BadRequestException('Devolução não confirmada.');
@@ -343,7 +341,7 @@ export class ReturnsService {
         SELECT * FROM "return_refunds" 
         WHERE id = ${refundId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; status: string }>;
       const refund = refunds[0];
       if (!refund) throw new NotFoundException('Reembolso não encontrado.');
       if (refund.status !== 'PENDING') throw new BadRequestException('Apenas reembolsos pendentes podem ser confirmados.');
