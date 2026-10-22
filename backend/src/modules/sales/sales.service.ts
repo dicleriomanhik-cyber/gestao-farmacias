@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
@@ -10,7 +9,6 @@ export class SalesService {
   constructor(private prisma: PrismaService) {}
 
   async create(pharmacyId: string, userId: string, dto: CreateSaleDto) {
-    // 1. Validar Produtos e obter preços atuais
     const productIds = dto.lines.map(l => l.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, pharmacyId, status: 'ACTIVE' },
@@ -19,7 +17,6 @@ export class SalesService {
       throw new BadRequestException('Um ou mais produtos são inválidos ou inativos.');
     }
 
-    // 2. Calcular Totais (Backend)
     let subtotal = new Decimal(0);
     let discountTotal = new Decimal(0);
     const linesData = dto.lines.map(line => {
@@ -44,7 +41,6 @@ export class SalesService {
 
     const total = subtotal;
 
-    // 3. Criar Venda (DRAFT)
     const count = await this.prisma.sale.count({ where: { pharmacyId } });
     const saleNumber = `VND-${String(count + 1).padStart(6, '0')}`;
 
@@ -59,9 +55,7 @@ export class SalesService {
           discount: discountTotal,
           total,
           notes: dto.notes,
-          lines: {
-            create: linesData,
-          },
+          lines: { create: linesData },
         },
         include: { lines: true },
       });
@@ -112,23 +106,21 @@ export class SalesService {
 
   async confirm(pharmacyId: string, userId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Bloquear Venda (FOR UPDATE) para dupla confirmação
+      // Lock na venda
       const sales = await tx.$queryRaw`
         SELECT id, status FROM "sales" 
         WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
         FOR UPDATE
-      `;
+      ` as Array<{ id: string; status: string }>;
       const sale = sales[0];
       if (!sale) throw new NotFoundException('Venda não encontrada.');
       if (sale.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
 
       const saleLines = await tx.saleLine.findMany({ where: { saleId: id } });
 
-      // 2. Processar FEFO e Stock para cada linha
       for (const line of saleLines) {
         let remainingQty = line.quantity;
 
-        // Obter lotes elegíveis ordenados por validade (FEFO) e bloquear
         const lots = await tx.$queryRaw`
           SELECT id, "quantityAvailable", "expiryDate" 
           FROM "stock_lots" 
@@ -139,36 +131,32 @@ export class SalesService {
             AND status = 'ACTIVE'
           ORDER BY "expiryDate" ASC
           FOR UPDATE
-        `;
+        ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date }>;
 
         if (lots.length === 0) throw new BadRequestException(`Sem stock válido para o produto ${line.productId}.`);
 
         for (const lot of lots) {
           if (remainingQty <= 0) break;
-
           const consume = Math.min(remainingQty, lot.quantityAvailable);
           
-          // Atualizar Lote
           await tx.stockLot.update({
             where: { id: lot.id },
             data: { quantityAvailable: { decrement: consume } },
           });
 
-          // Registar Movimento
           await tx.stockMovement.create({
             data: {
               pharmacyId,
               productId: line.productId,
               lotId: lot.id,
               type: 'SALE',
-              quantity: -consume, // Negativo
+              quantity: -consume,
               referenceId: id,
               referenceType: 'Sale',
               userId,
             },
           });
 
-          // Registar Rastreabilidade
           await tx.saleLineLot.create({
             data: { saleLineId: line.id, lotId: lot.id, quantity: consume },
           });
@@ -181,7 +169,6 @@ export class SalesService {
         }
       }
 
-      // 3. Confirmar Venda
       const updated = await tx.sale.update({
         where: { id },
         data: { status: 'CONFIRMED' },

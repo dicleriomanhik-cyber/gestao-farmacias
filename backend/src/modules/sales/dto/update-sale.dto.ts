@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { PartialType, OmitType } from '@nestjs/swagger';
 import { CreateSaleDto } from './create-sale.dto';
 
