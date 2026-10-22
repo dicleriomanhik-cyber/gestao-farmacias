@@ -2,23 +2,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum ExpenseCategoryFilter {
-  RENT = 'RENT',
-  UTILITIES = 'UTILITIES',
-  TRANSPORT = 'TRANSPORT',
-  CONSUMABLES = 'CONSUMABLES',
-  MAINTENANCE = 'MAINTENANCE',
-  SALARIES = 'SALARIES',
-  TAXES = 'TAXES',
-  OTHER = 'OTHER',
+  RENT = 'RENT', UTILITIES = 'UTILITIES', TRANSPORT = 'TRANSPORT',
+  CONSUMABLES = 'CONSUMABLES', MAINTENANCE = 'MAINTENANCE',
+  SALARIES = 'SALARIES', TAXES = 'TAXES', OTHER = 'OTHER',
 }
 
 export enum PaymentMethodFilter {
-  CASH = 'CASH',
-  CARD = 'CARD',
-  MPESA = 'MPESA',
-  EMOLA = 'EMOLA',
-  TRANSFER = 'TRANSFER',
-  OTHER = 'OTHER',
+  CASH = 'CASH', CARD = 'CARD', MPESA = 'MPESA', EMOLA = 'EMOLA',
+  TRANSFER = 'TRANSFER', OTHER = 'OTHER',
 }
 
 export class ReportQueryDto {
