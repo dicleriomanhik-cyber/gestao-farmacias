@@ -1,0 +1,31 @@
+@import './reset.css';
+@import './variables.css';
+@import './responsive.css';
+
+body { background-color: var(--background); color: var(--text-main); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+a { text-decoration: none; color: var(--primary); }
+button { cursor: pointer; border: none; border-radius: var(--radius); }
+
+/* Layout Estrutural */
+.app-container { display: flex; height: 100vh; overflow: hidden; }
+.sidebar { width: 250px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; transition: width 0.3s; }
+.sidebar-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+.sidebar-nav { padding: 20px 10px; display: flex; flex-direction: column; gap: 10px; }
+.nav-link { padding: 12px 15px; border-radius: var(--radius); color: var(--sidebar-text); transition: background 0.2s; display: block; }
+.nav-link:hover, .nav-link.active { background-color: var(--primary); color: white; }
+
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.header { height: 60px; background-color: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: var(--shadow); z-index: 10; }
+.content-area { padding: 20px; overflow-y: auto; flex: 1; }
+
+/* Componentes UI Base */
+.card { background-color: var(--surface); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; color: var(--text-main); }
+.grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+
+/* Tabelas */
+.table-container { overflow-x: auto; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); }
+th { background-color: #f8f9fa; font-weight: 600; color: var(--text-muted); }
+tr:hover { background-color: #f1f3f5; }
