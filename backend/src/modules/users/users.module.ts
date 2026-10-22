@@ -1,12 +1,11 @@
-// @ts-nocheck
 import { Module } from '@nestjs/common';
-import { UsersRepository } from './users.repository';
-import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+import { UsersRepository } from './users.repository';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersRepository, UsersService],
+  providers: [UsersService, UsersRepository],
   exports: [UsersService, UsersRepository],
 })
 export class UsersModule {}

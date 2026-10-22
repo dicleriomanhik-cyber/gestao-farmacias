@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersRepository {
@@ -34,20 +34,30 @@ export class UsersRepository {
   }
 
   async findAll(pharmacyId: string, skip: number, take: number, search?: string) {
-    const where = {
+    const where: Prisma.UserWhereInput = {
       pharmacyId,
       ...(search && { 
         OR: [
-          { fullName: { contains: search, mode: 'insensitive' as const } }, 
-          { email: { contains: search, mode: 'insensitive' as const } }
+          { fullName: { contains: search, mode: 'insensitive' } }, 
+          { email: { contains: search, mode: 'insensitive' } }
         ] 
       }),
     };
     
     const [data, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({ 
-        where, skip, take, 
-        select: { id: true, email: true, fullName: true, status: true, createdAt: true, updatedAt: true, roles: { include: { role: true } } }
+        where, 
+        skip, 
+        take, 
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          roles: { include: { role: true } }
+        }
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -58,25 +68,45 @@ export class UsersRepository {
   async findOne(pharmacyId: string, id: string) {
     return this.prisma.user.findFirst({
       where: { id, pharmacyId },
-      select: { id: true, email: true, fullName: true, status: true, createdAt: true, updatedAt: true, roles: { include: { role: true } } }
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        roles: { include: { role: true } }
+      }
     });
   }
 
   async countActiveAdmins(pharmacyId: string) {
     return this.prisma.user.count({
-      where: { pharmacyId, status: 'ACTIVE', roles: { some: { role: { name: 'ADMIN' } } } },
+      where: { 
+        pharmacyId, 
+        status: 'ACTIVE', 
+        roles: { some: { role: { name: 'ADMIN' } } } 
+      },
     });
   }
 
-  // NOVO MÉTODO: Bloqueio de linha para evitar Race Condition
-  async countActiveAdminsForUpdate(tx: any, pharmacyId: string) {
-    const result = await tx.$queryRaw`
-      SELECT COUNT(*)::int FROM "user_roles" ur
-      JOIN "users" u ON u.id = ur."userId"
-      JOIN "roles" r ON r.id = ur."roleId"
-      WHERE u."pharmacyId" = ${pharmacyId} AND u.status = 'ACTIVE' AND r.name = 'ADMIN'
-      FOR UPDATE OF u
+  async countActiveAdminsForUpdate(tx: Prisma.TransactionClient, pharmacyId: string) {
+    // O PostgreSQL não permite FOR UPDATE directamente com funções agregadas.
+    // Bloqueamos as linhas de `users` dos admins activos numa subquery com
+    // FOR UPDATE, e contamos as linhas fora da subquery. O bloqueio é
+    // adquirido na subquery e mantido até ao fim da transacção.
+    const result = await tx.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::int FROM (
+        SELECT u.id
+        FROM "user_roles" ur
+        JOIN "users" u ON u.id = ur."userId"
+        JOIN "roles" r ON r.id = ur."roleId"
+        WHERE u."pharmacyId" = ${pharmacyId}::uuid
+          AND u.status = 'ACTIVE'
+          AND r.name = 'ADMIN'
+        FOR UPDATE OF u
+      ) sub
     `;
-    return result[0].count;
+    return result[0]?.count ? Number(result[0].count) : 0;
   }
 }

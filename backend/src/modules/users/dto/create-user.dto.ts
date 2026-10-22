@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { UserStatus } from '@prisma/client';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'farmaceutico@farmacia.co.mz' })
@@ -21,8 +22,8 @@ export class CreateUserDto {
   @IsNotEmpty()
   roleName!: string;
 
-  @ApiProperty({ example: 'ACTIVE', required: false })
-  @IsString()
-  @IsOptional() // <--- ESTA É A CORREÇÃO
-  status?: string;
+  @ApiPropertyOptional({ enum: UserStatus, default: UserStatus.ACTIVE })
+  @IsEnum(UserStatus, { message: 'O status deve ser ACTIVE, INACTIVE ou SUSPENDED.' })
+  @IsOptional()
+  status?: UserStatus;
 }
