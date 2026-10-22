@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { SupplierStatus } from '@prisma/client';
 
 export class CreateSupplierDto {
   @ApiProperty({ example: 'Distribuidora Farmacêutica Lda' })
@@ -43,8 +43,8 @@ export class CreateSupplierDto {
   @IsOptional()
   notes?: string;
 
-  @ApiPropertyOptional({ example: 'ACTIVE' })
-  @IsString()
+  @ApiPropertyOptional({ enum: SupplierStatus, default: SupplierStatus.ACTIVE })
+  @IsEnum(SupplierStatus, { message: 'O status deve ser ACTIVE ou INACTIVE.' })
   @IsOptional()
-  status?: string;
+  status?: SupplierStatus;
 }

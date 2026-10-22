@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
@@ -11,8 +10,21 @@ export class SuppliersService {
 
   async create(pharmacyId: string, actorId: string, dto: CreateSupplierDto) {
     return this.prisma.$transaction(async (tx) => {
+      // Separa explicitamente os campos para evitar conflito entre CreateInput/UncheckedCreateInput
+      const { name, taxId, phone, email, address, city, province, notes, status } = dto;
       const supplier = await tx.supplier.create({
-        data: { ...dto, pharmacyId },
+        data: {
+          name,
+          taxId,
+          phone,
+          email,
+          address,
+          city,
+          province,
+          notes,
+          status,
+          pharmacy: { connect: { id: pharmacyId } },
+        },
       });
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'supplier.create', entity: 'Supplier', entityId: supplier.id },
@@ -50,7 +62,11 @@ export class SuppliersService {
   async update(pharmacyId: string, actorId: string, id: string, dto: UpdateSupplierDto) {
     await this.findOne(pharmacyId, id);
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.supplier.update({ where: { id }, data: dto });
+      const { name, taxId, phone, email, address, city, province, notes, status } = dto;
+      const updated = await tx.supplier.update({
+        where: { id },
+        data: { name, taxId, phone, email, address, city, province, notes, status },
+      });
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'supplier.update', entity: 'Supplier', entityId: id },
       });

@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { Module } from '@nestjs/common';
-import { SuppliersService } from './suppliers.service';
 import { SuppliersController } from './suppliers.controller';
+import { SuppliersService } from './suppliers.service';
 
 @Module({
   controllers: [SuppliersController],
