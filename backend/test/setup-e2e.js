@@ -1,26 +1,24 @@
-// Carrega backend/.env.test exclusivamente para os testes E2E.
-// CommonJS + dotenv (ja instalado como dependencia do projecto).
-// Falha antes de importar AppModule ou instanciar Prisma se a configuracao
-// nao for explicitamente de teste e apontar para farmacia_db_e2e.
+// Carrega a configuracao dos testes E2E.
+// Localmente: le backend/.env.test se existir.
+// CI: aceita as variaveis ja injectadas no processo (process.env),
+//     por exemplo, definidas pelo workflow do GitHub Actions.
+// Falha antes de importar AppModule/Prisma se a configuracao nao for
+// de teste e se a base de dados nao for uma das autorizadas.
 
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
 const envPath = path.resolve(__dirname, '..', '.env.test');
+const envFileExists = fs.existsSync(envPath);
 
-if (!fs.existsSync(envPath)) {
-  throw new Error(
-    '[setup-e2e] Ficheiro .env.test nao encontrado em backend/. ' +
-    'Crie backend/.env.test com a configuracao de teste antes de correr os E2E.'
-  );
-}
-
-const result = dotenv.config({ path: envPath, override: true });
-if (result.error) {
-  throw new Error(
-    '[setup-e2e] Falha ao carregar .env.test: ' + result.error.message
-  );
+if (envFileExists) {
+  const result = dotenv.config({ path: envPath, override: true });
+  if (result.error) {
+    throw new Error(
+      '[setup-e2e] Falha ao carregar .env.test: ' + result.error.message
+    );
+  }
 }
 
 const env = process.env;
@@ -37,6 +35,8 @@ if (!env.DATABASE_URL) {
   fail('DATABASE_URL', 'ausente');
 }
 
+const ALLOWED_DATABASES = ['farmacia_db_e2e', 'farmacia_db_test'];
+
 let parsedDb;
 try {
   const u = new URL(env.DATABASE_URL);
@@ -50,10 +50,10 @@ try {
   fail('DATABASE_URL', 'URL invalida');
 }
 
-if (parsedDb.dbName !== 'farmacia_db_e2e') {
+if (!ALLOWED_DATABASES.includes(parsedDb.dbName)) {
   fail(
     'DATABASE_URL',
-    'nome da base de dados deve ser exactamente "farmacia_db_e2e"'
+    `nome da base de dados deve ser um de: ${ALLOWED_DATABASES.join(', ')}`
   );
 }
 
