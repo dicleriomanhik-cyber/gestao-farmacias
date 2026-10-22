@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PurchaseLineDto {
@@ -9,7 +8,7 @@ export class PurchaseLineDto {
   productId!: string;
 
   @ApiProperty({ example: 100 })
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Type(() => Number)
   quantity!: number;

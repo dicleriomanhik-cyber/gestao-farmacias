@@ -1,25 +1,22 @@
-// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto } from './dto/update-purchase.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PurchasesService {
   constructor(private prisma: PrismaService) {}
 
   async create(pharmacyId: string, actorId: string, dto: CreatePurchaseDto) {
-    // 1. Validar Fornecedor
     const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, pharmacyId } });
     if (!supplier) throw new BadRequestException('Fornecedor inválido ou não pertence a esta farmácia.');
     if (supplier.status === 'INACTIVE') throw new BadRequestException('Fornecedor inactivo não pode ser usado.');
 
-    // 2. Validar Produtos
     const productIds = dto.lines.map(l => l.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: productIds }, pharmacyId } });
     if (products.length !== productIds.length) throw new BadRequestException('Um ou mais produtos são inválidos.');
 
-    // 3. Calcular Totais (Backend calcula, cliente não manda o total)
     let totalAmount = 0;
     const linesData = dto.lines.map(line => {
       const subtotal = (line.quantity * line.unitCost) - (line.discount || 0);
@@ -34,7 +31,6 @@ export class PurchasesService {
       };
     });
 
-    // 4. Transação
     return this.prisma.$transaction(async (tx) => {
       const purchase = await tx.purchase.create({
         data: {
@@ -44,9 +40,7 @@ export class PurchasesService {
           notes: dto.notes,
           totalAmount,
           status: 'DRAFT',
-          lines: {
-            create: linesData,
-          },
+          lines: { create: linesData },
         },
         include: { lines: true },
       });
