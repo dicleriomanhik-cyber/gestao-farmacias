@@ -2,8 +2,8 @@
 import { getStockLots } from "../../services/stockService";
 import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
 import EmptyState from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 
 export default function StockLotListPage() {
@@ -20,31 +20,68 @@ export default function StockLotListPage() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  function isExpiringSoon(dateStr: string) {
+    const expiry = new Date(dateStr).getTime();
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    return expiry - now < thirtyDays && expiry > now;
+  }
+
+  function isExpired(dateStr: string) {
+    return new Date(dateStr).getTime() < Date.now();
+  }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os lotes de stock." onRetry={load} />;
-  if (lots.length === 0) return <EmptyState message="Nenhum lote em stock." actionLabel="Receber Stock" actionLink="/stock/receber" />;
-
-  function isExpiringSoon(d: string) { const t = new Date(d).getTime(); const n = Date.now(); return t - n < 30*24*60*60*1000 && t > n; }
-  function isExpired(d: string) { return new Date(d).getTime() < Date.now(); }
+  if (lots.length === 0) {
+    return <EmptyState message="Nenhum lote em stock. Recebe mercadoria para começar." />;
+  }
 
   return (
     <div>
-      <PageHeader title="Lotes de Stock" actions={<span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem" }}>[MOCK]</span>} />
+      <PageHeader title="Lotes de Stock" />
+
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
-          <thead><tr><th>Produto</th><th>Lote</th><th>Quantidade</th><th>Validade</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Lote</th>
+              <th>Quantidade</th>
+              <th>Validade</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
           <tbody>
             {lots.map((lot) => (
               <tr key={lot.id}>
-                <td>{lot.productName}</td>
-                <td>{lot.batchNumber}</td>
-                <td>{lot.quantity}</td>
-                <td style={{ fontWeight: isExpiringSoon(lot.expiryDate) || isExpired(lot.expiryDate) ? "bold" : "normal", color: isExpired(lot.expiryDate) ? "#b91c1c" : isExpiringSoon(lot.expiryDate) ? "#ca8a04" : "inherit" }}>
+                <td>{lot.product?.name ?? "—"}</td>
+                <td>{lot.lotNumber}</td>
+                <td>{lot.quantityAvailable}</td>
+                <td
+                  style={{
+                    fontWeight: isExpiringSoon(lot.expiryDate) || isExpired(lot.expiryDate) ? "bold" : "normal",
+                    color: isExpired(lot.expiryDate) ? "#b91c1c" : isExpiringSoon(lot.expiryDate) ? "#ca8a04" : "inherit",
+                  }}
+                >
                   {new Date(lot.expiryDate).toLocaleDateString()}
                   {isExpired(lot.expiryDate) && " (Expirado)"}
                   {!isExpired(lot.expiryDate) && isExpiringSoon(lot.expiryDate) && " (A expirar)"}
+                </td>
+                <td>
+                  <span style={{
+                    padding: "0.25rem 0.5rem",
+                    borderRadius: "4px",
+                    fontSize: "0.875rem",
+                    backgroundColor: lot.status === "ACTIVE" ? "#dcfce7" : "#fee2e2",
+                    color: lot.status === "ACTIVE" ? "#166534" : "#991b1b",
+                  }}>
+                    {lot.status}
+                  </span>
                 </td>
               </tr>
             ))}
