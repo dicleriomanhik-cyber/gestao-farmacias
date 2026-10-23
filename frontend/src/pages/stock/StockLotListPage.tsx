@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getStockLots } from "../../services/stockService";
 import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
@@ -43,7 +44,16 @@ export default function StockLotListPage() {
 
   return (
     <div>
-      <PageHeader title="Lotes de Stock" />
+      <PageHeader
+        title="Lotes de Stock"
+        actions={
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <Link to="/stock/movimentos" className="btn btn-secondary">Movimentos</Link>
+            <Link to="/stock/receber" className="btn btn-secondary">Receber Stock</Link>
+            <Link to="/stock/ajustar" className="btn btn-warning">Ajustar Stock</Link>
+          </div>
+        }
+      />
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
@@ -91,3 +101,5 @@ export default function StockLotListPage() {
     </div>
   );
 }
+
+

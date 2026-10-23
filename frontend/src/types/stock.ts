@@ -43,12 +43,9 @@ export interface StockReceiveRequest {
 }
 
 export interface StockAdjustRequest {
-  // Formato novo (real, FE-10.3.9.B)
-  lotId?: string;
-  // Formato antigo (mock temporário)
-  productId?: string;
-  // Comuns
+  lotId: string;
   quantity: number;
   reason: string;
 }
+
 
