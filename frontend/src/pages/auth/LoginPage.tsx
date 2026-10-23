@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useAuth } from "../../hooks/useAuth";
@@ -41,11 +41,27 @@ export default function LoginPage() {
       navigate(to, { replace: true });
     } catch (err) {
       const ax = err as AxiosError<ApiErrorEnvelope>;
-      let msg = "Não foi possível autenticar.";
-      if (!ax.response) msg = "Falha de rede. Tente novamente.";
-      else if (ax.response.status === 401) msg = "Credenciais inválidas.";
-      else if (ax.response.status >= 500) msg = "Erro no servidor.";
-      else msg = ax.response.data?.error?.message ?? msg;
+      const status = ax.response?.status;
+      const code = ax.response?.data?.error?.code;
+
+      let msg: string;
+
+      if (!ax.response) {
+        msg = "Não foi possível ligar ao servidor.";
+      } else if (status === 401) {
+        msg = "Credenciais inválidas.";
+      } else if (status === 403 && code === "INVALID_CREDENTIALS") {
+        msg = "Credenciais inválidas.";
+      } else if (status === 403) {
+        msg = "Acesso negado.";
+      } else if (status === 400) {
+        msg = "Dados inválidos. Verifica os campos.";
+      } else if (status && status >= 500) {
+        msg = "Erro no servidor. Tenta novamente mais tarde.";
+      } else {
+        msg = ax.response?.data?.error?.message ?? "Não foi possível autenticar.";
+      }
+
       setError(msg);
       toast.error(msg);
     } finally {
