@@ -113,7 +113,9 @@
 - O endpoint `PATCH /returns/refunds/:refundId/confirm` permite transitar de `PENDING` para `COMPLETED` (confirmado manualmente), `FAILED` (falhou) ou `CANCELLED` (cancelado). Transições a partir de estados finais são bloqueadas.
 
 ## 6. Limitações Conhecidas e Dívida Técnica
-- **Lacunas de testes E2E:** As rotas `GET /users/:id`, `PATCH /categories/:id`, `GET /suppliers/:id`, `GET /sales/:id`, `PATCH /sales/:id`, `GET /expenses/:id`, `PATCH /expenses/:id/cancel`, `GET /returns/:id` e `PATCH /returns/:id` não possuem testes E2E dedicados (embora estejam implementadas e protegidas).
+- **Lacunas de testes E2E:** As rotas `PATCH /sales/:id` e `PATCH /expenses/:id/cancel` não possuem testes E2E dedicados (embora estejam implementadas e protegidas).
+- **Discrepância contrato-implementação:** A rota `PATCH /returns/:id` está listada no contrato mas não está implementada no Back-end.
+- **Cobertura E2E de GET por ID:** As rotas `GET /users/:id`, `GET /products/:id`, `GET /suppliers/:id`, `GET /purchases/:id`, `GET /sales/:id`, `GET /expenses/:id` e `GET /returns/:id` possuem testes E2E dedicados, cobrindo sucesso, isolamento multi-tenant e rejeição sem autenticação. A rota `PATCH /categories/:id` também possui teste dedicado.
 - **Dívida Técnica:** Uso de `@ts-nocheck` nos módulos de negócio (não afeta o runtime, mas reduz a segurança de tipagem).
 - **Integrações:** M-Pesa/e-Mola são registados manualmente (sem integração real com as APIs das operadoras).
 
