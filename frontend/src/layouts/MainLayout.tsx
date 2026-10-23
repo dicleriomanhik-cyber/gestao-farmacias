@@ -12,6 +12,7 @@ export default function MainLayout() {
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
     { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
+    { path: "/categorias", label: "Categorias", show: hasPermission(permissions, "products:read") },
     { path: "/stock/lotes", label: "Stock", show: hasPermission(permissions, "stock:read") },
     { path: "/vendas", label: "Vendas", show: hasPermission(permissions, "sales:read") },
     { path: "/caixa", label: "Caixa", show: hasPermission(permissions, "cash:open") },
@@ -55,3 +56,6 @@ export default function MainLayout() {
     </div>
   );
 }
+
+
+
