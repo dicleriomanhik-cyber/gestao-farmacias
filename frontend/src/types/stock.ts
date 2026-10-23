@@ -20,12 +20,25 @@ export interface StockLot {
   product?: StockLotProductRef;
 }
 
+export type StockMovementType =
+  | "PURCHASE_ENTRY"
+  | "ADJUSTMENT_IN"
+  | "ADJUSTMENT_OUT"
+  | "SALE_EXIT"
+  | "RETURN_ENTRY"
+  | string;
+
 export interface StockMovement {
   id: string;
-  type: "IN" | "OUT" | "ADJUST" | string;
-  productName?: string;
+  pharmacyId: string;
+  productId: string;
+  lotId: string;
+  type: StockMovementType;
   quantity: number;
-  reason: string;
+  referenceId: string | null;
+  referenceType: string | null;
+  notes: string | null;
+  userId: string;
   createdAt: string;
 }
 
@@ -42,6 +55,7 @@ export interface StockAdjustRequest {
   quantity: number;
   reason: string;
 }
+
 
 
 
