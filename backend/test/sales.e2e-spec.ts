@@ -146,4 +146,10 @@ describe('Sales & POS (e2e)', () => {
       .set('Authorization', `Bearer ${tokenB}`)
       .expect(404);
   });
+
+  it('deve rejeitar GET /sales/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .expect(401);
+  });
 });

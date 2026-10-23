@@ -207,4 +207,10 @@ describe('Users (e2e)', () => {
       .set('Authorization', `Bearer ${tokenB}`)
       .expect(404);
   });
+
+  it('deve rejeitar GET /users/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${adminUserId}`)
+      .expect(401);
+  });
 });

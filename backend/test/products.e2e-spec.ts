@@ -258,5 +258,11 @@ describe('Products & Categories (e2e)', () => {
         .expect(404);
       expect(res.body.success).toBe(false);
     });
+
+    it('deve rejeitar GET /products/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/products/${productId}`)
+        .expect(401);
+    });
   });
 });

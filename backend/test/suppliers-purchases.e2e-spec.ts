@@ -11,6 +11,7 @@ describe('Suppliers & Purchases (e2e)', () => {
   let pharmacyId: string;
   let supplierId: string;
   let productId: string;
+  let purchaseId: string;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -114,8 +115,6 @@ describe('Suppliers & Purchases (e2e)', () => {
   });
 
   describe('Purchases', () => {
-    let purchaseId: string;
-
     it('deve criar uma compra (DRAFT) calculando os totais', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/purchases')
@@ -223,6 +222,18 @@ describe('Suppliers & Purchases (e2e)', () => {
         where: { action: 'purchase.create', pharmacyId }
       });
       expect(logs.length).toBeGreaterThan(0);
+    });
+
+    it('deve rejeitar GET /suppliers/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/suppliers/${supplierId}`)
+        .expect(401);
+    });
+
+    it('deve rejeitar GET /purchases/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/purchases/${purchaseId}`)
+        .expect(401);
     });
   });
 });

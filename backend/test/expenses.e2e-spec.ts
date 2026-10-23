@@ -227,4 +227,10 @@ describe('Expenses (e2e)', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.id).toBe(expenseId);
   });
+
+  it('deve rejeitar GET /expenses/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/expenses/${expenseId}`)
+      .expect(401);
+  });
 });
