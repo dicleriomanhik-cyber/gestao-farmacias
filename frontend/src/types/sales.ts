@@ -24,22 +24,23 @@ export interface SaleRequest {
 
 export interface CashSession {
   id: string;
-  status: "OPEN" | "CLOSED";
-  initialAmount: string;
-  finalAmount?: string;
+  pharmacyId: string;
+  userId: string;
   openedAt: string;
-  closedAt?: string;
+  closedAt: string | null;
+  openingBalance: string;
+  expectedBalance: string | null;
+  countedBalance: string | null;
+  difference: string | null;
+  status: "OPEN" | "CLOSED";
 }
 
-export interface CashOpenRequest { initialAmount: string; }
-export interface CashCloseRequest { finalAmount: string; }
+export interface CashOpenRequest {
+  openingBalance: number;
+}
 
-export interface CashMovement {
-  id: string;
-  type: "IN" | "OUT";
-  amount: string;
-  reason: string;
-  createdAt: string;
+export interface CashCloseRequest {
+  countedBalance: number;
 }
 
 export interface PaginatedMeta {
