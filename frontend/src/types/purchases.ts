@@ -1,25 +1,56 @@
 ﻿export type PurchaseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
-export interface PurchaseItem {
-  id?: string;
+export interface PurchaseSupplierRef {
+  id: string;
+  name: string;
+  taxId: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface PurchaseProductRef {
+  id: string;
+  name: string;
+  salePrice: string;
+  sku: string | null;
+}
+
+export interface PurchaseLine {
+  id: string;
+  purchaseId: string;
   productId: string;
-  productName: string;
   quantity: number;
-  unitPrice: string;
+  unitCost: string;
+  discount: string;
+  subtotal: string;
+  product?: PurchaseProductRef;
 }
 
 export interface Purchase {
   id: string;
-  supplierName: string;
+  pharmacyId: string;
+  supplierId: string;
+  documentNumber: string;
+  purchaseDate: string;
   status: PurchaseStatus;
-  total: string;
+  notes: string | null;
+  totalAmount: string;
   createdAt: string;
-  items: PurchaseItem[];
+  updatedAt: string;
+  supplier?: PurchaseSupplierRef;
+  lines?: PurchaseLine[];
+}
+
+export interface PurchaseLineRequest {
+  productId: string;
+  quantity: number;
+  unitCost: number;
 }
 
 export interface PurchaseRequest {
   supplierId: string;
-  items: { productId: string; quantity: number; unitPrice: string }[];
+  documentNumber: string;
+  lines: PurchaseLineRequest[];
 }
 
 export interface PaginatedMeta {
@@ -34,7 +65,7 @@ export interface PaginatedResult<T> {
   meta: PaginatedMeta;
 }
 
-export interface PurchaseListParams {
+export interface ListParams {
   page?: number;
   limit?: number;
   status?: PurchaseStatus;
