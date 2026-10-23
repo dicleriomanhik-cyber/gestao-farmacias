@@ -72,7 +72,12 @@ export class ReportsService {
     const status = (query.status ?? 'CONFIRMED') as 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
 
     const sales = await this.prisma.sale.findMany({
-      where: { pharmacyId, status, createdAt: { gte: from, lte: to } },
+      where: {
+        pharmacyId,
+        status,
+        createdAt: { gte: from, lte: to },
+        ...(query.method ? { payments: { some: { method: query.method } } } : {}),
+      },
       include: { payments: true, user: { select: { fullName: true } } },
       orderBy: { createdAt: 'desc' },
     });
