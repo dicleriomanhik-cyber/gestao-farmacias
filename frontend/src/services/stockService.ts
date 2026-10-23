@@ -30,7 +30,8 @@ export async function receiveStock(data: StockReceiveRequest): Promise<void> {
   return Promise.resolve();
 }
 
-export async function adjustStock(data: StockAdjustRequest): Promise<void> {
-  console.log("[MOCK] adjustStock:", data);
-  return Promise.resolve();
+export async function adjustStock(data: StockAdjustRequest): Promise<StockLot> {
+  const resp = await apiClient.post<Envelope<StockLot>>("/stock/adjust", data);
+  return resp.data.data;
 }
+
