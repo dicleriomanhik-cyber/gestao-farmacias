@@ -4,7 +4,7 @@ export default function DashboardPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Dashboard</h1>
         <span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem" }}>
-          Modo Demonstração (Dados Fictícios)
+          Modo DemonstraÃ§Ã£o (Dados FictÃƒÂ­cios)
         </span>
       </div>
 
@@ -12,7 +12,7 @@ export default function DashboardPage() {
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas Hoje</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>12.500,00 MT</p>
-          <span style={{ color: "green", fontSize: "0.875rem" }}>↑ 12% vs ontem</span>
+          <span style={{ color: "green", fontSize: "0.875rem" }}>Ã¢â€ â€˜ 12% vs ontem</span>
         </div>
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Produtos em Stock</h3>
@@ -40,15 +40,15 @@ export default function DashboardPage() {
           <tbody>
             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
               <td style={{ padding: "0.5rem" }}>#001</td>
-              <td style={{ padding: "0.5rem" }}>João Silva</td>
+              <td style={{ padding: "0.5rem" }}>JoÃ£o Silva</td>
               <td style={{ padding: "0.5rem" }}>450,00 MT</td>
-              <td style={{ padding: "0.5rem", color: "green" }}>Concluída</td>
+              <td style={{ padding: "0.5rem", color: "green" }}>ConcluÃƒÂ­da</td>
             </tr>
             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
               <td style={{ padding: "0.5rem" }}>#002</td>
               <td style={{ padding: "0.5rem" }}>Maria Santos</td>
               <td style={{ padding: "0.5rem" }}>1.200,00 MT</td>
-              <td style={{ padding: "0.5rem", color: "green" }}>Concluída</td>
+              <td style={{ padding: "0.5rem", color: "green" }}>ConcluÃƒÂ­da</td>
             </tr>
             <tr>
               <td style={{ padding: "0.5rem" }}>#003</td>
@@ -62,3 +62,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
