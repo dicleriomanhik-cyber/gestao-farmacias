@@ -1,23 +1,23 @@
 ﻿import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import {
-  canAccessSales, canAccessCash, canAccessProducts,
-  canAccessStock, canAccessPurchases, canAccessExpenses, canAccessReports,
-} from "../utils/permissions";
+import { hasPermission } from "../utils/permissions";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const permissions = user?.permissions ?? [];
+  const displayName = user?.name || user?.email || "—";
+
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
-    { path: "/produtos", label: "Produtos", show: canAccessProducts(user?.role) },
-    { path: "/stock/lotes", label: "Stock", show: canAccessStock(user?.role) },
-    { path: "/vendas", label: "Vendas", show: canAccessSales(user?.role) },
-    { path: "/caixa", label: "Caixa", show: canAccessCash(user?.role) },
-    { path: "/compras", label: "Compras", show: canAccessPurchases(user?.role) },
-    { path: "/despesas", label: "Despesas", show: canAccessExpenses(user?.role) },
-    { path: "/relatorios", label: "Relatórios", show: canAccessReports(user?.role) },
+    { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
+    { path: "/stock/lotes", label: "Stock", show: hasPermission(permissions, "stock:read") },
+    { path: "/vendas", label: "Vendas", show: hasPermission(permissions, "sales:read") },
+    { path: "/caixa", label: "Caixa", show: hasPermission(permissions, "cash:open") },
+    { path: "/compras", label: "Compras", show: hasPermission(permissions, "purchases:read") },
+    { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
+    { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
   ];
 
   const menuItems = allItems.filter((item) => item.show);
@@ -44,7 +44,7 @@ export default function MainLayout() {
         <header className="header">
           <h2>Sistema de Gestão</h2>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontWeight: 500 }}>{user?.name ?? "—"}</span>
+            <span style={{ fontWeight: 500 }}>{displayName}</span>
             <button onClick={onLogout} type="button">Sair</button>
           </div>
         </header>
@@ -55,4 +55,3 @@ export default function MainLayout() {
     </div>
   );
 }
-

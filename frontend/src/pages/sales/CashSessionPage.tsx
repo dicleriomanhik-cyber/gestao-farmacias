@@ -16,7 +16,7 @@ export default function CashSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [amount, setAmount] = useState("");
-  const allowed = canAccessCash(user?.role);
+  const allowed = canAccessCash(user?.permissions);
 
   function load() {
     setLoading(true);
@@ -92,3 +92,4 @@ export default function CashSessionPage() {
     </div>
   );
 }
+

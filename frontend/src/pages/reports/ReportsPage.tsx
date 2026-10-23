@@ -16,7 +16,7 @@ export default function ReportsPage() {
   const [stock, setStock] = useState<ReportStock | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const canFinancial = canAccessFinancialReports(user?.role);
+  const canFinancial = canAccessFinancialReports(user?.permissions);
 
   function load() {
     setLoading(true); setError(false);
@@ -87,3 +87,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
