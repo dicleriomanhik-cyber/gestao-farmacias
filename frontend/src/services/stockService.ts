@@ -17,12 +17,9 @@ export async function getStockLots(): Promise<StockLot[]> {
   return resp.data.data;
 }
 
-const mockMovements: StockMovement[] = [
-  { id: "m1", type: "IN", productName: "Paracetamol 500mg", quantity: 100, reason: "Receção de compra COMPRA-2026-001", createdAt: new Date().toISOString() },
-];
-
 export async function getStockMovements(): Promise<StockMovement[]> {
-  return Promise.resolve(mockMovements);
+  const resp = await apiClient.get<Envelope<StockMovement[]>>("/stock/movements");
+  return resp.data.data;
 }
 
 export async function receiveStock(data: StockReceiveRequest): Promise<StockLot> {
@@ -34,5 +31,6 @@ export async function adjustStock(data: StockAdjustRequest): Promise<StockLot> {
   const resp = await apiClient.post<Envelope<StockLot>>("/stock/adjust", data);
   return resp.data.data;
 }
+
 
 
