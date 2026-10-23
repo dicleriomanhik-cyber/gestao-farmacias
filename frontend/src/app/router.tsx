@@ -21,6 +21,8 @@ import ExpenseFormPage from "../pages/expenses/ExpenseFormPage";
 import ReportsPage from "../pages/reports/ReportsPage";
 import CategoryListPage from "../pages/categories/CategoryListPage";
 import CategoryFormPage from "../pages/categories/CategoryFormPage";
+import SupplierListPage from "../pages/suppliers/SupplierListPage";
+import SupplierFormPage from "../pages/suppliers/SupplierFormPage";
 
 export default function AppRouter() {
   return (
@@ -56,10 +58,14 @@ export default function AppRouter() {
           <Route path="categorias/novo" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
           <Route path="categorias/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
         </Route>
+          <Route path="fornecedores" element={<ProtectedRoute requiredPermission="suppliers:read"><SupplierListPage /></ProtectedRoute>} />
+          <Route path="fornecedores/novo" element={<ProtectedRoute requiredPermission="suppliers:write"><SupplierFormPage /></ProtectedRoute>} />
+          <Route path="fornecedores/:id/editar" element={<ProtectedRoute requiredPermission="suppliers:write"><SupplierFormPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );
 }
+
 
 
 
