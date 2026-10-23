@@ -39,6 +39,13 @@ export class ReturnsController {
     return this.service.listQuarantine(pharmacyId, Number(page), Number(limit));
   }
 
+  @Get(':id')
+  @RequirePermissions(PERMISSIONS.RETURNS_READ)
+  @ApiOperation({ summary: 'Obter devolução por ID' })
+  findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.findOne(pharmacyId, id);
+  }
+
   @Patch(':id/confirm')
   @RequirePermissions(PERMISSIONS.RETURNS_CONFIRM)
   @ApiOperation({ summary: 'Confirmar devolução' })

@@ -107,4 +107,43 @@ describe('Sales & POS (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(400);
   });
+
+  it('deve obter uma venda por ID (admin)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(saleId);
+  });
+
+  it('não deve permitir consultar venda de outra farmácia (404)', async () => {
+    const bcryptLib = await import('bcrypt');
+    let phB = await prisma.pharmacy.findFirst({ where: { name: 'Farmacia B - Sales E2E' } });
+    if (!phB) {
+      phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B - Sales E2E', status: 'ACTIVE' } });
+    }
+    const passwordHash = await bcryptLib.hash('admin_b_pass_123456', 12);
+    const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    const userB = await prisma.user.upsert({
+      where: { email: 'admin@farmaciab.com' },
+      update: { pharmacyId: phB.id, passwordHash },
+      create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+      update: {},
+      create: { userId: userB.id, roleId: roleAdmin!.id },
+    });
+
+    const loginB = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
+    const tokenB = loginB.body.data.accessToken;
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
 });

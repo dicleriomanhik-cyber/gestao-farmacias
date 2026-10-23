@@ -218,4 +218,13 @@ describe('Expenses (e2e)', () => {
     const movements = await prisma.cashMovement.findMany({ where: { expenseId: id } });
     expect(movements.length).toBe(1);
   });
+
+  it('deve obter uma despesa por ID (admin)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/expenses/${expenseId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(expenseId);
+  });
 });
