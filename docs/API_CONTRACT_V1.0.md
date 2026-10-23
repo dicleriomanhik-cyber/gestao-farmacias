@@ -88,6 +88,11 @@
 | GET | `/reports/cash` | `reports:read` | ✓ | ✓ | ✓ | ✓ |
 | GET | `/reports/stock` | `reports:read` | ✓ | ✓ | ✓ | ✓ |
 
+**Paginação de `GET /categories`:**
+- Parâmetros opcionais de query: `page` (default 1) e `limit` (default 20, máximo 100).
+- Resposta: `{ data: [...], meta: { total, page, limit, totalPages } }`.
+- Sem os parâmetros, aplicam-se os defaults.
+
 **Filtro por método de pagamento em `GET /reports/sales`:**
 - Parâmetro opcional de query: `method`.
 - Valores aceites: `CASH`, `CARD`, `MPESA`, `EMOLA`, `TRANSFER`, `OTHER`.
@@ -108,7 +113,6 @@
 - O endpoint `PATCH /returns/refunds/:refundId/confirm` permite transitar de `PENDING` para `COMPLETED` (confirmado manualmente), `FAILED` (falhou) ou `CANCELLED` (cancelado). Transições a partir de estados finais são bloqueadas.
 
 ## 6. Limitações Conhecidas e Dívida Técnica
-- **Rota sem paginação:** `GET /categories` devolve todos os registos de uma vez (recomenda-se cache local no Front-end).
 - **Lacunas de testes E2E:** As rotas `GET /users/:id`, `PATCH /categories/:id`, `GET /suppliers/:id`, `GET /sales/:id`, `PATCH /sales/:id`, `GET /expenses/:id`, `PATCH /expenses/:id/cancel`, `GET /returns/:id` e `PATCH /returns/:id` não possuem testes E2E dedicados (embora estejam implementadas e protegidas).
 - **Dívida Técnica:** Uso de `@ts-nocheck` nos módulos de negócio (não afeta o runtime, mas reduz a segurança de tipagem).
 - **Integrações:** M-Pesa/e-Mola são registados manualmente (sem integração real com as APIs das operadoras).

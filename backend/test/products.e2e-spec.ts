@@ -54,7 +54,10 @@ describe('Products & Categories (e2e)', () => {
         .get('/api/v1/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
-      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('meta');
+      expect(Array.isArray(res.body.data.data)).toBe(true);
+      expect(res.body.data.data.length).toBeGreaterThan(0);
     });
   });
 

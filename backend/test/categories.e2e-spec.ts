@@ -20,12 +20,15 @@ describe('Categories (e2e)', () => {
     await app.init();
     prisma = app.get(PrismaService);
 
+    // Limpar categorias de teste (idempotente entre execuções)
     await prisma.category.deleteMany({
       where: { name: { in: ['Categoria E2E', 'Categoria E2E Duplicada', 'Categoria B E2E'] } },
     });
+    // Limpar farmácia B de testes anteriores
     await prisma.user.deleteMany({ where: { email: 'admin@farmaciab.com' } });
     await prisma.pharmacy.deleteMany({ where: { name: 'Farmacia B - Categories E2E' } });
 
+    // Login como admin da farmácia A
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASSWORD });
@@ -79,15 +82,68 @@ describe('Categories (e2e)', () => {
       .expect(400);
   });
 
-  it('deve listar as categorias da farmácia', async () => {
+  it('deve listar as categorias da farmácia (paginado)', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/categories')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
     expect(res.body.success).toBe(true);
-    const found = res.body.data.find((c: any) => c.name === 'Categoria E2E');
+    expect(res.body.data).toHaveProperty('data');
+    expect(res.body.data).toHaveProperty('meta');
+    expect(Array.isArray(res.body.data.data)).toBe(true);
+    expect(res.body.data.meta).toHaveProperty('total');
+    expect(res.body.data.meta).toHaveProperty('page');
+    expect(res.body.data.meta).toHaveProperty('limit');
+    expect(res.body.data.meta).toHaveProperty('totalPages');
+
+    const found = res.body.data.data.find((c: any) => c.name === 'Categoria E2E');
     expect(found).toBeTruthy();
+  });
+
+  it('deve aplicar paginação com page e limit', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/categories?page=1&limit=1')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.data.meta.page).toBe(1);
+    expect(res.body.data.meta.limit).toBe(1);
+    expect(res.body.data.data.length).toBeLessThanOrEqual(1);
+    expect(res.body.data.meta.total).toBeGreaterThanOrEqual(1);
+  });
+
+  it('deve usar valores predefinidos quando page e limit não são enviados', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/categories')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.data.meta.page).toBe(1);
+    expect(res.body.data.meta.limit).toBe(20);
+  });
+
+  it('deve limitar o limit máximo a 100', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/categories?limit=1000')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.data.meta.limit).toBe(100);
+  });
+
+  it('deve devolver total e totalPages coerentes', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/categories?limit=1')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const total = res.body.data.meta.total;
+    const limit = res.body.data.meta.limit;
+    const totalPages = res.body.data.meta.totalPages;
+    expect(total).toBeGreaterThanOrEqual(1);
+    expect(limit).toBe(1);
+    expect(totalPages).toBe(Math.ceil(total / limit));
   });
 
   it('deve actualizar uma categoria existente', async () => {
@@ -110,6 +166,7 @@ describe('Categories (e2e)', () => {
   });
 
   it('deve isolar categorias entre farmácias (farmácia B não vê a da farmácia A)', async () => {
+    // Criar farmácia B e admin B
     const passwordHash = await bcrypt.hash('admin_b_pass_123456', 12);
     const phB = await prisma.pharmacy.create({
       data: { name: 'Farmacia B - Categories E2E', status: 'ACTIVE' },
@@ -131,13 +188,16 @@ describe('Categories (e2e)', () => {
       .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
     const tokenB = loginB.body.data.accessToken;
 
+    // Listagem da farmácia B não deve conter a categoria da farmácia A
     const listB = await request(app.getHttpServer())
       .get('/api/v1/categories')
       .set('Authorization', `Bearer ${tokenB}`)
       .expect(200);
-    const hasA = listB.body.data.some((c: any) => c.name === 'Categoria E2E');
+    const hasA = listB.body.data.data.some((c: any) => c.name === 'Categoria E2E');
     expect(hasA).toBe(false);
+    expect(listB.body.data.meta.total).toBe(0);
 
+    // Farmácia B tenta actualizar categoria da farmácia A → 404
     await request(app.getHttpServer())
       .patch(`/api/v1/categories/${categoryAId}`)
       .set('Authorization', `Bearer ${tokenB}`)

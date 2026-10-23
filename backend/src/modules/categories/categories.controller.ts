@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -23,9 +23,15 @@ export class CategoriesController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
-  @ApiOperation({ summary: 'Listar categorias' })
-  findAll(@Tenant() pharmacyId: string) {
-    return this.service.findAll(pharmacyId);
+  @ApiOperation({ summary: 'Listar categorias (paginado)' })
+  @ApiQuery({ name: 'page', required: false, type: String, example: '1' })
+  @ApiQuery({ name: 'limit', required: false, type: String, example: '20' })
+  findAll(
+    @Tenant() pharmacyId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    return this.service.findAll(pharmacyId, Number(page), Number(limit));
   }
 
   @Patch(':id')
