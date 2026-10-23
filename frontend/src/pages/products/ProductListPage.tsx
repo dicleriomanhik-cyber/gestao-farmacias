@@ -76,9 +76,9 @@ export default function ProductListPage() {
             {products.map((p) => (
               <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                 <td style={{ padding: "0.75rem" }}>{p.name}</td>
-                <td style={{ padding: "0.75rem" }}>{p.categoryName}</td>
-                <td style={{ padding: "0.75rem" }}>{p.price} MT</td>
-                <td style={{ padding: "0.75rem" }}>{p.stockQuantity}</td>
+                <td style={{ padding: "0.75rem" }}>{p.category?.name}</td>
+                <td style={{ padding: "0.75rem" }}>{parseFloat(p.salePrice).toFixed(2)} MT</td>
+                <td style={{ padding: "0.75rem" }}>—</td>
                 <td style={{ padding: "0.75rem" }}>
                   <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
                 </td>
@@ -112,4 +112,6 @@ export default function ProductListPage() {
     </div>
   );
 }
+
+
 

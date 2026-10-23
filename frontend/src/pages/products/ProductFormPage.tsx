@@ -22,8 +22,8 @@ export default function ProductFormPage() {
     if (isEditing && id) {
       getProductById(id).then((p) => {
         setName(p.name);
-        setDescription(p.description);
-        setPrice(p.price);
+        setDescription(p.description ?? "");
+        setPrice(p.salePrice);
         setCategoryId(p.categoryId);
       });
     }
@@ -39,10 +39,10 @@ export default function ProductFormPage() {
     setLoading(true);
     try {
       if (isEditing && id) {
-        await updateProduct(id, { name, description, price, categoryId });
+        await updateProduct(id, { name, description, salePrice: parseFloat(price), categoryId });
         toast.success("Produto atualizado.");
       } else {
-        await createProduct({ name, description, price, categoryId });
+        await createProduct({ name, description, salePrice: parseFloat(price), categoryId });
         toast.success("Produto criado.");
       }
       navigate("/produtos");
@@ -85,3 +85,6 @@ export default function ProductFormPage() {
     </div>
   );
 }
+
+
+
