@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useEffect,
@@ -29,8 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const applyAuth = (res: AuthResponse) => {
-    if (res.user) setUser(res.user);
-    setAuthenticated(true);
+    if (res.user) {
+      setUser(res.user);
+      setAuthenticated(true);
+    }
   };
 
   const refreshSession = useCallback(async (): Promise<void> => {
@@ -64,13 +66,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyAuth(res);
   }, []);
 
-  // Login simulado apenas para visualização (sem API, sem refresh token)
   const loginAsDemo = useCallback(() => {
     setUser({
       id: "demo-123",
-      name: "Admin Demo",
       email: "demo@farmacia.mz",
-      role: "ADMIN",
+      name: "Admin Demo",
+      roles: ["ADMIN"],
+      permissions: [
+        "users:read", "users:write", "roles:read", "roles:write",
+        "pharmacy:config:read", "pharmacy:config:write", "audit:read",
+        "products:read", "products:write",
+        "suppliers:read", "suppliers:write",
+        "purchases:read", "purchases:write",
+        "stock:read", "stock:write", "stock:adjust",
+        "sales:read", "sales:create", "sales:void",
+        "cash:open", "cash:close",
+        "returns:read", "returns:create", "returns:confirm", "returns:inspect", "returns:release", "returns:refund",
+        "expenses:read", "expenses:create", "expenses:confirm", "expenses:cancel",
+        "reports:read", "reports:financial",
+      ],
     });
     setAuthenticated(true);
   }, []);

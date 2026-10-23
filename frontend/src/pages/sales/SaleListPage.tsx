@@ -32,12 +32,12 @@ export default function SaleListPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
   if (sales.length === 0 && page === 1 && !statusFilter) {
-    return <EmptyState message="Nenhuma venda registada." actionLabel={canCreateSales(user?.role) ? "Nova Venda" : undefined} actionLink={canCreateSales(user?.role) ? "/vendas/novo" : undefined} />;
+    return <EmptyState message="Nenhuma venda registada." actionLabel={canCreateSales(user?.permissions) ? "Nova Venda" : undefined} actionLink={canCreateSales(user?.permissions) ? "/vendas/novo" : undefined} />;
   }
 
   return (
     <div>
-      <PageHeader title="Vendas" actions={canCreateSales(user?.role) ? <Link to="/vendas/novo" className="btn btn-primary">+ Nova Venda</Link> : null} />
+      <PageHeader title="Vendas" actions={canCreateSales(user?.permissions) ? <Link to="/vendas/novo" className="btn btn-primary">+ Nova Venda</Link> : null} />
 
       <div style={{ marginBottom: "1rem" }}>
         <label style={{ marginRight: "0.5rem", fontWeight: 500 }}>Estado:</label>
@@ -92,4 +92,5 @@ export default function SaleListPage() {
     </div>
   );
 }
+
 

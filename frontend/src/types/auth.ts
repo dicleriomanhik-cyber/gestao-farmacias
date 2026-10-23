@@ -1,10 +1,11 @@
-export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER";
+﻿export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER";
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  role: UserRole;
+  name?: string;
+  roles: string[];
+  permissions: string[];
 }
 
 export interface LoginRequest {
