@@ -30,16 +30,11 @@ export interface StockMovement {
 }
 
 export interface StockReceiveRequest {
-  // Formato novo (real, FE-10.3.9.C)
-  purchaseLineId?: string;
-  lotNumber?: string;
-  unitCost?: number;
-  // Formato antigo (mock temporário)
-  productId?: string;
-  batchNumber?: string;
-  // Comuns
+  purchaseLineId: string;
+  lotNumber: string;
   quantity: number;
   expiryDate: string;
+  unitCost: number;
 }
 
 export interface StockAdjustRequest {
@@ -47,5 +42,6 @@ export interface StockAdjustRequest {
   quantity: number;
   reason: string;
 }
+
 
 

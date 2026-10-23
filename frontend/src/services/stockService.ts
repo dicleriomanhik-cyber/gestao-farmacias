@@ -25,13 +25,14 @@ export async function getStockMovements(): Promise<StockMovement[]> {
   return Promise.resolve(mockMovements);
 }
 
-export async function receiveStock(data: StockReceiveRequest): Promise<void> {
-  console.log("[MOCK] receiveStock:", data);
-  return Promise.resolve();
+export async function receiveStock(data: StockReceiveRequest): Promise<StockLot> {
+  const resp = await apiClient.post<Envelope<StockLot>>("/stock/receive", data);
+  return resp.data.data;
 }
 
 export async function adjustStock(data: StockAdjustRequest): Promise<StockLot> {
   const resp = await apiClient.post<Envelope<StockLot>>("/stock/adjust", data);
   return resp.data.data;
 }
+
 
