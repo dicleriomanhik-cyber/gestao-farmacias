@@ -19,6 +19,8 @@ import StockAdjustFormPage from "../pages/stock/StockAdjustFormPage";
 import ExpenseListPage from "../pages/expenses/ExpenseListPage";
 import ExpenseFormPage from "../pages/expenses/ExpenseFormPage";
 import ReportsPage from "../pages/reports/ReportsPage";
+import CategoryListPage from "../pages/categories/CategoryListPage";
+import CategoryFormPage from "../pages/categories/CategoryFormPage";
 
 export default function AppRouter() {
   return (
@@ -50,8 +52,15 @@ export default function AppRouter() {
           <Route path="despesas/novo" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
           <Route path="despesas/:id/editar" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
           <Route path="relatorios" element={<ProtectedRoute requiredPermission="reports:read"><ReportsPage /></ProtectedRoute>} />
+          <Route path="categorias" element={<ProtectedRoute requiredPermission="products:read"><CategoryListPage /></ProtectedRoute>} />
+          <Route path="categorias/novo" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
+          <Route path="categorias/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
+
+
+
+
