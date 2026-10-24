@@ -7,6 +7,8 @@ import ProtectedRoute from "../components/layout/ProtectedRoute";
 import SaleListPage from "../pages/sales/SaleListPage";
 import SaleDetailPage from "../pages/sales/SaleDetailPage";
 import PosPage from "../pages/sales/PosPage";
+
+import OperationalStockPage from "../pages/sales/OperationalStockPage";
 import CashSessionPage from "../pages/sales/CashSessionPage";
 import PurchaseListPage from "../pages/purchases/PurchaseListPage";
 import PurchaseDetailPage from "../pages/purchases/PurchaseDetailPage";
@@ -37,6 +39,8 @@ export default function AppRouter() {
         {/* Rota Operacional (POS) */}
         <Route path="/pos" element={<ProtectedRoute requiredPermission="sales:create"><OperationalLayout /></ProtectedRoute>}>
           <Route index element={<PosPage />} />
+          <Route path="historico" element={<SaleListPage hideNewSaleButton={true} isOperational={true} />} /><Route path="historico/:id" element={<SaleDetailPage isOperational={true} />} />
+          <Route path="stock" element={<OperationalStockPage />} />
         </Route>
 
         {/* Rotas Administrativas */}

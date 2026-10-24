@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { createSale, confirmSale } from "../../services/saleService";
 import { getProducts } from "../../services/productService";
-import { registerPayment } from "../../services/cashService";
+import { registerPayment, getActiveCashSession, openCash } from "../../services/cashService";
 import type { Product } from "../../types/products";
 import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
@@ -80,13 +80,20 @@ export default function PosPage() {
     
     setSubmitting(true);
     try {
-      // 1. Criar rascunho
+      let session = await getActiveCashSession();
+      if (!session) {
+        try {
+          session = await openCash({ openingBalance: 0 });
+          toast.success("Caixa aberta automaticamente para esta venda.");
+        } catch (openErr: any) {
+          toast.error("É necessário abrir a caixa manualmente no menu 'Caixa' antes de vender.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const draft = await createSale({ lines });
-      
-      // 2. Confirmar venda (para poder ser paga)
       const confirmed = await confirmSale(draft.id);
-      
-      // 3. Registar pagamento
       await registerPayment({
         saleId: confirmed.id,
         amount: parseFloat(confirmed.total) || total,

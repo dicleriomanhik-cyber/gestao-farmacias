@@ -1,92 +1,112 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getProductById, createProduct, updateProduct, getCategories } from "../../services/productService";
-import type { Category } from "../../types/products";
+import { createProduct, getProductById, updateProduct, getCategories } from "../../services/productService";
+import { getStockLots } from "../../services/stockService";
+import type { ProductRequest } from "../../types/products";
+import PageHeader from "../../components/ui/PageHeader";
 import { useToast } from "../../contexts/ToastContext";
+import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
 
 export default function ProductFormPage() {
   const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
   const navigate = useNavigate();
   const toast = useToast();
-  const isEditing = Boolean(id);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [expiryDate, setExpiryDate] = useState("");
+  const [loading, setLoading] = useState(isEdit);
+  const [error, setError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    getCategories().then((res) => setCategories(Array.isArray(res) ? res : [])).catch(() => setCategories([]));
-    if (isEditing && id) {
-      getProductById(id).then((p) => {
-        setName(p.name);
-        setDescription(p.description ?? "");
-        setPrice(p.salePrice);
-        setCategoryId(p.categoryId);
-      });
+    getCategories().then((cats) => {
+      if (cats.length > 0) setCategoryId(cats[0].id);
+    });
+
+    if (isEdit && id) {
+      setLoading(true);
+      setError(false);
+      Promise.all([getProductById(id), getStockLots()])
+        .then(([p, lots]) => {
+          setName(p.name);
+          setDescription(p.description ?? "");
+          setSalePrice(p.salePrice);
+          if (p.categoryId) setCategoryId(p.categoryId);
+
+          const productLot = lots.find((l) => l.productId === p.id);
+          if (productLot) {
+            setExpiryDate(productLot.expiryDate);
+          }
+        })
+        .catch(() => setError(true))
+        .finally(() => setLoading(false));
     }
-  }, [id, isEditing]);
+  }, [id, isEdit]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return toast.error("Nome é obrigatório.");
-    const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum <= 0) return toast.error("Preço deve ser maior que zero.");
-    if (!categoryId) return toast.error("Categoria é obrigatória.");
-
-    setLoading(true);
+    if (!categoryId) {
+      toast.error("Nenhuma categoria configurada no sistema.");
+      return;
+    }
+    setSubmitting(true);
+    const data: ProductRequest = {
+      name,
+      description,
+      salePrice: parseFloat(salePrice),
+      categoryId,
+    };
     try {
-      if (isEditing && id) {
-        await updateProduct(id, { name, description, salePrice: parseFloat(price), categoryId });
-        toast.success("Produto atualizado.");
+      if (isEdit && id) {
+        await updateProduct(id, data);
+        toast.success("Produto atualizado com sucesso.");
       } else {
-        await createProduct({ name, description, salePrice: parseFloat(price), categoryId });
-        toast.success("Produto criado.");
+        await createProduct(data);
+        toast.success("Produto criado com sucesso.");
       }
       navigate("/produtos");
-    } catch {
-      toast.error("Erro ao guardar produto.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao guardar o produto.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message="Não foi possível carregar o produto." onRetry={() => navigate("/produtos")} />;
+
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>
-        {isEditing ? "Editar Produto" : "Novo Produto"}
-      </h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }} />
-        </div>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Descrição</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px", minHeight: "80px" }} />
-        </div>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Preço (MT) *</label>
-          <input type="number" step="0.01" min="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }} />
-        </div>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria *</label>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }}>
-            <option value="">Seleciona uma categoria</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <button type="submit" disabled={loading} style={{ width: "100%", padding: "0.75rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}>
-          {loading ? "A guardar..." : "Guardar Produto"}
+    <div>
+      <PageHeader title={isEdit ? "Editar Produto" : "Novo Produto"} />
+      <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
+        <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500 }}>Nome *</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
+
+        <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500 }}>Descrição</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={3} style={{ width: "100%", marginBottom: "1rem" }} />
+
+        <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500 }}>Preço (MT) *</label>
+        <input type="number" step="0.01" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
+
+        {isEdit && expiryDate && (
+          <>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500 }}>Validade do Lote</label>
+            <input type="date" value={expiryDate.split("T")[0]} className="input" style={{ width: "100%", marginBottom: "0.5rem", backgroundColor: "#f3f4f6", color: "#6b7280" }} disabled />
+            <p style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "1.5rem" }}>
+              A validade é gerida na página de Stock. A alteração não está disponível nesta versão (limitação do Back-end).
+            </p>
+          </>
+        )}
+
+        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+          {submitting ? "A guardar…" : "Guardar Produto"}
         </button>
       </form>
     </div>
   );
 }
-
-
-
-
-
