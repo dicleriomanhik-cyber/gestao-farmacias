@@ -74,3 +74,27 @@ export interface SaleListParams {
   limit?: number;
   status?: SaleStatus;
 }
+
+export interface Payment {
+  id: string;
+  saleId: string;
+  cashSessionId: string;
+  method: PaymentMethod;
+  amount: string;
+  idempotencyKey: string | null;
+  createdAt: string;
+  userId: string;
+}
+
+export interface PaymentRequest {
+  saleId: string;
+  amount: number;
+  method: PaymentMethod;
+}
+
+export interface SaleUserRef {
+  id: string;
+  email: string;
+  fullName: string;
+  status?: string;
+}
