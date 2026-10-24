@@ -1,16 +1,22 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getSaleById } from "../../services/saleService";
+import { getSaleById, confirmSale } from "../../services/saleService";
 import type { Sale, SaleStatus } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../hooks/useAuth";
+import { hasPermission } from "../../utils/permissions";
 
 export default function SaleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
+  const { user } = useAuth();
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   function load() {
     if (!id) return;
@@ -41,9 +47,25 @@ export default function SaleDetailPage() {
     );
   }
 
+  async function handleConfirm() {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await confirmSale(id);
+      toast.success("Venda confirmada. Stock reduzido.");
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao confirmar venda.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
   if (!sale) return <ErrorState message="Venda não encontrada." onRetry={() => navigate("/vendas")} />;
+
+  const canConfirm = hasPermission(user?.permissions, "sales:create");
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
@@ -78,6 +100,17 @@ export default function SaleDetailPage() {
           ))}
         </tbody>
       </table>
+
+      {sale.status === "DRAFT" && canConfirm && (
+        <button
+          onClick={handleConfirm}
+          disabled={actionLoading}
+          className="btn btn-success"
+          style={{ width: "100%", padding: "0.75rem", marginTop: "1.5rem" }}
+        >
+          {actionLoading ? "A confirmar…" : "Confirmar Venda"}
+        </button>
+      )}
     </div>
   );
 }
