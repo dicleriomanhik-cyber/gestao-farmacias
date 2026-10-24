@@ -1,90 +1,198 @@
 ﻿import { useEffect, useState } from "react";
-import { getReportSummary, getReportSales, getReportExpenses, getReportCash, getReportStock } from "../../services/reportService";
-import type { ReportSummary, ReportSales, ReportExpenses, ReportCash, ReportStock } from "../../types/reports";
+import {
+  getReportSummary,
+  getReportSales,
+  getReportExpenses,
+  getReportCash,
+  getReportStock,
+} from "../../services/reportService";
+import type {
+  ReportSummaryData,
+  ReportSalesData,
+  ReportExpensesData,
+  ReportCashData,
+  ReportStockData,
+} from "../../types/reports";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
 
+function money(v: string | number | undefined | null): string {
+  if (v === undefined || v === null) return "0.00";
+  return parseFloat(String(v)).toFixed(2);
+}
+
 export default function ReportsPage() {
   const { user } = useAuth();
-  const [summary, setSummary] = useState<ReportSummary | null>(null);
-  const [sales, setSales] = useState<ReportSales | null>(null);
-  const [expenses, setExpenses] = useState<ReportExpenses | null>(null);
-  const [cash, setCash] = useState<ReportCash | null>(null);
-  const [stock, setStock] = useState<ReportStock | null>(null);
+  const [summary, setSummary] = useState<ReportSummaryData | null>(null);
+  const [sales, setSales] = useState<ReportSalesData | null>(null);
+  const [expenses, setExpenses] = useState<ReportExpensesData | null>(null);
+  const [cash, setCash] = useState<ReportCashData | null>(null);
+  const [stock, setStock] = useState<ReportStockData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const canFinancial = canAccessFinancialReports(user?.permissions);
 
   function load() {
-    setLoading(true); setError(false);
-    Promise.all([getReportSummary(), getReportSales(), getReportExpenses(), getReportCash(), getReportStock()])
-      .then(([s, sa, e, c, st]) => { setSummary(s); setSales(sa); setExpenses(e); setCash(c); setStock(st); })
+    setLoading(true);
+    setError(false);
+    Promise.all([
+      getReportSummary(),
+      getReportSales(),
+      canFinancial ? getReportExpenses() : Promise.resolve(null),
+      canFinancial ? getReportCash() : Promise.resolve(null),
+      getReportStock(),
+    ])
+      .then(([s, sa, e, c, st]) => {
+        setSummary(s);
+        setSales(sa);
+        setExpenses(e);
+        setCash(c);
+        setStock(st);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os relatórios." onRetry={load} />;
 
   return (
     <div>
-      <PageHeader title="Relatórios" actions={<span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem" }}>[MOCK] Dados Simulados</span>} />
+      <PageHeader title="Relatórios" />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{summary?.totalSales} MT</p>
-        </div>
-        {canFinancial && (
-          <>
+      {summary && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div className="card" style={{ padding: "1rem" }}>
+            <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
+            <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{money(summary.sales.total)} MT</p>
+            <small style={{ color: "#6b7280" }}>{summary.sales.count} vendas</small>
+          </div>
+          {canFinancial && (
             <div className="card" style={{ padding: "1rem" }}>
               <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Despesas</h3>
-              <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>{summary?.totalExpenses} MT</p>
+              <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>{money(summary.expenses.total)} MT</p>
+              <small style={{ color: "#6b7280" }}>{summary.expenses.count} despesas</small>
             </div>
-            <div className="card" style={{ padding: "1rem" }}>
-              <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lucro Líquido</h3>
-              <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: parseFloat(summary?.netProfit || "0") >= 0 ? "#166534" : "#b91c1c" }}>{summary?.netProfit} MT</p>
-            </div>
-          </>
-        )}
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo de Caixa</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{summary?.cashBalance} MT</p>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Vendas</h2>
-          <p>Total: <strong>{sales?.totalSales} MT</strong></p>
-          <p>Nº de vendas: <strong>{sales?.countSales}</strong></p>
-          <p>Ticket médio: <strong>{sales?.averageTicket} MT</strong></p>
-        </div>
-        {canFinancial && (
-          <div className="card" style={{ padding: "1.5rem" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Despesas</h2>
-            <p>Total: <strong>{expenses?.totalExpenses} MT</strong></p>
-            <p>Nº de despesas: <strong>{expenses?.countExpenses}</strong></p>
+          )}
+          <div className="card" style={{ padding: "1rem" }}>
+            <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lotes a Expirar</h3>
+            <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: summary.stock.expiredLotsCount > 0 ? "#b91c1c" : "#166534" }}>
+              {summary.stock.expiredLotsCount}
+            </p>
+            <small style={{ color: "#6b7280" }}>Stock baixo: {summary.stock.lowStockCount}</small>
           </div>
-        )}
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Caixa</h2>
-          <p>Entradas: <strong style={{ color: "#166534" }}>{cash?.totalIn} MT</strong></p>
-          <p>Saídas: <strong style={{ color: "#b91c1c" }}>{cash?.totalOut} MT</strong></p>
-          <p>Saldo: <strong>{cash?.balance} MT</strong></p>
         </div>
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Stock</h2>
-          <p>Total de produtos: <strong>{stock?.totalProducts}</strong></p>
-          <p>Stock baixo: <strong style={{ color: "#ca8a04" }}>{stock?.lowStockCount}</strong></p>
-          <p>A expirar: <strong style={{ color: "#b91c1c" }}>{stock?.expiringLotsCount}</strong></p>
+      )}
+
+      {canFinancial && cash && cash.sessions.length > 0 && (
+        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Caixa</h2>
+          {cash.sessions.map((s) => (
+            <div key={s.id} style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: "1rem", marginBottom: "1rem" }}>
+              <p style={{ fontWeight: 500 }}>Sessão {s.status === "OPEN" ? "(aberta)" : "(fechada)"} — {s.user}</p>
+              <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                Aberta em {new Date(s.openedAt).toLocaleString()}
+                {s.closedAt && ` · Fechada em ${new Date(s.closedAt).toLocaleString()}`}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.5rem", marginTop: "0.5rem", fontSize: "0.875rem" }}>
+                <span><strong>Inicial:</strong> {money(s.openingBalance)} MT</span>
+                <span><strong>Vendas CASH:</strong> {money(s.cashSalePayments)} MT</span>
+                <span><strong>Entradas:</strong> {money(s.cashIn)} MT</span>
+                <span style={{ color: "#b91c1c" }}><strong>Saídas:</strong> {money(s.cashOut)} MT</span>
+                <span style={{ color: s.expectedBalance.startsWith("-") ? "#b91c1c" : "#166534" }}><strong>Saldo Esperado:</strong> {money(s.expectedBalance)} MT</span>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
+
+      {canFinancial && expenses && (
+        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Despesas</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+            <span><strong>Total:</strong> {money(expenses.summary.total)} MT</span>
+            <span><strong>Dinheiro:</strong> {money(expenses.summary.cashTotal)} MT</span>
+            <span><strong>Digital:</strong> {money(expenses.summary.digitalTotal)} MT</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Método</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+              {expenses.expenses.map((e) => (
+                <tr key={e.id}>
+                  <td>{new Date(e.expenseDate).toLocaleDateString()}</td>
+                  <td>{e.description}</td>
+                  <td>{e.category}</td>
+                  <td>{e.method}</td>
+                  <td>{money(e.amount)} MT</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {sales && (
+        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+            <span><strong>Vendido:</strong> {money(sales.summary.totalSold)} MT</span>
+            <span><strong>Pago:</strong> {money(sales.summary.totalPaid)} MT</span>
+            <span style={{ color: sales.summary.totalPending !== "0.00" ? "#ca8a04" : "#166534" }}><strong>Pendente:</strong> {money(sales.summary.totalPending)} MT</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr><th>Nº</th><th>Data</th><th>Total</th><th>Pago</th><th>Pendente</th></tr>
+            </thead>
+            <tbody>
+              {sales.sales.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.saleNumber}</td>
+                  <td>{new Date(s.createdAt).toLocaleDateString()}</td>
+                  <td>{money(s.total)} MT</td>
+                  <td>{money(s.paid)} MT</td>
+                  <td style={{ color: s.pending !== "0.00" ? "#ca8a04" : "#166534" }}>{money(s.pending)} MT</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {stock && (
+        <div className="card" style={{ padding: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Stock</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+            <span><strong>Produtos:</strong> {stock.summary.totalProducts}</span>
+            <span><strong>Lotes:</strong> {stock.summary.totalLots}</span>
+            <span><strong>Valor:</strong> {money(stock.summary.totalStockValue)} MT</span>
+            <span><strong>Expirados:</strong> {stock.summary.expiredLotsCount}</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr><th>Produto</th><th>Disponível</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+              {stock.products.map((p) => (
+                <tr key={p.productId}>
+                  <td>{p.productName}</td>
+                  <td>{p.totalAvailable}</td>
+                  <td>{money(p.totalValue)} MT</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
-

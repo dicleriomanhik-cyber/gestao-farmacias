@@ -1,42 +1,39 @@
-import type { ReportSummary, ReportSales, ReportExpenses, ReportCash, ReportStock } from "../types/reports";
+﻿import { apiClient } from "./api";
+import type {
+  ReportSummaryData,
+  ReportSalesData,
+  ReportExpensesData,
+  ReportCashData,
+  ReportStockData,
+} from "../types/reports";
 
-// [MOCK] Assumindo estrutura comum - ajustar ao contrato real quando disponível
-export async function getReportSummary(): Promise<ReportSummary> {
-  return Promise.resolve({
-    totalSales: "12500.00",
-    totalExpenses: "40000.00",
-    netProfit: "-27500.00",
-    cashBalance: "5000.00",
-  });
+interface Envelope<T> {
+  success: true;
+  data: T;
+  timestamp: string;
 }
 
-export async function getReportSales(): Promise<ReportSales> {
-  return Promise.resolve({
-    totalSales: "12500.00",
-    countSales: 45,
-    averageTicket: "277.78",
-  });
+export async function getReportSummary(): Promise<ReportSummaryData> {
+  const resp = await apiClient.get<Envelope<ReportSummaryData>>("/reports/summary");
+  return resp.data.data;
 }
 
-export async function getReportExpenses(): Promise<ReportExpenses> {
-  return Promise.resolve({
-    totalExpenses: "40000.00",
-    countExpenses: 15,
-  });
+export async function getReportSales(): Promise<ReportSalesData> {
+  const resp = await apiClient.get<Envelope<ReportSalesData>>("/reports/sales");
+  return resp.data.data;
 }
 
-export async function getReportCash(): Promise<ReportCash> {
-  return Promise.resolve({
-    totalIn: "15000.00",
-    totalOut: "2500.00",
-    balance: "12500.00",
-  });
+export async function getReportExpenses(): Promise<ReportExpensesData> {
+  const resp = await apiClient.get<Envelope<ReportExpensesData>>("/reports/expenses");
+  return resp.data.data;
 }
 
-export async function getReportStock(): Promise<ReportStock> {
-  return Promise.resolve({
-    totalProducts: 150,
-    lowStockCount: 5,
-    expiringLotsCount: 3,
-  });
+export async function getReportCash(): Promise<ReportCashData> {
+  const resp = await apiClient.get<Envelope<ReportCashData>>("/reports/cash");
+  return resp.data.data;
+}
+
+export async function getReportStock(): Promise<ReportStockData> {
+  const resp = await apiClient.get<Envelope<ReportStockData>>("/reports/stock");
+  return resp.data.data;
 }
