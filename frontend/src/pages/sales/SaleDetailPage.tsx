@@ -1,12 +1,32 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getSaleById, confirmSale } from "../../services/saleService";
-import type { Sale, SaleStatus } from "../../types/sales";
+import { registerPayment } from "../../services/cashService";
+import type { Sale, SaleStatus, PaymentMethod } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../hooks/useAuth";
 import { hasPermission } from "../../utils/permissions";
+
+const PAID_KEY = "sm.paidSaleIds";
+
+function getPaidSaleIds(): string[] {
+  try {
+    const raw = localStorage.getItem(PAID_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function markAsPaid(saleId: string) {
+  const ids = getPaidSaleIds();
+  if (!ids.includes(saleId)) {
+    ids.push(saleId);
+    localStorage.setItem(PAID_KEY, JSON.stringify(ids));
+  }
+}
 
 export default function SaleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,13 +37,19 @@ export default function SaleDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [showPayment, setShowPayment] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
 
   function load() {
     if (!id) return;
     setLoading(true);
     setError(false);
     getSaleById(id)
-      .then(setSale)
+      .then((s) => {
+        setSale(s);
+        setIsPaid(getPaidSaleIds().includes(id));
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
@@ -61,11 +87,47 @@ export default function SaleDetailPage() {
     }
   }
 
+  async function handlePayment() {
+    if (!sale) return;
+    setActionLoading(true);
+    try {
+      const amount = parseFloat(sale.total);
+      await registerPayment({ saleId: sale.id, amount, method: paymentMethod });
+      toast.success("Pagamento registado.");
+      markAsPaid(sale.id);
+      setIsPaid(true);
+      setShowPayment(false);
+    } catch (err: any) {
+      const rawMsg = err?.response?.data?.error?.message;
+      let msg: string;
+      if (Array.isArray(rawMsg)) {
+        msg = rawMsg.join(" ");
+      } else if (typeof rawMsg === "string") {
+        msg = rawMsg;
+      } else {
+        msg = "Erro ao registar pagamento.";
+      }
+      
+      // Se for "saldo pendente" (já pago), marcar e mostrar info em vez de erro
+      if (msg.toLowerCase().includes("saldo pendente") || msg.toLowerCase().includes("saldo")) {
+        markAsPaid(sale.id);
+        setIsPaid(true);
+        setShowPayment(false);
+        toast.info("Venda já estava paga.");
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
   if (!sale) return <ErrorState message="Venda não encontrada." onRetry={() => navigate("/vendas")} />;
 
   const canConfirm = hasPermission(user?.permissions, "sales:create");
+  const canPay = hasPermission(user?.permissions, "cash:open");
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
@@ -111,6 +173,42 @@ export default function SaleDetailPage() {
           {actionLoading ? "A confirmar…" : "Confirmar Venda"}
         </button>
       )}
+
+      {sale.status === "CONFIRMED" && isPaid && (
+        <div style={{ marginTop: "1.5rem", padding: "0.75rem", backgroundColor: "#dcfce7", color: "#166534", borderRadius: "4px", textAlign: "center", fontWeight: 500 }}>
+          ✅ Venda paga
+        </div>
+      )}
+
+      {sale.status === "CONFIRMED" && !isPaid && canPay && (
+        <div style={{ marginTop: "1.5rem" }}>
+          {!showPayment ? (
+            <button onClick={() => setShowPayment(true)} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+              Registar Pagamento
+            </button>
+          ) : (
+            <div style={{ border: "1px solid #ccc", borderRadius: "4px", padding: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento</label>
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className="input" style={{ marginBottom: "1rem" }}>
+                <option value="CASH">Dinheiro</option>
+                <option value="CARD">Cartão</option>
+                <option value="MPESA">M-Pesa</option>
+                <option value="EMOLA">e-Mola</option>
+              </select>
+              <p style={{ marginBottom: "1rem" }}><strong>Valor:</strong> {parseFloat(sale.total).toFixed(2)} MT</p>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button onClick={handlePayment} disabled={actionLoading} className="btn btn-success" style={{ flex: 1, padding: "0.75rem" }}>
+                  {actionLoading ? "A processar…" : "Confirmar Pagamento"}
+                </button>
+                <button onClick={() => setShowPayment(false)} disabled={actionLoading} className="btn btn-secondary" style={{ flex: 1, padding: "0.75rem" }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+

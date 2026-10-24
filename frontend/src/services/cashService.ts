@@ -1,5 +1,5 @@
 ﻿import { apiClient } from "./api";
-import type { CashSession, CashOpenRequest, CashCloseRequest } from "../types/sales";
+import type { CashSession, CashOpenRequest, CashCloseRequest, Payment, PaymentRequest } from "../types/sales";
 
 interface Envelope<T> {
   success: true;
@@ -21,3 +21,9 @@ export async function closeCash(id: string, data: CashCloseRequest): Promise<Cas
   const resp = await apiClient.patch<Envelope<CashSession>>(`/cash/${id}/close`, data);
   return resp.data.data;
 }
+
+export async function registerPayment(data: PaymentRequest): Promise<Payment> {
+  const resp = await apiClient.post<Envelope<Payment>>("/cash/payments", data);
+  return resp.data.data;
+}
+
