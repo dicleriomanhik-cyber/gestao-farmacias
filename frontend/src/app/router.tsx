@@ -23,6 +23,8 @@ import CategoryListPage from "../pages/categories/CategoryListPage";
 import CategoryFormPage from "../pages/categories/CategoryFormPage";
 import SupplierListPage from "../pages/suppliers/SupplierListPage";
 import SupplierFormPage from "../pages/suppliers/SupplierFormPage";
+import UserListPage from "../pages/users/UserListPage";
+import UserFormPage from "../pages/users/UserFormPage";
 
 export default function AppRouter() {
   return (
@@ -54,20 +56,20 @@ export default function AppRouter() {
           <Route path="despesas/novo" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
           <Route path="despesas/:id/editar" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
           <Route path="relatorios" element={<ProtectedRoute requiredPermission="reports:read"><ReportsPage /></ProtectedRoute>} />
+
           <Route path="categorias" element={<ProtectedRoute requiredPermission="products:read"><CategoryListPage /></ProtectedRoute>} />
           <Route path="categorias/novo" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
           <Route path="categorias/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><CategoryFormPage /></ProtectedRoute>} />
+
           <Route path="fornecedores" element={<ProtectedRoute requiredPermission="suppliers:read"><SupplierListPage /></ProtectedRoute>} />
           <Route path="fornecedores/novo" element={<ProtectedRoute requiredPermission="suppliers:write"><SupplierFormPage /></ProtectedRoute>} />
           <Route path="fornecedores/:id/editar" element={<ProtectedRoute requiredPermission="suppliers:write"><SupplierFormPage /></ProtectedRoute>} />
+
+          <Route path="utilizadores" element={<ProtectedRoute requiredPermission="users:read"><UserListPage /></ProtectedRoute>} />
+          <Route path="utilizadores/novo" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
+          <Route path="utilizadores/:id/editar" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
-
-
-
-
-
-

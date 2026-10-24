@@ -20,6 +20,7 @@ export default function MainLayout() {
     { path: "/compras", label: "Compras", show: hasPermission(permissions, "purchases:read") },
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
     { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
+    { path: "/utilizadores", label: "Utilizadores", show: hasPermission(permissions, "users:read") },
   ];
 
   const menuItems = allItems.filter((item) => item.show);
@@ -57,6 +58,7 @@ export default function MainLayout() {
     </div>
   );
 }
+
 
 
 
