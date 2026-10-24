@@ -1,25 +1,39 @@
 ﻿export type PaymentMethod = "CASH" | "CARD" | "MPESA" | "EMOLA";
 export type SaleStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
-export interface SaleItem {
+export interface SaleLine {
+  id: string;
+  saleId: string;
   productId: string;
-  productName: string;
   quantity: number;
   unitPrice: string;
+  discount: string;
+  subtotal: string;
+  product?: { name: string; salePrice: string; sku: string | null };
 }
 
 export interface Sale {
   id: string;
+  pharmacyId: string;
+  saleNumber: string;
   status: SaleStatus;
+  subtotal: string;
+  discount: string;
   total: string;
+  notes: string | null;
+  userId: string;
   createdAt: string;
-  paymentMethod: PaymentMethod;
-  items: SaleItem[];
+  updatedAt: string;
+  lines?: SaleLine[];
+}
+
+export interface SaleLineRequest {
+  productId: string;
+  quantity: number;
 }
 
 export interface SaleRequest {
-  items: { productId: string; quantity: number; unitPrice: string }[];
-  paymentMethod: PaymentMethod;
+  lines: SaleLineRequest[];
 }
 
 export interface CashSession {
