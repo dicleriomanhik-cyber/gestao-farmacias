@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { getSaleById, confirmSale } from "../../services/saleService";
 import { registerPayment } from "../../services/cashService";
 import type { Sale, SaleStatus, PaymentMethod } from "../../types/sales";
@@ -28,7 +28,11 @@ function markAsPaid(saleId: string) {
   }
 }
 
-export default function SaleDetailPage() {
+interface Props {
+  isOperational?: boolean;
+}
+
+export default function SaleDetailPage({ isOperational = false }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
@@ -108,7 +112,6 @@ export default function SaleDetailPage() {
         msg = "Erro ao registar pagamento.";
       }
       
-      // Se for "saldo pendente" (já pago), marcar e mostrar info em vez de erro
       if (msg.toLowerCase().includes("saldo pendente") || msg.toLowerCase().includes("saldo")) {
         markAsPaid(sale.id);
         setIsPaid(true);
@@ -122,15 +125,24 @@ export default function SaleDetailPage() {
     }
   }
 
+  const backLink = isOperational ? "/pos/historico" : "/vendas";
+  const backLabel = isOperational ? "Voltar ao Histórico" : "← Voltar às Vendas";
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
-  if (!sale) return <ErrorState message="Venda não encontrada." onRetry={() => navigate("/vendas")} />;
+  if (!sale) return <ErrorState message="Venda não encontrada." onRetry={() => navigate(backLink)} />;
 
   const canConfirm = hasPermission(user?.permissions, "sales:create");
   const canPay = hasPermission(user?.permissions, "cash:open");
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
+      <div style={{ marginBottom: "1rem" }}>
+        <Link to={backLink} style={{ color: "#2563eb", textDecoration: "none", fontWeight: 500 }}>
+          {backLabel}
+        </Link>
+      </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Venda {sale.saleNumber}</h1>
         {statusBadge(sale.status)}
@@ -163,7 +175,7 @@ export default function SaleDetailPage() {
         </tbody>
       </table>
 
-      {sale.status === "DRAFT" && canConfirm && (
+      {!isOperational && sale.status === "DRAFT" && canConfirm && (
         <button
           onClick={handleConfirm}
           disabled={actionLoading}
@@ -174,13 +186,13 @@ export default function SaleDetailPage() {
         </button>
       )}
 
-      {sale.status === "CONFIRMED" && isPaid && (
+      {!isOperational && sale.status === "CONFIRMED" && isPaid && (
         <div style={{ marginTop: "1.5rem", padding: "0.75rem", backgroundColor: "#dcfce7", color: "#166534", borderRadius: "4px", textAlign: "center", fontWeight: 500 }}>
           ✅ Venda paga
         </div>
       )}
 
-      {sale.status === "CONFIRMED" && !isPaid && canPay && (
+      {!isOperational && sale.status === "CONFIRMED" && !isPaid && canPay && (
         <div style={{ marginTop: "1.5rem" }}>
           {!showPayment ? (
             <button onClick={() => setShowPayment(true)} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
@@ -211,4 +223,3 @@ export default function SaleDetailPage() {
     </div>
   );
 }
-

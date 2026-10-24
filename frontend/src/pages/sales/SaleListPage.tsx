@@ -9,7 +9,12 @@ import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../hooks/useAuth";
 import { canCreateSales } from "../../utils/permissions";
 
-export default function SaleListPage() {
+interface Props {
+  hideNewSaleButton?: boolean;
+  isOperational?: boolean;
+}
+
+export default function SaleListPage({ hideNewSaleButton = false, isOperational = false }: Props) {
   const { user } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
@@ -41,8 +46,8 @@ export default function SaleListPage() {
     return (
       <EmptyState
         message="Nenhuma venda registada."
-        actionLabel={canCreateSales(user?.permissions) ? "Nova Venda" : undefined}
-        actionLink={canCreateSales(user?.permissions) ? "/vendas/novo" : undefined}
+        actionLabel={!hideNewSaleButton && canCreateSales(user?.permissions) ? "Nova Venda" : undefined}
+        actionLink={!hideNewSaleButton && canCreateSales(user?.permissions) ? "/pos" : undefined}
       />
     );
   }
@@ -65,7 +70,7 @@ export default function SaleListPage() {
     <div>
       <PageHeader
         title="Vendas"
-        actions={canCreateSales(user?.permissions) ? <Link to="/vendas/novo" className="btn btn-primary">+ Nova Venda</Link> : null}
+        actions={!hideNewSaleButton && canCreateSales(user?.permissions) ? <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link> : null}
       />
 
       <div style={{ marginBottom: "1rem" }}>
@@ -102,7 +107,10 @@ export default function SaleListPage() {
                 <td>{parseFloat(s.total).toFixed(2)} MT</td>
                 <td>{statusBadge(s.status)}</td>
                 <td>
-                  <Link to={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "none" }}>
+                  <Link 
+                    to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
+                    style={{ color: "#2563eb", textDecoration: "none" }}
+                  >
                     Ver Detalhe
                   </Link>
                 </td>

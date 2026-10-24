@@ -7,7 +7,11 @@ import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 
-export default function StockLotListPage() {
+interface Props {
+  hideAdminActions?: boolean;
+}
+
+export default function StockLotListPage({ hideAdminActions = false }: Props) {
   const [lots, setLots] = useState<StockLot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -36,6 +40,14 @@ export default function StockLotListPage() {
     return new Date(dateStr).getTime() < Date.now();
   }
 
+  function formatDate(dateStr: string) {
+    const d = new Date(dateStr);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os lotes de stock." onRetry={load} />;
   if (lots.length === 0) {
@@ -47,11 +59,12 @@ export default function StockLotListPage() {
       <PageHeader
         title="Lotes de Stock"
         actions={
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <Link to="/stock/movimentos" className="btn btn-secondary">Movimentos</Link>
-            <Link to="/stock/receber" className="btn btn-secondary">Receber Stock</Link>
-            <Link to="/stock/ajustar" className="btn btn-warning">Ajustar Stock</Link>
-          </div>
+          !hideAdminActions ? (
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <Link to="/stock/movimentos" className="btn btn-secondary">Movimentos</Link>
+              <Link to="/stock/ajustar" className="btn btn-warning">Ajustar Stock</Link>
+            </div>
+          ) : null
         }
       />
 
@@ -78,7 +91,7 @@ export default function StockLotListPage() {
                     color: isExpired(lot.expiryDate) ? "#b91c1c" : isExpiringSoon(lot.expiryDate) ? "#ca8a04" : "inherit",
                   }}
                 >
-                  {new Date(lot.expiryDate).toLocaleDateString()}
+                  {formatDate(lot.expiryDate)}
                   {isExpired(lot.expiryDate) && " (Expirado)"}
                   {!isExpired(lot.expiryDate) && isExpiringSoon(lot.expiryDate) && " (A expirar)"}
                 </td>
@@ -101,5 +114,3 @@ export default function StockLotListPage() {
     </div>
   );
 }
-
-

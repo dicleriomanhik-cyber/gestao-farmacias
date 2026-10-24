@@ -2,13 +2,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getProducts } from "../../services/productService";
+import { getStockLots } from "../../services/stockService";
 import type { Product, PaginatedMeta } from "../../types/products";
+import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 
 export default function ProductListPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [lots, setLots] = useState<StockLot[]>([]);
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -18,10 +21,14 @@ export default function ProductListPage() {
   function load() {
     setLoading(true);
     setError(false);
-    getProducts({ page, limit: 5, search })
-      .then((res) => {
-        setProducts(Array.isArray(res?.data) ? res.data : []);
-        setMeta(res.meta);
+    Promise.all([
+      getProducts({ page, limit: 5, search }),
+      getStockLots(),
+    ])
+      .then(([prodRes, lotsRes]) => {
+        setProducts(Array.isArray(prodRes?.data) ? prodRes.data : []);
+        setMeta(prodRes.meta);
+        setLots(Array.isArray(lotsRes) ? lotsRes : []);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -36,6 +43,21 @@ export default function ProductListPage() {
     e.preventDefault();
     setPage(1);
     load();
+  }
+
+  function getNearestExpiry(productId: string) {
+    const productLots = lots.filter((l) => l.productId === productId && l.quantityAvailable > 0);
+    if (productLots.length === 0) return null;
+    return productLots.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0].expiryDate;
+  }
+
+  // Função para formatar a data em DD/MM/AAAA
+  function formatDate(dateStr: string) {
+    const d = new Date(dateStr);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
   }
 
   if (loading) return <LoadingState />;
@@ -66,24 +88,27 @@ export default function ProductListPage() {
           <thead>
             <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
               <th style={{ padding: "0.75rem" }}>Nome</th>
-              <th style={{ padding: "0.75rem" }}>Categoria</th>
+              <th style={{ padding: "0.75rem" }}>Validade</th>
               <th style={{ padding: "0.75rem" }}>Preço</th>
-              <th style={{ padding: "0.75rem" }}>Stock</th>
               <th style={{ padding: "0.75rem" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <td style={{ padding: "0.75rem" }}>{p.name}</td>
-                <td style={{ padding: "0.75rem" }}>{p.category?.name}</td>
-                <td style={{ padding: "0.75rem" }}>{parseFloat(p.salePrice).toFixed(2)} MT</td>
-                <td style={{ padding: "0.75rem" }}>—</td>
-                <td style={{ padding: "0.75rem" }}>
-                  <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
-                </td>
-              </tr>
-            ))}
+            {products.map((p) => {
+              const expiry = getNearestExpiry(p.id);
+              return (
+                <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <td style={{ padding: "0.75rem" }}>{p.name}</td>
+                  <td style={{ padding: "0.75rem" }}>
+                    {expiry ? formatDate(expiry) : "—"}
+                  </td>
+                  <td style={{ padding: "0.75rem" }}>{parseFloat(p.salePrice).toFixed(2)} MT</td>
+                  <td style={{ padding: "0.75rem" }}>
+                    <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -112,7 +137,3 @@ export default function ProductListPage() {
     </div>
   );
 }
-
-
-
-
