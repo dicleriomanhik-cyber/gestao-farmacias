@@ -25,6 +25,7 @@ import SupplierListPage from "../pages/suppliers/SupplierListPage";
 import SupplierFormPage from "../pages/suppliers/SupplierFormPage";
 import UserListPage from "../pages/users/UserListPage";
 import UserFormPage from "../pages/users/UserFormPage";
+import PharmacyPage from "../pages/pharmacy/PharmacyPage";
 
 export default function AppRouter() {
   return (
@@ -68,6 +69,8 @@ export default function AppRouter() {
           <Route path="utilizadores" element={<ProtectedRoute requiredPermission="users:read"><UserListPage /></ProtectedRoute>} />
           <Route path="utilizadores/novo" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
           <Route path="utilizadores/:id/editar" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
+
+          <Route path="farmacia" element={<ProtectedRoute requiredPermission="pharmacy:config:read"><PharmacyPage /></ProtectedRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
