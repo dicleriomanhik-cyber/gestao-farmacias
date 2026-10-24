@@ -1,13 +1,12 @@
 ﻿import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+
 import { useAuth } from "../../hooks/useAuth";
-import { hasPermission } from "../../utils/permissions";
 import { getReportSummary, getReportStock } from "../../services/reportService";
 import { getActiveCashSession } from "../../services/cashService";
 import { getSales } from "../../services/saleService";
 import type { ReportSummaryData, ReportStockData } from "../../types/reports";
-import type { CashSession } from "../../types/sales";
-import type { Sale } from "../../types/sales";
+import type { CashSession, Sale } from "../../types/sales";
+import EmptyState from "../../components/ui/EmptyState";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -19,7 +18,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [cash, setCash] = useState<CashSession | null>(null);
-  const [pendingSales, setPendingSales] = useState<Sale[]>([]);
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,22 +28,17 @@ export default function DashboardPage() {
       getReportSummary(),
       getReportStock(),
       getActiveCashSession(),
-      getSales({ status: "DRAFT", limit: 5 }),
+      getSales({ limit: 5 }),
     ]).then(([sumRes, stockRes, cashRes, salesRes]) => {
       if (!mounted) return;
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (stockRes.status === "fulfilled") setStock(stockRes.value);
       if (cashRes.status === "fulfilled") setCash(cashRes.value);
-      if (salesRes.status === "fulfilled") setPendingSales(salesRes.value.data);
+      if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
       setLoading(false);
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
-
-  const permissions = user?.permissions ?? [];
-  const can = (p: string) => hasPermission(permissions, p);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -63,9 +57,7 @@ export default function DashboardPage() {
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
             {loading ? "…" : `${money(summary?.sales.total)} MT`}
           </p>
-          <small style={{ color: "#6b7280" }}>
-            {summary?.sales.count ?? 0} vendas
-          </small>
+          <small style={{ color: "#6b7280" }}>{summary?.sales.count ?? 0} vendas</small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
@@ -73,9 +65,7 @@ export default function DashboardPage() {
           <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
             {loading ? "…" : stock?.summary.totalProducts ?? 0}
           </p>
-          <small style={{ color: "#6b7280" }}>
-            {stock?.summary.totalLots ?? 0} lotes
-          </small>
+          <small style={{ color: "#6b7280" }}>{stock?.summary.totalLots ?? 0} lotes</small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
@@ -83,9 +73,7 @@ export default function DashboardPage() {
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: (summary?.stock.expiredLotsCount ?? 0) > 0 ? "#b91c1c" : "#166534" }}>
             {loading ? "…" : summary?.stock.expiredLotsCount ?? 0}
           </p>
-          <small style={{ color: "#6b7280" }}>
-            Stock baixo: {summary?.stock.lowStockCount ?? 0}
-          </small>
+          <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
@@ -93,77 +81,37 @@ export default function DashboardPage() {
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: cash ? "#166534" : "#b91c1c" }}>
             {loading ? "…" : cash ? "Aberta" : "Fechada"}
           </p>
-          <small style={{ color: "#6b7280" }}>
-            {cash ? `Inicial: ${money(cash.openingBalance)} MT` : "Sem sessão"}
-          </small>
+          <small style={{ color: "#6b7280" }}>{cash ? `Inicial: ${money(cash.openingBalance)} MT` : "Sem sessão"}</small>
         </div>
       </div>
 
-      <div>
-        <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Ações rápidas</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          {can("sales:create") && (
-            <Link to="/vendas/novo" className="btn btn-primary" style={{ padding: "1rem", textAlign: "center" }}>
-              Iniciar Venda
-            </Link>
-          )}
-          {can("cash:open") && (
-            <Link to="/caixa" className="btn btn-secondary" style={{ padding: "1rem", textAlign: "center" }}>
-              {cash ? "Ver Caixa" : "Abrir Caixa"}
-            </Link>
-          )}
-          {can("products:write") && (
-            <Link to="/produtos/novo" className="btn btn-secondary" style={{ padding: "1rem", textAlign: "center" }}>
-              Novo Produto
-            </Link>
-          )}
-          {can("stock:write") && (
-            <Link to="/stock/receber" className="btn btn-secondary" style={{ padding: "1rem", textAlign: "center" }}>
-              Receber Stock
-            </Link>
-          )}
-          {can("purchases:write") && (
-            <Link to="/compras/novo" className="btn btn-secondary" style={{ padding: "1rem", textAlign: "center" }}>
-              Nova Compra
-            </Link>
-          )}
-          {can("reports:read") && (
-            <Link to="/relatorios" className="btn btn-secondary" style={{ padding: "1rem", textAlign: "center" }}>
-              Relatórios
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {pendingSales.length > 0 && (
-        <div className="card" style={{ padding: "1rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas pendentes</h2>
+      <div className="card" style={{ padding: "1rem" }}>
+        <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas Recentes</h2>
+        {recentSales.length === 0 ? (
+          <EmptyState message="Nenhuma venda registada." />
+        ) : (
           <table className="table">
             <thead>
               <tr>
                 <th>Nº</th>
-                <th>Data</th>
                 <th>Total</th>
-                <th>Ação</th>
+                <th>Operador</th>
+                <th>Data/Hora</th>
               </tr>
             </thead>
             <tbody>
-              {pendingSales.map((s) => (
+              {recentSales.map((s) => (
                 <tr key={s.id}>
                   <td>{s.saleNumber}</td>
-                  <td>{new Date(s.createdAt).toLocaleDateString()}</td>
                   <td>{money(s.total)} MT</td>
-                  <td>
-                    <Link to={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "none" }}>
-                      Ver Detalhe
-                    </Link>
-                  </td>
+                  <td>{s.userId ? s.userId.substring(0, 8) + "..." : "—"}</td>
+                  <td>{new Date(s.createdAt).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -12,16 +12,10 @@ export default function MainLayout() {
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
     { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
-    { path: "/categorias", label: "Categorias", show: hasPermission(permissions, "products:read") },
-    { path: "/fornecedores", label: "Fornecedores", show: hasPermission(permissions, "suppliers:read") },
     { path: "/stock/lotes", label: "Stock", show: hasPermission(permissions, "stock:read") },
-    { path: "/vendas", label: "Vendas", show: hasPermission(permissions, "sales:read") },
-    { path: "/caixa", label: "Caixa", show: hasPermission(permissions, "cash:open") },
-    { path: "/compras", label: "Compras", show: hasPermission(permissions, "purchases:read") },
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
     { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
     { path: "/utilizadores", label: "Utilizadores", show: hasPermission(permissions, "users:read") },
-    { path: "/farmacia", label: "Farmácia", show: hasPermission(permissions, "pharmacy:config:read") },
   ];
 
   const menuItems = allItems.filter((item) => item.show);
