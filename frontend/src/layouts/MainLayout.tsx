@@ -1,4 +1,4 @@
-﻿import { Outlet, NavLink, useNavigate } from "react-router-dom";
+﻿import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { hasPermission } from "../utils/permissions";
 
@@ -35,6 +35,16 @@ export default function MainLayout() {
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-header">Farmácia MZ</div>
+        
+        {/* Botão de Atalho para o Modo Operação */}
+        {hasPermission(permissions, "sales:create") && (
+          <div style={{ padding: "0 1rem 1rem 1rem" }}>
+            <Link to="/pos" style={{ display: "block", textAlign: "center", backgroundColor: "#2563eb", color: "white", padding: "0.5rem", borderRadius: "4px", textDecoration: "none", fontWeight: "bold" }}>
+              🛒 Abrir POS
+            </Link>
+          </div>
+        )}
+
         <nav className="sidebar-nav">
           {menuItems.map((item) => (
             <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
@@ -59,9 +69,3 @@ export default function MainLayout() {
     </div>
   );
 }
-
-
-
-
-
-

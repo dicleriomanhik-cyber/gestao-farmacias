@@ -1,5 +1,6 @@
 ﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import OperationalLayout from "../layouts/OperationalLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import LoginPage from "../pages/auth/LoginPage";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
@@ -32,6 +33,13 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* Rota Operacional (POS) */}
+        <Route path="/pos" element={<ProtectedRoute requiredPermission="sales:create"><OperationalLayout /></ProtectedRoute>}>
+          <Route index element={<PosPage />} />
+        </Route>
+
+        {/* Rotas Administrativas */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<DashboardPage />} />
 

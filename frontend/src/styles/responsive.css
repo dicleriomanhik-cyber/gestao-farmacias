@@ -1,1 +1,63 @@
-/* breakpoints: 320, 375, 480, 768, 1024, 1280 px */
+﻿/* Utilitários de Layout Operacional */
+.pos-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.pos-col-produtos {
+  flex: 1 1 500px;
+  min-width: 300px;
+}
+
+.pos-col-carrinho {
+  flex: 1 1 350px;
+  min-width: 300px;
+  position: sticky;
+  top: 1rem;
+}
+
+/* Tablet e Mobile (<= 768px) */
+@media (max-width: 768px) {
+  .pos-container {
+    flex-direction: column;
+  }
+  .pos-col-produtos,
+  .pos-col-carrinho {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .pos-col-carrinho {
+    position: static;
+  }
+  
+  /* Botões maiores para toque */
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    min-height: 44px;
+  }
+
+  /* Inputs maiores */
+  input[type="text"],
+  input[type="number"],
+  select {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+}
+
+/* Telemóvel pequeno (<= 375px) */
+@media (max-width: 375px) {
+  .pos-container {
+    gap: 0.5rem;
+  }
+  .card {
+    padding: 0.75rem !important;
+  }
+  h2 {
+    font-size: 1.25rem;
+  }
+}
