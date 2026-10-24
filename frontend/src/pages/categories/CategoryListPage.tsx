@@ -16,8 +16,14 @@ export default function CategoryListPage() {
     setLoading(true);
     setError(false);
     getCategories({ limit: 100 })
-      .then((res) => setCategories(res.data))
-      .catch(() => setError(true))
+      .then((res) => {
+        // Resposta pode ser 204 (sem corpo) ou { data: [] }
+        setCategories(Array.isArray(res?.data) ? res.data : []);
+      })
+      .catch(() => {
+        setError(true);
+        setCategories([]);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -50,7 +56,6 @@ export default function CategoryListPage() {
             <tr>
               <th>Nome</th>
               <th>Descrição</th>
-              <th>Estado</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -59,17 +64,6 @@ export default function CategoryListPage() {
               <tr key={cat.id}>
                 <td>{cat.name}</td>
                 <td>{cat.description ?? "—"}</td>
-                <td>
-                  <span style={{
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    fontSize: "0.875rem",
-                    backgroundColor: cat.isActive ? "#dcfce7" : "#fee2e2",
-                    color: cat.isActive ? "#166534" : "#991b1b",
-                  }}>
-                    {cat.isActive ? "Ativa" : "Inativa"}
-                  </span>
-                </td>
                 <td>
                   <Link to={`/categorias/${cat.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>
                     Editar
