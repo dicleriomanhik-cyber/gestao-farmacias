@@ -1,100 +1,128 @@
-﻿import { useToast } from "../../contexts/ToastContext";
-import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createSale, confirmSale } from "../../services/saleService";
-import type { SaleItem, PaymentMethod } from "../../types/sales";
+import { createSale } from "../../services/saleService";
+import { getProducts } from "../../services/productService";
+import type { Product } from "../../types/products";
+import type { SaleLineRequest } from "../../types/sales";
+import { useToast } from "../../contexts/ToastContext";
+import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+
+interface CartItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+}
 
 export default function PosPage() {
-  const toast = useToast();
   const navigate = useNavigate();
-  const [cart, setCart] = useState<SaleItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
-  // Mock de produtos para pesquisa
-  const mockProducts = [
-    { id: "p1", name: "Paracetamol 500mg", price: "500.00" },
-    { id: "p2", name: "Brufen 200mg", price: "500.00" },
-    { id: "p3", name: "Vitamina C", price: "250.00" },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(false);
 
-  function addToCart(product: typeof mockProducts[0]) {
+  function load() {
+    setLoading(true);
+    setError(false);
+    getProducts({ page: 1, limit: 100 })
+      .then((res) => setProducts(res.data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function addItem(product: Product) {
     setCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
+      const existing = prev.find((i) => i.productId === product.id);
       if (existing) {
-        return prev.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map((i) => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { productId: product.id, productName: product.name, quantity: 1, unitPrice: product.price }];
+      return [...prev, {
+        productId: product.id,
+        productName: product.name,
+        quantity: 1,
+        unitPrice: product.salePrice,
+      }];
     });
   }
 
-  const total = cart.reduce((acc, item) => acc + parseFloat(item.unitPrice) * item.quantity, 0).toFixed(2);
+  function updateQuantity(productId: string, qty: number) {
+    if (isNaN(qty) || qty < 1) return;
+    setCart((prev) => prev.map((i) => i.productId === productId ? { ...i, quantity: qty } : i));
+  }
+
+  function removeItem(productId: string) {
+    setCart((prev) => prev.filter((i) => i.productId !== productId));
+  }
+
+  const total = cart.reduce((acc, i) => acc + parseFloat(i.unitPrice) * i.quantity, 0);
 
   async function handleCheckout() {
     if (cart.length === 0) return toast.error("Carrinho vazio.");
-    setLoading(true);
+    const lines: SaleLineRequest[] = cart.map((i) => ({ productId: i.productId, quantity: i.quantity }));
+    setSubmitting(true);
     try {
-      const sale = await createSale({ items: cart, paymentMethod });
-      await confirmSale(sale.id);
-      alert("Venda concluÃ­da com sucesso!");
+      await createSale({ lines });
+      toast.success("Venda criada como rascunho.");
       navigate("/vendas");
-    } catch {
-      toast.error("Erro ao processar venda.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao criar venda.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
+
   return (
     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-      {/* Pesquisa e Produtos */}
       <div style={{ flex: "1 1 300px" }} className="card">
         <h2 style={{ marginBottom: "1rem" }}>Produtos</h2>
-        {mockProducts.map((p) => (
-          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
-            <span>{p.name} - {p.price} MT</span>
-            <button onClick={() => addToCart(p)} style={{ cursor: "pointer" }}>+ Adicionar</button>
-          </div>
-        ))}
+        {products.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>Nenhum produto disponível. Cria um produto primeiro.</p>
+        ) : (
+          products.map((p) => (
+            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
+              <span>{p.name} — {parseFloat(p.salePrice).toFixed(2)} MT</span>
+              <button onClick={() => addItem(p)} className="btn btn-secondary">+ Adicionar</button>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Carrinho */}
       <div style={{ flex: "1 1 300px" }} className="card">
         <h2 style={{ marginBottom: "1rem" }}>Carrinho</h2>
-        {cart.length === 0 ? <p>Carrinho vazio.</p> : (
+        {cart.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>Carrinho vazio.</p>
+        ) : (
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {cart.map((item, idx) => (
-              <li key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
-                <span>{item.productName} (x{item.quantity})</span>
-                <span>{(parseFloat(item.unitPrice) * item.quantity).toFixed(2)} MT</span>
+            {cart.map((item) => (
+              <li key={item.productId} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
+                <span>{item.productName}</span>
+                <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value, 10) || 1)} style={{ width: "60px", padding: "0.25rem" }} />
+                  <span>{(parseFloat(item.unitPrice) * item.quantity).toFixed(2)} MT</span>
+                  <button onClick={() => removeItem(item.productId)} style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer" }}>×</button>
+                </span>
               </li>
             ))}
           </ul>
         )}
 
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem" }}>MÃ©todo de Pagamento:</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={{ width: "100%", padding: "0.5rem" }}>
-            <option value="CASH">Dinheiro</option>
-            <option value="CARD">CartÃ£o</option>
-            <option value="MPESA">M-Pesa</option>
-            <option value="EMOLA">e-Mola</option>
-          </select>
-        </div>
+        <h2 style={{ marginTop: "1rem", textAlign: "right" }}>Total: {total.toFixed(2)} MT</h2>
 
-        <h2 style={{ marginTop: "1rem", textAlign: "right" }}>Total: {total} MT</h2>
-
-        <button
-          onClick={handleCheckout}
-          disabled={loading || cart.length === 0}
-          style={{ marginTop: "1rem", width: "100%", padding: "0.75rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", opacity: loading || cart.length === 0 ? 0.5 : 1 }}
-        >
-          {loading ? "A processar..." : "Confirmar Venda"}
+        <button onClick={handleCheckout} disabled={submitting || cart.length === 0} className="btn btn-primary" style={{ marginTop: "1rem", width: "100%", padding: "0.75rem" }}>
+          {submitting ? "A processar…" : "Confirmar Venda (Rascunho)"}
         </button>
       </div>
     </div>
   );
 }
-
-
-
