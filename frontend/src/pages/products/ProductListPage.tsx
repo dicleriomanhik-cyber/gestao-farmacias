@@ -20,7 +20,7 @@ export default function ProductListPage() {
     setError(false);
     getProducts({ page, limit: 5, search })
       .then((res) => {
-        setProducts(res.data);
+        setProducts(Array.isArray(res?.data) ? res.data : []);
         setMeta(res.meta);
       })
       .catch(() => setError(true))
@@ -112,6 +112,7 @@ export default function ProductListPage() {
     </div>
   );
 }
+
 
 
 

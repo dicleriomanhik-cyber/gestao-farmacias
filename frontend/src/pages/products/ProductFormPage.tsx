@@ -18,7 +18,7 @@ export default function ProductFormPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getCategories().then(setCategories);
+    getCategories().then((res) => setCategories(Array.isArray(res) ? res : [])).catch(() => setCategories([]));
     if (isEditing && id) {
       getProductById(id).then((p) => {
         setName(p.name);
@@ -85,6 +85,8 @@ export default function ProductFormPage() {
     </div>
   );
 }
+
+
 
 
 
