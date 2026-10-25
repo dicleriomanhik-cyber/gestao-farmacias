@@ -9,6 +9,7 @@ describe('Sales & POS (e2e)', () => {
   let prisma: PrismaService;
   let adminToken: string;
   let productId: string;
+  let pharmacyId: string;
   let saleId: string;
 
   beforeAll(async () => {
@@ -37,7 +38,7 @@ describe('Sales & POS (e2e)', () => {
       .post('/api/v1/auth/login')
       .send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASSWORD });
     adminToken = loginRes.body.data.accessToken;
-    const pharmacyId = loginRes.body.data.user.pharmacyId;
+    pharmacyId = loginRes.body.data.user.pharmacyId;
 
     // Produto (Preço 100)
     const prodRes = await request(app.getHttpServer())
@@ -168,4 +169,50 @@ describe('Sales & POS (e2e)', () => {
       .send({ notes: 'sem linhas' })
       .expect(400);
   });
-});
+
+  it('deve rejeitar confirmacao de venda quando apenas existe lote expirado (400)', async () => {
+    // Criar um lote expirado para o mesmo produto
+    await prisma.stockLot.deleteMany({ where: { lotNumber: 'LOTE-EXPIRADO-E2E' } });
+    const expiredLot = await prisma.stockLot.create({
+      data: {
+        pharmacyId,
+        productId,
+        lotNumber: 'LOTE-EXPIRADO-E2E',
+        expiryDate: new Date('2020-01-01'),
+        quantityReceived: 5,
+        quantityAvailable: 5,
+        unitCost: 10,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Zerar stock dos lotes válidos
+    await prisma.stockLot.updateMany({
+      where: { productId, lotNumber: { not: 'LOTE-EXPIRADO-E2E' } },
+      data: { quantityAvailable: 0 },
+    });
+
+    // Criar venda DRAFT
+    const saleRes = await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lines: [{ productId, quantity: 1 }] })
+      .expect(201);
+
+    const saleId = saleRes.body.data.id;
+
+    // Confirmar deve falhar
+    await request(app.getHttpServer())
+      .patch(`/api/v1/sales/${saleId}/confirm`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+
+    // O lote expirado deve estar intacto
+    const expiredAfter = await prisma.stockLot.findUnique({ where: { id: expiredLot.id } });
+    expect(expiredAfter!.quantityAvailable).toBe(5);
+
+    // Limpar: apagar venda DRAFT + lote expirado
+    await prisma.saleLine.deleteMany({ where: { saleId } });
+    await prisma.sale.delete({ where: { id: saleId } });
+    await prisma.stockLot.delete({ where: { id: expiredLot.id } });
+  });});
