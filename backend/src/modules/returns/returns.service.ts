@@ -90,18 +90,6 @@ export class ReturnsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findOne(pharmacyId: string, id: string) {
-    const ret = await this.prisma.saleReturn.findFirst({
-      where: { id, pharmacyId },
-      include: {
-        lines: { include: { product: true } },
-        sale: { select: { saleNumber: true } },
-      },
-    });
-    if (!ret) throw new NotFoundException('DevoluÃ§Ã£o nÃ£o encontrada.');
-    return ret;
-  }
-
   async listQuarantine(pharmacyId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
@@ -121,7 +109,7 @@ export class ReturnsService {
       where: { id, pharmacyId },
       include: { lines: true },
     });
-    if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
+    if (!saleReturn) throw new NotFoundException('DevoluÃ§Ã£o nÃ£o encontrada.');
     return saleReturn;
   }
 
@@ -193,12 +181,12 @@ export class ReturnsService {
       
       const availableToInspect = q.quantityReceived - q.quantityInspected;
       if (dto.quantityToRelease > availableToInspect) {
-        throw new BadRequestException('Quantidade superior ao disponÃvel para inspeÃ§Ã£o.');
+        throw new BadRequestException('Quantidade superior ao disponÃ­vel para inspeÃ§Ã£o.');
       }
 
       if (dto.condition === 'RESELLABLE') {
         if (q.lotNumber === 'DESCONHECIDO' || !q.expiryDate) {
-          throw new BadRequestException('NÃ£o Ã© possÃvel libertar artigo sem lote e validade verificÃ¡veis.');
+          throw new BadRequestException('NÃ£o Ã© possÃ­vel libertar artigo sem lote e validade verificÃ¡veis.');
         }
 
         let lot = await tx.stockLot.findFirst({

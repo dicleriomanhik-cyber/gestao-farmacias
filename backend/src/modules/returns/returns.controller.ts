@@ -21,7 +21,7 @@ export class ReturnsController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.RETURNS_CREATE)
-  @ApiOperation({ summary: 'Criar devolução (DRAFT)' })
+  @ApiOperation({ summary: 'Criar devoluÃ§Ã£o (DRAFT)' })
   create(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateReturnDto) {
     return this.service.create(pharmacyId, user.id, dto);
   }
@@ -54,14 +54,14 @@ export class ReturnsController {
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.RETURNS_READ)
-  @ApiOperation({ summary: 'Obter detalhe da devolução' })
+  @ApiOperation({ summary: 'Obter devoluÃ§Ã£o por ID' })
   findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
     return this.service.findOne(pharmacyId, id);
   }
 
   @Patch(':id/confirm')
   @RequirePermissions(PERMISSIONS.RETURNS_CONFIRM)
-  @ApiOperation({ summary: 'Confirmar devolução' })
+  @ApiOperation({ summary: 'Confirmar devoluÃ§Ã£o' })
   confirm(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.service.confirm(pharmacyId, user.id, id);
   }
