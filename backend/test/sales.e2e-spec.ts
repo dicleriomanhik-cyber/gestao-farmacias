@@ -152,4 +152,20 @@ describe('Sales & POS (e2e)', () => {
       .get(`/api/v1/sales/${saleId}`)
       .expect(401);
   });
+
+  it('deve rejeitar criação de venda sem linhas (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lines: [] })
+      .expect(400);
+  });
+
+  it('deve rejeitar criação de venda com payload sem linhas (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ notes: 'sem linhas' })
+      .expect(400);
+  });
 });

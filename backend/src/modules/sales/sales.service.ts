@@ -9,6 +9,9 @@ export class SalesService {
   constructor(private prisma: PrismaService) {}
 
   async create(pharmacyId: string, userId: string, dto: CreateSaleDto) {
+    if (!dto.lines || dto.lines.length === 0) {
+      throw new BadRequestException('A venda deve ter pelo menos uma linha.');
+    }
     const productIds = dto.lines.map(l => l.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, pharmacyId, status: 'ACTIVE' },
