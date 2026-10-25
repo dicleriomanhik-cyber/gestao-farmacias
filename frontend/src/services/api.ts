@@ -1,6 +1,6 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+﻿import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+export const API_BASE_URL = "https://gestao-farmacia-n3vh.onrender.com/api/v1";
 
 const REFRESH_TOKEN_KEY = "sm.refreshToken";
 
@@ -79,7 +79,7 @@ apiClient.interceptors.response.use(
       });
       const data = resp.data?.data;
       if (!data?.accessToken || !data?.refreshToken) {
-        throw new Error("Resposta de refresh inválida");
+        throw new Error("Resposta de refresh invÃ¡lida");
       }
 
       accessToken = data.accessToken;
