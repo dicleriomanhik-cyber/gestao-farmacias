@@ -1,6 +1,5 @@
 ﻿import { useEffect, useState } from "react";
 import { getActiveCashSession, openCash, closeCash, getPayments } from "../../services/cashService";
-import { apiClient } from "../../services/api";
 import type { CashSession, PaymentMethod } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -14,20 +13,11 @@ function money(v: string | number | undefined | null): string {
   return parseFloat(String(v)).toFixed(2);
 }
 
-interface CashMovement {
-  id: string;
-  type: "IN" | "OUT";
-  amount: string;
-  reason: string;
-  createdAt: string;
-}
-
 export default function CashSessionPage() {
   const { user } = useAuth();
   const toast = useToast();
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
-  const [movements, setMovements] = useState<CashMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [amount, setAmount] = useState("");
@@ -45,19 +35,8 @@ export default function CashSessionPage() {
         setTotals(data.totalsByMethod);
         const total = Object.values(data.totalsByMethod).reduce((acc, v) => acc + v, 0);
         setAmount((parseFloat(active.openingBalance.toString()) + total).toFixed(2));
-
-        // Buscar movimentos de caixa (saídas/entradas)
-        try {
-          const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements", {
-            params: { cashSessionId: active.id },
-          });
-          setMovements(resp.data.data ?? []);
-        } catch {
-          setMovements([]);
-        }
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
-        setMovements([]);
         setAmount("");
       }
     } catch {
@@ -112,10 +91,7 @@ export default function CashSessionPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={load} />;
 
-  const totalAllMethods = Object.values(totals).reduce((acc, v) => acc + v, 0);
-  const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
+  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + totals.CASH : 0;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -173,29 +149,6 @@ export default function CashSessionPage() {
                 <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
               </div>
             </div>
-          </div>
-
-          <div className="card" style={{ padding: "0.75rem" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Movimentos de Caixa (Saídas/Entradas)</h3>
-            {movements.length === 0 ? (
-              <p style={{ color: "#64748b", fontSize: "0.85rem" }}>Nenhum movimento registado.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Valor</th></tr>
-                </thead>
-                <tbody>
-                  {movements.map((m) => (
-                    <tr key={m.id}>
-                      <td style={{ fontSize: "0.85rem" }}>{new Date(m.createdAt).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</td>
-                      <td style={{ color: m.type === "IN" ? "#166534" : "#b91c1c", fontWeight: "bold" }}>{m.type === "IN" ? "Entrada" : "Saída"}</td>
-                      <td style={{ fontSize: "0.85rem" }}>{m.reason}</td>
-                      <td style={{ color: m.type === "IN" ? "#166534" : "#b91c1c", fontWeight: "bold" }}>{m.type === "OUT" ? "-" : "+"}{money(m.amount)} MT</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
           </div>
 
           <div className="card" style={{ padding: "0.75rem" }}>
