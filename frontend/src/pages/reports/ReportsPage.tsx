@@ -10,7 +10,7 @@ import type {
   ReportSummaryData,
   ReportSalesData,
   ReportExpensesData,
-  ReportCashData,
+
   ReportStockData,
 } from "../../types/reports";
 import LoadingState from "../../components/ui/LoadingState";
@@ -29,7 +29,7 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
   const [sales, setSales] = useState<ReportSalesData | null>(null);
   const [expenses, setExpenses] = useState<ReportExpensesData | null>(null);
-  const [cash, setCash] = useState<ReportCashData | null>(null);
+  
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -45,11 +45,11 @@ export default function ReportsPage() {
       canFinancial ? getReportCash() : Promise.resolve(null),
       getReportStock(),
     ])
-      .then(([s, sa, e, c, st]) => {
+      .then(([s, sa, e, _, st]) => {
         setSummary(s);
         setSales(sa);
         setExpenses(e);
-        setCash(c);
+        
         setStock(st);
       })
       .catch(() => setError(true))
@@ -92,27 +92,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {canFinancial && cash && cash.sessions.length > 0 && (
-        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Caixa</h2>
-          {cash.sessions.map((s) => (
-            <div key={s.id} style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: "1rem", marginBottom: "1rem" }}>
-              <p style={{ fontWeight: 500 }}>Sessão {s.status === "OPEN" ? "(aberta)" : "(fechada)"} — {s.user}</p>
-              <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                Aberta em {new Date(s.openedAt).toLocaleString()}
-                {s.closedAt && ` · Fechada em ${new Date(s.closedAt).toLocaleString()}`}
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.5rem", marginTop: "0.5rem", fontSize: "0.875rem" }}>
-                <span><strong>Inicial:</strong> {money(s.openingBalance)} MT</span>
-                <span><strong>Vendas CASH:</strong> {money(s.cashSalePayments)} MT</span>
-                <span><strong>Entradas:</strong> {money(s.cashIn)} MT</span>
-                <span style={{ color: "#b91c1c" }}><strong>Saídas:</strong> {money(s.cashOut)} MT</span>
-                <span style={{ color: s.expectedBalance.startsWith("-") ? "#b91c1c" : "#166534" }}><strong>Saldo Esperado:</strong> {money(s.expectedBalance)} MT</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Secção CAIXA removida conforme pedido da Central */}
 
       {canFinancial && expenses && (
         <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>

@@ -29,6 +29,11 @@ import SupplierFormPage from "../pages/suppliers/SupplierFormPage";
 import UserListPage from "../pages/users/UserListPage";
 import UserFormPage from "../pages/users/UserFormPage";
 import PharmacyPage from "../pages/pharmacy/PharmacyPage";
+import ReturnListPage from "../pages/returns/ReturnListPage";
+import ReturnFormPage from "../pages/returns/ReturnFormPage";
+import ReturnDetailPage from "../pages/returns/ReturnDetailPage";
+import OperationalReturnPage from "../pages/sales/OperationalReturnPage";
+import OperationalReturnDetailPage from "../pages/sales/OperationalReturnDetailPage";
 
 export default function AppRouter() {
   return (
@@ -40,7 +45,10 @@ export default function AppRouter() {
         <Route path="/pos" element={<ProtectedRoute requiredPermission="sales:create"><OperationalLayout /></ProtectedRoute>}>
           <Route index element={<PosPage />} />
           <Route path="historico" element={<SaleListPage hideNewSaleButton={true} isOperational={true} />} /><Route path="historico/:id" element={<SaleDetailPage isOperational={true} />} />
-          <Route path="stock" element={<OperationalStockPage />} />
+          <Route path="devolucoes" element={<OperationalReturnPage />} />
+          <Route path="devolucoes/nova/:saleId" element={<OperationalReturnPage />} />
+          <Route path="devolucoes/:id" element={<OperationalReturnDetailPage />} />
+          <Route path="stock" element={<OperationalStockPage />} /><Route path="caixa" element={<CashSessionPage />} />
         </Route>
 
         {/* Rotas Administrativas */}
@@ -82,6 +90,10 @@ export default function AppRouter() {
           <Route path="utilizadores/novo" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
           <Route path="utilizadores/:id/editar" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
 
+          <Route path="devolucoes" element={<ProtectedRoute requiredPermission="returns:read"><ReturnListPage /></ProtectedRoute>} />
+          <Route path="devolucoes/nova" element={<ProtectedRoute requiredPermission="returns:create"><ReturnFormPage /></ProtectedRoute>} />
+          <Route path="devolucoes/nova/:saleId" element={<ProtectedRoute requiredPermission="returns:create"><ReturnFormPage /></ProtectedRoute>} />
+          <Route path="devolucoes/:id" element={<ProtectedRoute requiredPermission="returns:read"><ReturnDetailPage /></ProtectedRoute>} />
           <Route path="farmacia" element={<ProtectedRoute requiredPermission="pharmacy:config:read"><PharmacyPage /></ProtectedRoute>} />
         </Route>
       </Routes>

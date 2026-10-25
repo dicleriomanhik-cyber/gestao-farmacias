@@ -128,3 +128,5 @@
     font-size: 0.9rem;
   }
 }
+
+body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }

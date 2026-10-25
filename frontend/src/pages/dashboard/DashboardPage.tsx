@@ -1,11 +1,10 @@
 ﻿import { useEffect, useState } from "react";
-
 import { useAuth } from "../../hooks/useAuth";
 import { getReportSummary, getReportStock } from "../../services/reportService";
-import { getActiveCashSession } from "../../services/cashService";
+import { formatDateTime } from "../../utils/formatDate";
 import { getSales } from "../../services/saleService";
 import type { ReportSummaryData, ReportStockData } from "../../types/reports";
-import type { CashSession, Sale } from "../../types/sales";
+import type { Sale } from "../../types/sales";
 import EmptyState from "../../components/ui/EmptyState";
 
 function money(v: string | number | undefined | null): string {
@@ -17,7 +16,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
   const [stock, setStock] = useState<ReportStockData | null>(null);
-  const [cash, setCash] = useState<CashSession | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,13 +25,11 @@ export default function DashboardPage() {
     Promise.allSettled([
       getReportSummary(),
       getReportStock(),
-      getActiveCashSession(),
       getSales({ limit: 5 }),
-    ]).then(([sumRes, stockRes, cashRes, salesRes]) => {
+    ]).then(([sumRes, stockRes, salesRes]) => {
       if (!mounted) return;
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (stockRes.status === "fulfilled") setStock(stockRes.value);
-      if (cashRes.status === "fulfilled") setCash(cashRes.value);
       if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
       setLoading(false);
     });
@@ -75,14 +71,6 @@ export default function DashboardPage() {
           </p>
           <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
         </div>
-
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Caixa</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: cash ? "#166534" : "#b91c1c" }}>
-            {loading ? "…" : cash ? "Aberta" : "Fechada"}
-          </p>
-          <small style={{ color: "#6b7280" }}>{cash ? `Inicial: ${money(cash.openingBalance)} MT` : "Sem sessão"}</small>
-        </div>
       </div>
 
       <div className="card" style={{ padding: "1rem" }}>
@@ -105,7 +93,7 @@ export default function DashboardPage() {
                   <td>{s.saleNumber}</td>
                   <td>{money(s.total)} MT</td>
                   <td>{s.userId ? s.userId.substring(0, 8) + "..." : "—"}</td>
-                  <td>{new Date(s.createdAt).toLocaleString()}</td>
+                  <td>{formatDateTime(s.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

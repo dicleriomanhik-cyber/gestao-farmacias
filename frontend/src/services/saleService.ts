@@ -1,10 +1,5 @@
 ﻿import { apiClient } from "./api";
-import type {
-  Sale,
-  SaleRequest,
-  PaginatedResult,
-  SaleListParams,
-} from "../types/sales";
+import type { Sale, SaleRequest, PaginatedResult, SaleListParams, Payment } from "../types/sales";
 
 interface Envelope<T> {
   success: true;
@@ -34,6 +29,11 @@ export async function getSales(params: SaleListParams = {}): Promise<PaginatedRe
 
 export async function getSaleById(id: string): Promise<Sale> {
   const resp = await apiClient.get<Envelope<Sale>>(`/sales/${id}`);
+  return resp.data.data;
+}
+
+export async function getSalePayments(id: string): Promise<Payment[]> {
+  const resp = await apiClient.get<Envelope<Payment[]>>(`/sales/${id}/payments`);
   return resp.data.data;
 }
 

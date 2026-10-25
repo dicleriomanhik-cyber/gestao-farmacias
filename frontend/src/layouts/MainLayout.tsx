@@ -15,7 +15,9 @@ export default function MainLayout() {
     { path: "/", label: "Dashboard", show: true },
     { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
     { path: "/stock/lotes", label: "Stock", show: hasPermission(permissions, "stock:read") },
+    { path: "/caixa", label: "Caixa", show: hasPermission(permissions, "cash:open") },
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
+    { path: "/devolucoes", label: "Devoluções", show: hasPermission(permissions, "returns:read") },
     { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
     { path: "/utilizadores", label: "Utilizadores", show: hasPermission(permissions, "users:read") },
   ];
