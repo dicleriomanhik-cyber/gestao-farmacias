@@ -55,6 +55,7 @@
 | GET | `/stock/lots` | `stock:read` | ✓ | ✓ | ✗ | ✓ |
 | GET | `/stock/movements` | `stock:read` | ✓ | ✓ | ✗ | ✓ |
 | POST | `/stock/receive` | `stock:write` | ✓ | ✗ | ✗ | ✓ |
+| POST | `/stock/lots` | `stock:write` | ✓ | ✗ | ✗ | ✓ |
 | POST | `/stock/adjust` | `stock:adjust` | ✓ | ✗ | ✗ | ✓ |
 | GET | `/sales` | `sales:read` | ✓ | ✓ | ✓ | ✓ |
 | GET | `/sales/:id` | `sales:read` | ✓ | ✓ | ✓ | ✓ |
