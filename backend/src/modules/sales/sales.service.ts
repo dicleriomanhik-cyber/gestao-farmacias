@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
@@ -14,7 +14,7 @@ export class SalesService {
       where: { id: { in: productIds }, pharmacyId, status: 'ACTIVE' },
     });
     if (products.length !== productIds.length) {
-      throw new BadRequestException('Um ou mais produtos são inválidos ou inativos.');
+      throw new BadRequestException('Um ou mais produtos sÃ£o invÃ¡lidos ou inativos.');
     }
 
     let subtotal = new Decimal(0);
@@ -74,7 +74,11 @@ export class SalesService {
       this.prisma.sale.findMany({
         where: { pharmacyId },
         skip, take: limit,
-        include: { user: { select: { fullName: true } } },
+        include: {
+          user: { select: { fullName: true } },
+          lines: { include: { product: true } },
+          returns: { select: { id: true, status: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.sale.count({ where: { pharmacyId } }),
@@ -85,10 +89,22 @@ export class SalesService {
   async findOne(pharmacyId: string, id: string) {
     const sale = await this.prisma.sale.findFirst({
       where: { id, pharmacyId },
-      include: { lines: { include: { product: true, lots: true } }, user: true },
+      include: { lines: { include: { product: true, lots: true } }, user: true, returns: true },
     });
-    if (!sale) throw new NotFoundException('Venda não encontrada.');
+    if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
     return sale;
+  }
+
+  async getPayments(pharmacyId: string, saleId: string) {
+    const sale = await this.prisma.sale.findFirst({
+      where: { id: saleId, pharmacyId },
+    });
+    if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
+
+    return this.prisma.salePayment.findMany({
+      where: { saleId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async update(pharmacyId: string, userId: string, id: string, dto: UpdateSaleDto) {
@@ -106,14 +122,13 @@ export class SalesService {
 
   async confirm(pharmacyId: string, userId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock na venda
       const sales = await tx.$queryRaw`
         SELECT id, status FROM "sales" 
         WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
         FOR UPDATE
       ` as Array<{ id: string; status: string }>;
       const sale = sales[0];
-      if (!sale) throw new NotFoundException('Venda não encontrada.');
+      if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
       if (sale.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
 
       const saleLines = await tx.saleLine.findMany({ where: { saleId: id } });
@@ -133,7 +148,7 @@ export class SalesService {
           FOR UPDATE
         ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date }>;
 
-        if (lots.length === 0) throw new BadRequestException(`Sem stock válido para o produto ${line.productId}.`);
+        if (lots.length === 0) throw new BadRequestException(`Sem stock vÃ¡lido para o produto ${line.productId}.`);
 
         for (const lot of lots) {
           if (remainingQty <= 0) break;

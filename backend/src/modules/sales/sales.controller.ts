@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
@@ -42,6 +42,13 @@ export class SalesController {
   @ApiOperation({ summary: 'Obter detalhe da venda' })
   findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
     return this.service.findOne(pharmacyId, id);
+  }
+
+  @Get(':id/payments')
+  @RequirePermissions(PERMISSIONS.SALES_READ)
+  @ApiOperation({ summary: 'Obter pagamentos de uma venda' })
+  getPayments(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.getPayments(pharmacyId, id);
   }
 
   @Patch(':id')

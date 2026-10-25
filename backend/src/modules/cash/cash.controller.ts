@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CashService } from './cash.service';
 import { OpenCashDto } from './dto/open-cash.dto';
@@ -43,6 +43,20 @@ export class CashController {
   @ApiOperation({ summary: 'Obter sessão de caixa aberta' })
   getActive(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.getActiveSession(pharmacyId, user.id);
+  }
+
+  @Get('payments')
+  @RequirePermissions(PERMISSIONS.CASH_OPEN)
+  @ApiOperation({ summary: 'Listar pagamentos da sessão de caixa ativa' })
+  getPayments(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getPayments(pharmacyId, user.id);
+  }
+
+  @Get('movements')
+  @RequirePermissions(PERMISSIONS.CASH_OPEN)
+  @ApiOperation({ summary: 'Listar movimentos da sessão ativa' })
+  getMovements(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getMovements(pharmacyId, user.id);
   }
 
   @Post('payments')

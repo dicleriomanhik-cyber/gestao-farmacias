@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
@@ -26,6 +26,19 @@ export class ReturnsController {
     return this.service.create(pharmacyId, user.id, dto);
   }
 
+  @Get()
+  @RequirePermissions(PERMISSIONS.RETURNS_READ)
+  @ApiOperation({ summary: 'Listar devoluções' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  findAll(
+    @Tenant() pharmacyId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    return this.service.findAll(pharmacyId, Number(page), Number(limit));
+  }
+
   @Get('quarantine')
   @RequirePermissions(PERMISSIONS.RETURNS_READ)
   @ApiOperation({ summary: 'Listar artigos em quarentena' })
@@ -37,6 +50,13 @@ export class ReturnsController {
     @Query('limit') limit: string = '20',
   ) {
     return this.service.listQuarantine(pharmacyId, Number(page), Number(limit));
+  }
+
+  @Get(':id')
+  @RequirePermissions(PERMISSIONS.RETURNS_READ)
+  @ApiOperation({ summary: 'Obter detalhe da devolução' })
+  findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.findOne(pharmacyId, id);
   }
 
   @Patch(':id/confirm')
