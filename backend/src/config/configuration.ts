@@ -3,6 +3,7 @@ export interface AppConfig {
   port: number;
   apiPrefix: string;
   databaseUrl: string;
+  frontendDistPath: string;
   jwt: {
     accessSecret: string;
     accessExpiresIn: string;
@@ -19,6 +20,7 @@ export default (): AppConfig => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   apiPrefix: process.env.API_PREFIX ?? 'api/v1',
   databaseUrl: process.env.DATABASE_URL as string,
+  frontendDistPath: process.env.FRONTEND_DIST_PATH ?? 'frontend/dist',
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET as string,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
