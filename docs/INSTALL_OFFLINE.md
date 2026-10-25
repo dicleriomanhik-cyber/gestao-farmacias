@@ -57,3 +57,58 @@ Na janela onde o script est� a correr, prima `Ctrl+C`. Depois prima `ENTER` para
 - **"Porta 3000 j� em uso"**: J� existe um sistema aberto. Feche a outra janela e tente novamente.
 - **"PostgreSQL inacess�vel"**: V� a "Servi�os" do Windows e inicie o `postgresql-x64-16`.
 - **"Build do Front-end n�o encontrado"**: O sistema abre, mas sem interface. Corra o passo 4 (Front-end).
+
+## 9. Backups e Recuperação
+
+### Backup manual
+Para criar um backup imediato da base de dados:
+```powershell
+.\backup-farmacia.ps1
+```
+O ficheiro será guardado em `E:\FarmaciaBackups\` com o formato `farmacia_db_AAAAMMDD_HHMMSS.dump`.
+
+### Agendamento automático (diário às 20h00)
+1. Abra o **Agendador de Tarefas** do Windows.
+2. Clique em **Criar Tarefa** (não "Tarefa Básica").
+3. No separador **Geral**:
+   - Nome: `Backup Farmacia`
+   - Executar mesmo que o utilizador não tenha sessão iniciada: **Sim**
+   - Executar com privilégios mais altos: **Sim**
+4. No separador **Acções** → **Nova**:
+   - Programa: `powershell.exe`
+   - Argumentos: `-NoProfile -ExecutionPolicy Bypass -File "E:\Programação\Farmacia\backup-farmacia.ps1" -Force`
+   - Iniciar em: `E:\Programação\Farmacia`
+5. No separador **Disparadores** → **Novo**:
+   - Diariamente, às 20:00.
+6. Guardar e testar: clique com o botão direito na tarefa → **Executar**.
+
+### Cópia externa (recomendado)
+Um backup guardado no mesmo disco não protege contra falha física do disco.
+Copie os backups para um disco externo ou pen drive regularmente (ex: semanalmente):
+```powershell
+# Cópia incremental (não apaga nada no destino)
+robocopy "E:\FarmaciaBackups" "F:\BackupFarmacia" *.dump /E /XO /R:2 /W:5
+```
+*Nota: `/XO` copia apenas ficheiros mais recentes. Não apaga backups antigos do destino.*
+
+### Retenção
+O script apaga automaticamente backups com mais de 30 dias. Este valor pode ser alterado no ficheiro `backend/.env` na variável `RETENTION_DAYS`.
+Quando executado manualmente (sem `-Force`), o script pede confirmação antes de apagar.
+
+### Restauro de emergência (testado)
+Para recuperar a base de dados num caso de falha:
+1. Pare o servidor (`Ctrl+C` no terminal).
+2. Apague a base de dados corrompida (apenas se necessário e se tiver a certeza):
+   ```powershell
+   psql -h localhost -U postgres -c "DROP DATABASE farmacia_db;"
+   psql -h localhost -U postgres -c "CREATE DATABASE farmacia_db;"
+   ```
+3. Restaure o último backup:
+   ```powershell
+   pg_restore -h localhost -U postgres -d farmacia_db --no-owner --no-privileges "E:\FarmaciaBackups\farmacia_db_AAAAMMDD_HHMMSS.dump"
+   ```
+4. Reinicie o servidor (`.\start-farmacia.ps1`).
+5. Confirme que os dados voltaram: `http://localhost:3000`.
+
+### Aviso final
+**Um backup só é válido depois de ser restaurado com sucesso.** Este procedimento foi testado e validado (ver relatório BE-14B.45).
