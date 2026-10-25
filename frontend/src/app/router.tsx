@@ -34,6 +34,7 @@ import ReturnFormPage from "../pages/returns/ReturnFormPage";
 import ReturnDetailPage from "../pages/returns/ReturnDetailPage";
 import OperationalReturnPage from "../pages/sales/OperationalReturnPage";
 import OperationalReturnDetailPage from "../pages/sales/OperationalReturnDetailPage";
+import CashHistoryPage from "../pages/sales/CashHistoryPage";
 
 export default function AppRouter() {
   return (
@@ -49,6 +50,7 @@ export default function AppRouter() {
           <Route path="devolucoes/nova/:saleId" element={<OperationalReturnPage />} />
           <Route path="devolucoes/:id" element={<OperationalReturnDetailPage />} />
           <Route path="stock" element={<OperationalStockPage />} /><Route path="caixa" element={<CashSessionPage />} />
+          <Route path="caixa/historico" element={<CashHistoryPage />} />
         </Route>
 
         {/* Rotas Administrativas */}
