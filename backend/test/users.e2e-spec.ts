@@ -168,4 +168,49 @@ describe('Users (e2e)', () => {
   // na mesma transacção). Validar esta garantia por teste exigiria
   // instrumentação (por exemplo, um trigger que falhe no INSERT do
   // auditLog), que está fora do âmbito desta fase.
+
+  it('deve obter um utilizador por ID (admin)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/users/${adminUserId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(adminUserId);
+  });
+
+  it('não deve permitir consultar utilizador de outra farmácia (404)', async () => {
+    // Criar admin B (idempotente) e obter token B
+    let phB = await prisma.pharmacy.findFirst({ where: { name: 'Farmacia B - Users E2E' } });
+    if (!phB) {
+      phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B - Users E2E', status: 'ACTIVE' } });
+    }
+    const passwordHash = await bcrypt.hash('admin_b_pass_123456', 12);
+    const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    const userB = await prisma.user.upsert({
+      where: { email: 'admin@farmaciab.com' },
+      update: { pharmacyId: phB.id, passwordHash },
+      create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+      update: {},
+      create: { userId: userB.id, roleId: roleAdmin!.id },
+    });
+
+    const loginB = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
+    const tokenB = loginB.body.data.accessToken;
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${adminUserId}`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
+
+  it('deve rejeitar GET /users/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${adminUserId}`)
+      .expect(401);
+  });
 });

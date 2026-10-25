@@ -221,4 +221,50 @@ describe('Returns (e2e)', () => {
     expect(res.body.data.status).toBe('COMPLETED');
     expect(res.body.data.externalReference).toBe('MPESA-REF-2026-001');
   });
+
+  it('deve obter uma devolução por ID (admin)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/returns/${returnId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(returnId);
+  });
+
+  it('não deve permitir consultar devolução de outra farmácia (404)', async () => {
+    const bcryptLib = await import('bcrypt');
+    const nomeFarmaciaB = 'Farmacia B - Returns E2E';
+    let phB = await prisma.pharmacy.findFirst({ where: { name: nomeFarmaciaB } });
+    if (!phB) {
+      phB = await prisma.pharmacy.create({ data: { name: nomeFarmaciaB, status: 'ACTIVE' } });
+    }
+    const passwordHash = await bcryptLib.hash('admin_b_pass_123456', 12);
+    const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    const userB = await prisma.user.upsert({
+      where: { email: 'admin@farmaciab.com' },
+      update: { pharmacyId: phB.id, passwordHash },
+      create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+      update: {},
+      create: { userId: userB.id, roleId: roleAdmin!.id },
+    });
+
+    const loginB = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
+    const tokenB = loginB.body.data.accessToken;
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/returns/${returnId}`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
+
+  it('deve rejeitar GET /returns/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/returns/${returnId}`)
+      .expect(401);
+  });
 });

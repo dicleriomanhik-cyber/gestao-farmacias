@@ -116,6 +116,14 @@ export class ReturnsService {
     ]);
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
+  async findOne(pharmacyId: string, id: string) {
+    const saleReturn = await this.prisma.saleReturn.findFirst({
+      where: { id, pharmacyId },
+      include: { lines: true },
+    });
+    if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
+    return saleReturn;
+  }
 
   async confirm(pharmacyId: string, userId: string, returnId: string) {
     return this.prisma.$transaction(async (tx) => {

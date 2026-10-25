@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { Prisma } from '@prisma/client';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { CreateLotDto } from './dto/create-lot.dto';
 
 @Injectable()
 export class StockService {
@@ -89,6 +91,89 @@ export class StockService {
 
       return updatedLot;
     });
+  }
+
+  async createLot(pharmacyId: string, actorId: string, dto: CreateLotDto) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const product = await tx.product.findFirst({
+          where: { id: dto.productId, pharmacyId },
+          select: { id: true },
+        });
+        if (!product) throw new NotFoundException('Produto não encontrado.');
+
+        const expiryDate = new Date(dto.expiryDate);
+        if (isNaN(expiryDate.getTime())) {
+          throw new BadRequestException('Data de validade inválida.');
+        }
+
+        const existing = await tx.stockLot.findUnique({
+          where: {
+            pharmacyId_productId_lotNumber: {
+              pharmacyId,
+              productId: dto.productId,
+              lotNumber: dto.lotNumber,
+            },
+          },
+        });
+        if (existing) {
+          throw new BadRequestException(
+            `Já existe um lote com o número "${dto.lotNumber}" para este produto.`,
+          );
+        }
+
+        const lot = await tx.stockLot.create({
+          data: {
+            pharmacyId,
+            productId: dto.productId,
+            purchaseLineId: null,
+            lotNumber: dto.lotNumber,
+            expiryDate,
+            quantityReceived: dto.quantity,
+            quantityReceivedFromLine: 0,
+            quantityAvailable: dto.quantity,
+            unitCost: dto.unitCost,
+            status: 'ACTIVE',
+          },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            pharmacyId,
+            productId: dto.productId,
+            lotId: lot.id,
+            type: 'DIRECT_ENTRY',
+            quantity: dto.quantity,
+            referenceId: lot.id,
+            referenceType: 'StockLot',
+            userId: actorId,
+            notes: 'Entrada directa de lote',
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            pharmacyId,
+            userId: actorId,
+            action: 'stock.lot.create',
+            entity: 'StockLot',
+            entityId: lot.id,
+          },
+        });
+
+        return lot;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          `Já existe um lote com o número "${dto.lotNumber}" para este produto.`,
+        );
+      }
+      throw error;
+    }
   }
 
   async adjustStock(pharmacyId: string, actorId: string, dto: AdjustStockDto) {

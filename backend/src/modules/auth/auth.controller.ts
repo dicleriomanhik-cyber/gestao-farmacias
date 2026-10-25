@@ -6,6 +6,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { LoginThrottleGuard } from '../../common/guards/login-throttle.guard';
 import { AuthService, LoginResult } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 
@@ -47,4 +50,26 @@ export class AuthController {
   ): Promise<void> {
     await this.auth.logout(dto.refreshToken, user.id);
   }
-}
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Registar nova farmácia e administrador' })
+  register(@Body() dto: RegisterDto) {
+    return this.auth.register(dto);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pedir recuperação de password' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Redefinir password com token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto);
+  }}

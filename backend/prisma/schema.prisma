@@ -47,6 +47,7 @@ enum MovementType {
   PURCHASE_RETURN
   ADJUSTMENT_IN
   ADJUSTMENT_OUT
+  DIRECT_ENTRY
   LOSS
   EXPIRY
   INVENTORY_ADJUSTMENT
@@ -611,6 +612,7 @@ model RolePermission {
 }
 
 model User {
+  passwordResetTokens PasswordResetToken[]
   id           String     @id @default(uuid()) @db.Uuid
   pharmacyId   String     @db.Uuid
   email        String     @unique
@@ -708,4 +710,16 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

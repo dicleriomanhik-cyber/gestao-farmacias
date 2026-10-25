@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -178,4 +180,38 @@ export class AuthService {
     const ms = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] as number;
     return new Date(Date.now() + n * ms);
   }
-}
+  async register(dto: any) {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) throw new UnauthorizedException('Email já registado.');
+    const passwordHash = await bcrypt.hash(dto.password, this.config.get<number>('bcryptSaltRounds') ?? 12);
+    return this.prisma.$transaction(async (tx) => {
+      const pharmacy = await tx.pharmacy.create({ data: { name: dto.pharmacyName, nif: dto.pharmacyNif ?? null, status: 'ACTIVE' } });
+      const roleAdmin = await tx.role.findUnique({ where: { name: 'ADMIN' } });
+      if (!roleAdmin) throw new UnauthorizedException('Role ADMIN não configurada.');
+      const user = await tx.user.create({ data: { pharmacyId: pharmacy.id, email: dto.email, passwordHash, fullName: dto.adminName, status: 'ACTIVE' } });
+      await tx.userRole.create({ data: { userId: user.id, roleId: roleAdmin.id } });
+      return { message: 'Conta criada com sucesso.' };
+    });
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return { message: 'Se o email existir, receberá um link.' };
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = sha256(token);
+    const expiresAt = new Date(Date.now() + 3600_000);
+    await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
+    return { message: 'Token gerado.', token };
+  }
+
+  async resetPassword(dto: any) {
+    const tokenHash = sha256(dto.token);
+    const resetRecord = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+    if (!resetRecord || resetRecord.expiresAt < new Date()) throw new UnauthorizedException('Token inválido ou expirado.');
+    const passwordHash = await bcrypt.hash(dto.newPassword, this.config.get<number>('bcryptSaltRounds') ?? 12);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: resetRecord.userId }, data: { passwordHash } }),
+      this.prisma.passwordResetToken.delete({ where: { id: resetRecord.id } }),
+    ]);
+    return { message: 'Password redefinida com sucesso.' };
+  }}

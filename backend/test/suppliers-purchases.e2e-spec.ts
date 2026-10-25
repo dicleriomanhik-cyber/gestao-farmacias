@@ -11,6 +11,7 @@ describe('Suppliers & Purchases (e2e)', () => {
   let pharmacyId: string;
   let supplierId: string;
   let productId: string;
+  let purchaseId: string;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -72,6 +73,45 @@ describe('Suppliers & Purchases (e2e)', () => {
         .expect(200);
       expect(res.body.data.city).toBe('Matola');
     });
+
+    it('deve obter um fornecedor por ID (admin)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/suppliers/${supplierId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBe(supplierId);
+    });
+
+    it('não deve permitir consultar fornecedor de outra farmácia (404)', async () => {
+      const bcryptLib = await import('bcrypt');
+      let phB = await prisma.pharmacy.findFirst({ where: { name: 'Farmacia B - Suppliers E2E' } });
+      if (!phB) {
+        phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B - Suppliers E2E', status: 'ACTIVE' } });
+      }
+      const passwordHash = await bcryptLib.hash('admin_b_pass_123456', 12);
+      const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+      const userB = await prisma.user.upsert({
+        where: { email: 'admin@farmaciab.com' },
+        update: { pharmacyId: phB.id, passwordHash },
+        create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
+      });
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+        update: {},
+        create: { userId: userB.id, roleId: roleAdmin!.id },
+      });
+
+      const loginB = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
+      const tokenB = loginB.body.data.accessToken;
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/suppliers/${supplierId}`)
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(404);
+    });
   });
 
   describe('Purchases', () => {
@@ -90,6 +130,7 @@ describe('Suppliers & Purchases (e2e)', () => {
       
       expect(res.body.data.status).toBe('DRAFT');
       expect(Number(res.body.data.totalAmount)).toBe(500.00);
+      purchaseId = res.body.data.id;
     });
 
     it('deve confirmar uma compra', async () => {
@@ -103,6 +144,54 @@ describe('Suppliers & Purchases (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
       expect(res.body.data.status).toBe('CONFIRMED');
+    });
+
+    it('deve obter uma compra por ID (admin)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/purchases/${purchaseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBe(purchaseId);
+      expect(Array.isArray(res.body.data.lines)).toBe(true);
+      expect(res.body.data.supplier).toBeDefined();
+    });
+
+    it('deve devolver 404 ao consultar compra inexistente', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/purchases/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+    });
+
+    it('não deve permitir consultar compra de outra farmácia (404)', async () => {
+      const bcryptLib = await import('bcrypt');
+      let phB = await prisma.pharmacy.findFirst({ where: { name: 'Farmacia B - Purchases E2E' } });
+      if (!phB) {
+        phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B - Purchases E2E', status: 'ACTIVE' } });
+      }
+      const passwordHash = await bcryptLib.hash('admin_purchases_pass_123456', 12);
+      const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+      const userB = await prisma.user.upsert({
+        where: { email: 'admin_purchases@farmaciab.com' },
+        update: { pharmacyId: phB.id, passwordHash },
+        create: { email: 'admin_purchases@farmaciab.com', passwordHash, fullName: 'Admin Purchases B', pharmacyId: phB.id, status: 'ACTIVE' },
+      });
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+        update: {},
+        create: { userId: userB.id, roleId: roleAdmin!.id },
+      });
+
+      const loginB = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: 'admin_purchases@farmaciab.com', password: 'admin_purchases_pass_123456' });
+      const tokenB = loginB.body.data.accessToken;
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/purchases/${purchaseId}`)
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(404);
     });
   });
 
@@ -133,6 +222,18 @@ describe('Suppliers & Purchases (e2e)', () => {
         where: { action: 'purchase.create', pharmacyId }
       });
       expect(logs.length).toBeGreaterThan(0);
+    });
+
+    it('deve rejeitar GET /suppliers/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/suppliers/${supplierId}`)
+        .expect(401);
+    });
+
+    it('deve rejeitar GET /purchases/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/purchases/${purchaseId}`)
+        .expect(401);
     });
   });
 });

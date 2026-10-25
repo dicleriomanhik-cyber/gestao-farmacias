@@ -11,6 +11,7 @@ describe('Products & Categories (e2e)', () => {
   let adminToken: string;
   let pharmacyId: string;
   let categoryId: string;
+  let productId: string;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -54,7 +55,10 @@ describe('Products & Categories (e2e)', () => {
         .get('/api/v1/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
-      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('meta');
+      expect(Array.isArray(res.body.data.data)).toBe(true);
+      expect(res.body.data.data.length).toBeGreaterThan(0);
     });
   });
 
@@ -75,6 +79,7 @@ describe('Products & Categories (e2e)', () => {
       expect(res.body.data.name).toBe('Produto Teste');
       expect(res.body.data.pharmacyId).toBe(pharmacyId);
       expect(parseFloat(res.body.data.salePrice)).toBe(100.50);
+      productId = res.body.data.id;
     });
 
     it('deve falhar ao criar produto com SKU duplicado', async () => {
@@ -129,6 +134,22 @@ describe('Products & Categories (e2e)', () => {
         .send({ salePrice: 120.00 })
         .expect(200);
       expect(parseFloat(res.body.data.salePrice)).toBe(120.00);
+    });
+
+    it('deve obter um produto por ID (admin)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/products/${productId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBe(productId);
+    });
+
+    it('deve devolver 404 ao consultar produto inexistente', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/products/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
     });
 
     it('deve desactivar um produto (soft delete)', async () => {
@@ -228,6 +249,20 @@ describe('Products & Categories (e2e)', () => {
           categoryId: categoryAId
         })
         .expect(400);
+    });
+
+    it('Farmácia B NÃO deve consultar um produto da Farmácia A por ID (404)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/products/${productId}`)
+        .set('Authorization', `Bearer ${tokenFarmaciaB}`)
+        .expect(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve rejeitar GET /products/:id sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/products/${productId}`)
+        .expect(401);
     });
   });
 });

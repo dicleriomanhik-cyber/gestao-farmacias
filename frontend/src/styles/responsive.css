@@ -1,0 +1,132 @@
+﻿/* Utilitários de Layout Operacional */
+.pos-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.pos-col-produtos {
+  flex: 1 1 500px;
+  min-width: 300px;
+}
+
+.pos-col-carrinho {
+  flex: 1 1 350px;
+  min-width: 300px;
+  position: sticky;
+  top: 1rem;
+}
+
+/* Esconder botão hamburger no desktop */
+.mobile-menu-btn {
+  display: none;
+}
+
+/* Ajustes Globais para o Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tablet e Mobile (<= 768px) */
+@media (max-width: 768px) {
+  .pos-container {
+    flex-direction: column;
+  }
+  .pos-col-produtos,
+  .pos-col-carrinho {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .pos-col-carrinho {
+    position: static;
+  }
+  
+  /* Botões maiores para toque */
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    min-height: 44px;
+  }
+
+  /* Inputs maiores */
+  input[type="text"],
+  input[type="number"],
+  select {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+
+  /* Sidebar Responsiva no Painel Administrativo */
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -100%;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    width: 250px !important;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .mobile-menu-btn {
+    display: block !important;
+  }
+
+  /* Ajustar header em mobile */
+  .header {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .header h2 {
+    font-size: 1rem;
+  }
+
+  /* Esconder o nome do utilizador no header em mobile */
+  .header-user-name {
+    display: none;
+  }
+}
+
+/* Telemóvel pequeno (<= 375px) */
+@media (max-width: 375px) {
+  .pos-container {
+    gap: 0.5rem;
+  }
+  .card {
+    padding: 0.75rem !important;
+  }
+  h2 {
+    font-size: 1.25rem;
+  }
+  .header h2 {
+    font-size: 0.9rem;
+  }
+}
+
+body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }

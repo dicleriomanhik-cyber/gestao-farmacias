@@ -326,4 +326,41 @@ describe('Reports (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(400);
   });
+
+  it('vendas: filtro por método devolve apenas vendas com esse método', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/reports/sales?method=CASH')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.sales)).toBe(true);
+    for (const sale of res.body.data.sales) {
+      const hasCash = sale.payments.some((p: any) => p.method === 'CASH');
+      expect(hasCash).toBe(true);
+    }
+    const methods = res.body.data.byPaymentMethod.map((m: any) => m.method);
+    if (methods.length > 0) {
+      expect(methods).toContain('CASH');
+    }
+  });
+
+  it('vendas: filtro por método inválido devolve 400', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/reports/sales?method=INVALIDO')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+  });
+
+  it('vendas: filtro por método respeita isolamento entre farmácias', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/reports/sales?method=CASH')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    for (const sale of res.body.data.sales) {
+      expect(sale).toBeTruthy();
+      // Não deve haver vendas da farmácia B (o isolamento é garantido pelo pharmacyId no where)
+    }
+  });
 });

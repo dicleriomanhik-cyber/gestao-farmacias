@@ -9,6 +9,7 @@ describe('Sales & POS (e2e)', () => {
   let prisma: PrismaService;
   let adminToken: string;
   let productId: string;
+  let pharmacyId: string;
   let saleId: string;
 
   beforeAll(async () => {
@@ -37,7 +38,7 @@ describe('Sales & POS (e2e)', () => {
       .post('/api/v1/auth/login')
       .send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASSWORD });
     adminToken = loginRes.body.data.accessToken;
-    const pharmacyId = loginRes.body.data.user.pharmacyId;
+    pharmacyId = loginRes.body.data.user.pharmacyId;
 
     // Produto (Preço 100)
     const prodRes = await request(app.getHttpServer())
@@ -107,4 +108,111 @@ describe('Sales & POS (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(400);
   });
-});
+
+  it('deve obter uma venda por ID (admin)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(saleId);
+  });
+
+  it('não deve permitir consultar venda de outra farmácia (404)', async () => {
+    const bcryptLib = await import('bcrypt');
+    let phB = await prisma.pharmacy.findFirst({ where: { name: 'Farmacia B - Sales E2E' } });
+    if (!phB) {
+      phB = await prisma.pharmacy.create({ data: { name: 'Farmacia B - Sales E2E', status: 'ACTIVE' } });
+    }
+    const passwordHash = await bcryptLib.hash('admin_b_pass_123456', 12);
+    const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    const userB = await prisma.user.upsert({
+      where: { email: 'admin@farmaciab.com' },
+      update: { pharmacyId: phB.id, passwordHash },
+      create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: userB.id, roleId: roleAdmin!.id } },
+      update: {},
+      create: { userId: userB.id, roleId: roleAdmin!.id },
+    });
+
+    const loginB = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'admin@farmaciab.com', password: 'admin_b_pass_123456' });
+    const tokenB = loginB.body.data.accessToken;
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
+
+  it('deve rejeitar GET /sales/:id sem token (401)', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/sales/${saleId}`)
+      .expect(401);
+  });
+
+  it('deve rejeitar criação de venda sem linhas (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lines: [] })
+      .expect(400);
+  });
+
+  it('deve rejeitar criação de venda com payload sem linhas (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ notes: 'sem linhas' })
+      .expect(400);
+  });
+
+  it('deve rejeitar confirmacao de venda quando apenas existe lote expirado (400)', async () => {
+    // Criar um lote expirado para o mesmo produto
+    await prisma.stockLot.deleteMany({ where: { lotNumber: 'LOTE-EXPIRADO-E2E' } });
+    const expiredLot = await prisma.stockLot.create({
+      data: {
+        pharmacyId,
+        productId,
+        lotNumber: 'LOTE-EXPIRADO-E2E',
+        expiryDate: new Date('2020-01-01'),
+        quantityReceived: 5,
+        quantityAvailable: 5,
+        unitCost: 10,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Zerar stock dos lotes válidos
+    await prisma.stockLot.updateMany({
+      where: { productId, lotNumber: { not: 'LOTE-EXPIRADO-E2E' } },
+      data: { quantityAvailable: 0 },
+    });
+
+    // Criar venda DRAFT
+    const saleRes = await request(app.getHttpServer())
+      .post('/api/v1/sales')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lines: [{ productId, quantity: 1 }] })
+      .expect(201);
+
+    const saleId = saleRes.body.data.id;
+
+    // Confirmar deve falhar
+    await request(app.getHttpServer())
+      .patch(`/api/v1/sales/${saleId}/confirm`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+
+    // O lote expirado deve estar intacto
+    const expiredAfter = await prisma.stockLot.findUnique({ where: { id: expiredLot.id } });
+    expect(expiredAfter!.quantityAvailable).toBe(5);
+
+    // Limpar: apagar venda DRAFT + lote expirado
+    await prisma.saleLine.deleteMany({ where: { saleId } });
+    await prisma.sale.delete({ where: { id: saleId } });
+    await prisma.stockLot.delete({ where: { id: expiredLot.id } });
+  });});

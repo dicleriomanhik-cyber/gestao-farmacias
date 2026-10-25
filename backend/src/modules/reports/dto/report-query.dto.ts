@@ -27,6 +27,14 @@ export class ReportQueryDto {
   @IsString()
   @IsOptional()
   status?: string;
+
+  @ApiPropertyOptional({
+    enum: PaymentMethodFilter,
+    description: 'Filtrar vendas por método de pagamento',
+  })
+  @IsEnum(PaymentMethodFilter)
+  @IsOptional()
+  method?: PaymentMethodFilter;
 }
 
 export class ExpenseReportQueryDto extends ReportQueryDto {
@@ -34,9 +42,4 @@ export class ExpenseReportQueryDto extends ReportQueryDto {
   @IsEnum(ExpenseCategoryFilter)
   @IsOptional()
   category?: ExpenseCategoryFilter;
-
-  @ApiPropertyOptional({ enum: PaymentMethodFilter })
-  @IsEnum(PaymentMethodFilter)
-  @IsOptional()
-  method?: PaymentMethodFilter;
 }

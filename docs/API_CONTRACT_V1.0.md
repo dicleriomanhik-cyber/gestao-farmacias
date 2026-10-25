@@ -55,6 +55,7 @@
 | GET | `/stock/lots` | `stock:read` | ✓ | ✓ | ✗ | ✓ |
 | GET | `/stock/movements` | `stock:read` | ✓ | ✓ | ✗ | ✓ |
 | POST | `/stock/receive` | `stock:write` | ✓ | ✗ | ✗ | ✓ |
+| POST | `/stock/lots` | `stock:write` | ✓ | ✗ | ✗ | ✓ |
 | POST | `/stock/adjust` | `stock:adjust` | ✓ | ✗ | ✗ | ✓ |
 | GET | `/sales` | `sales:read` | ✓ | ✓ | ✓ | ✓ |
 | GET | `/sales/:id` | `sales:read` | ✓ | ✓ | ✓ | ✓ |
@@ -88,6 +89,19 @@
 | GET | `/reports/cash` | `reports:read` | ✓ | ✓ | ✓ | ✓ |
 | GET | `/reports/stock` | `reports:read` | ✓ | ✓ | ✓ | ✓ |
 
+**Paginação de `GET /categories`:**
+- Parâmetros opcionais de query: `page` (default 1) e `limit` (default 20, máximo 100).
+- Resposta: `{ data: [...], meta: { total, page, limit, totalPages } }`.
+- Sem os parâmetros, aplicam-se os defaults.
+
+**Filtro por método de pagamento em `GET /reports/sales`:**
+- Parâmetro opcional de query: `method`.
+- Valores aceites: `CASH`, `CARD`, `MPESA`, `EMOLA`, `TRANSFER`, `OTHER`.
+- Comportamento: selecciona apenas as vendas que tenham pelo menos um pagamento com o método indicado.
+- Os pagamentos das vendas seleccionadas permanecem completos na resposta.
+- O campo `byPaymentMethod` reflecte os pagamentos dessas vendas.
+- Sem o parâmetro, o comportamento anterior mantém-se.
+
 ## 4. Fluxos de Negócio Principais
 1. **Compra → Stock:** `POST /purchases` (DRAFT) → `PATCH /purchases/:id/confirm` → `POST /stock/receive` (Cria Lote e Movimento).
 2. **Venda → Caixa:** `POST /cash/open` (obrigatório para CASH) → `POST /sales` (DRAFT) → `PATCH /sales/:id/confirm` (Reduz Stock via FEFO) → `POST /cash/payments`.
@@ -100,9 +114,9 @@
 - O endpoint `PATCH /returns/refunds/:refundId/confirm` permite transitar de `PENDING` para `COMPLETED` (confirmado manualmente), `FAILED` (falhou) ou `CANCELLED` (cancelado). Transições a partir de estados finais são bloqueadas.
 
 ## 6. Limitações Conhecidas e Dívida Técnica
-- **Rota sem paginação:** `GET /categories` devolve todos os registos de uma vez (recomenda-se cache local no Front-end).
-- **Filtros em relatórios:** `GET /reports/sales` não aceita filtro por método de pagamento na query (a agregação é devolvida na resposta).
-- **Lacunas de testes E2E:** As rotas `GET /users/:id`, `PATCH /categories/:id`, `GET /suppliers/:id`, `GET /sales/:id`, `PATCH /sales/:id`, `GET /expenses/:id`, `PATCH /expenses/:id/cancel`, `GET /returns/:id` e `PATCH /returns/:id` não possuem testes E2E dedicados (embora estejam implementadas e protegidas).
+- **Lacunas de testes E2E:** As rotas `PATCH /sales/:id` e `PATCH /expenses/:id/cancel` não possuem testes E2E dedicados (embora estejam implementadas e protegidas).
+- **Discrepância contrato-implementação:** A rota `PATCH /returns/:id` está listada no contrato mas não está implementada no Back-end.
+- **Cobertura E2E de GET por ID:** As rotas `GET /users/:id`, `GET /products/:id`, `GET /suppliers/:id`, `GET /purchases/:id`, `GET /sales/:id`, `GET /expenses/:id` e `GET /returns/:id` possuem testes E2E dedicados, cobrindo sucesso, isolamento multi-tenant e rejeição sem autenticação. A rota `PATCH /categories/:id` também possui teste dedicado.
 - **Dívida Técnica:** Uso de `@ts-nocheck` nos módulos de negócio (não afeta o runtime, mas reduz a segurança de tipagem).
 - **Integrações:** M-Pesa/e-Mola são registados manualmente (sem integração real com as APIs das operadoras).
 

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { StockService } from './stock.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { CreateLotDto } from './dto/create-lot.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions';
 import { Tenant } from '../../common/decorators/tenant.decorator';
@@ -22,6 +23,17 @@ export class StockController {
   @ApiOperation({ summary: 'Receber mercadoria (criar lote e dar entrada)' })
   receive(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: ReceiveStockDto) {
     return this.service.receiveStock(pharmacyId, user.id, dto);
+  }
+
+  @Post('lots')
+  @RequirePermissions(PERMISSIONS.STOCK_WRITE)
+  @ApiOperation({ summary: 'Registar lote directamente com validade' })
+  createLot(
+    @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateLotDto,
+  ) {
+    return this.service.createLot(pharmacyId, user.id, dto);
   }
 
   @Post('adjust')

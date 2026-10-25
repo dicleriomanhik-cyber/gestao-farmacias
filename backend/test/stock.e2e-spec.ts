@@ -195,6 +195,148 @@ describe('Stock, Lotes e Movimentos (e2e)', () => {
     });
   });
 
+  describe('Registo directo de lotes', () => {
+    const directLotNumber = 'LOTE-DIRECTO-001';
+
+    afterAll(async () => {
+      await prisma.stockMovement.deleteMany({
+        where: { lot: { lotNumber: directLotNumber } },
+      });
+      await prisma.stockLot.deleteMany({ where: { lotNumber: directLotNumber } });
+    });
+
+    it('deve criar um lote directamente com validade (201)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId,
+          lotNumber: directLotNumber,
+          expiryDate: '2027-12-31',
+          quantity: 50,
+          unitCost: 25.00,
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBeDefined();
+      expect(res.body.data.lotNumber).toBe(directLotNumber);
+      expect(res.body.data.quantityReceived).toBe(50);
+      expect(res.body.data.quantityAvailable).toBe(50);
+      expect(res.body.data.quantityReceivedFromLine).toBe(0);
+      expect(res.body.data.purchaseLineId).toBeNull();
+    });
+
+    it('deve aparecer em GET /stock/lots com validade correcta', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const lot = res.body.data.find((l: any) => l.lotNumber === directLotNumber);
+      expect(lot).toBeDefined();
+      expect(lot.expiryDate).toBeDefined();
+      expect(new Date(lot.expiryDate).toISOString().slice(0, 10)).toBe('2027-12-31');
+      expect(lot.quantityAvailable).toBe(50);
+    });
+
+    it('deve registar um movimento DIRECT_ENTRY', async () => {
+      const lot = await prisma.stockLot.findFirst({
+        where: { lotNumber: directLotNumber, pharmacyId },
+      });
+      expect(lot).toBeDefined();
+
+      const movements = await prisma.stockMovement.findMany({
+        where: { lotId: lot!.id, type: 'DIRECT_ENTRY' },
+      });
+      expect(movements.length).toBe(1);
+      expect(movements[0].quantity).toBe(50);
+      expect(movements[0].referenceType).toBe('StockLot');
+      expect(movements[0].referenceId).toBe(lot!.id);
+    });
+
+    it('não deve permitir criar lote sem token (401)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .send({
+          productId,
+          lotNumber: 'LOTE-SEM-TOKEN',
+          expiryDate: '2027-12-31',
+          quantity: 10,
+          unitCost: 10,
+        })
+        .expect(401);
+    });
+
+    it('deve rejeitar produto inexistente (404)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId: '00000000-0000-0000-0000-000000000000',
+          lotNumber: 'LOTE-INEXISTENTE',
+          expiryDate: '2027-12-31',
+          quantity: 10,
+          unitCost: 10,
+        })
+        .expect(404);
+    });
+
+    it('deve rejeitar quantidade zero ou negativa (400)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId,
+          lotNumber: 'LOTE-QTD-ZERO',
+          expiryDate: '2027-12-31',
+          quantity: 0,
+          unitCost: 10,
+        })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId,
+          lotNumber: 'LOTE-QTD-NEG',
+          expiryDate: '2027-12-31',
+          quantity: -5,
+          unitCost: 10,
+        })
+        .expect(400);
+    });
+
+    it('deve rejeitar data inválida (400)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId,
+          lotNumber: 'LOTE-DATA-MAU',
+          expiryDate: 'nao-e-data',
+          quantity: 10,
+          unitCost: 10,
+        })
+        .expect(400);
+    });
+
+    it('deve rejeitar lote duplicado (400)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/stock/lots')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          productId,
+          lotNumber: directLotNumber,
+          expiryDate: '2028-01-01',
+          quantity: 5,
+          unitCost: 10,
+        })
+        .expect(400);
+    });
+  });
+
   describe('Isolamento Multi-Tenant', () => {
     let tokenFarmaciaB: string;
 
