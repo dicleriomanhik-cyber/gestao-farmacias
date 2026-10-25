@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getSaleById, confirmSale } from "../../services/saleService";
+import { getSaleById, confirmSale, getSalePayments } from "../../services/saleService";
+import { formatDateTime } from "../../utils/formatDate";
 import { registerPayment } from "../../services/cashService";
-import type { Sale, SaleStatus, PaymentMethod } from "../../types/sales";
+import type { Sale, SaleStatus, PaymentMethod, Payment } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
@@ -38,6 +39,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   const toast = useToast();
   const { user } = useAuth();
   const [sale, setSale] = useState<Sale | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -49,10 +51,11 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     if (!id) return;
     setLoading(true);
     setError(false);
-    getSaleById(id)
-      .then((s) => {
+    Promise.all([getSaleById(id), getSalePayments(id)])
+      .then(([s, p]) => {
         setSale(s);
-        setIsPaid(getPaidSaleIds().includes(id));
+        setPayments(p);
+        setIsPaid(getPaidSaleIds().includes(id) || p.length > 0);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -101,6 +104,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
       markAsPaid(sale.id);
       setIsPaid(true);
       setShowPayment(false);
+      load();
     } catch (err: any) {
       const rawMsg = err?.response?.data?.error?.message;
       let msg: string;
@@ -148,10 +152,14 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
         {statusBadge(sale.status)}
       </div>
 
-      <p><strong>Data:</strong> {new Date(sale.createdAt).toLocaleString()}</p>
+      <p><strong>Data:</strong> {formatDateTime(sale.createdAt)}</p>
       <p><strong>Subtotal:</strong> {parseFloat(sale.subtotal).toFixed(2)} MT</p>
       <p><strong>Desconto:</strong> {parseFloat(sale.discount).toFixed(2)} MT</p>
       <p><strong>Total:</strong> {parseFloat(sale.total).toFixed(2)} MT</p>
+
+      {payments.length > 0 && (
+        <p><strong>Método de Pagamento:</strong> {payments.map((p) => ({ CASH: "Dinheiro", CARD: "Cartão", MPESA: "M-Pesa", EMOLA: "e-Mola" }[p.method] ?? p.method)).join(", ")}</p>
+      )}
 
       <h3 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Linhas</h3>
       <table className="table">

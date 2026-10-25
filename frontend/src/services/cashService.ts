@@ -1,5 +1,5 @@
 ﻿import { apiClient } from "./api";
-import type { CashSession, CashOpenRequest, CashCloseRequest, Payment, PaymentRequest } from "../types/sales";
+import type { CashSession, CashOpenRequest, CashCloseRequest, Payment, PaymentRequest, PaymentMethod } from "../types/sales";
 
 interface Envelope<T> {
   success: true;
@@ -27,3 +27,7 @@ export async function registerPayment(data: PaymentRequest): Promise<Payment> {
   return resp.data.data;
 }
 
+export async function getPayments(): Promise<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }> {
+  const resp = await apiClient.get<Envelope<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }>>("/cash/payments");
+  return resp.data.data;
+}

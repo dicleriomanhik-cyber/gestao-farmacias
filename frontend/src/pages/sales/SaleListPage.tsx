@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSales } from "../../services/saleService";
+import { formatDateTime } from "../../utils/formatDate";
+import { getReturns } from "../../services/returnService";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
@@ -17,19 +19,30 @@ interface Props {
 export default function SaleListPage({ hideNewSaleButton = false, isOperational = false }: Props) {
   const { user } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
+  const [returnedSaleIds, setReturnedSaleIds] = useState<Set<string>>(new Set());
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<SaleStatus | "">("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "CONFIRMED" | "RETURNED">("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   function load() {
     setLoading(true);
     setError(false);
-    getSales({ page, limit: 10, status: statusFilter || undefined })
-      .then((res) => {
-        setSales(res.data);
-        setMeta(res.meta);
+    Promise.all([
+      getSales({ page, limit: 10, status: statusFilter === "CONFIRMED" ? "CONFIRMED" : undefined }),
+      getReturns({ page: 1, limit: 100 }),
+    ])
+      .then(([salesRes, returnsRes]) => {
+        setSales(salesRes.data);
+        setMeta(salesRes.meta);
+        const ids = new Set<string>();
+        returnsRes.data.forEach((r) => {
+          if (r.status === "CONFIRMED" || r.status === "COMPLETED") {
+            ids.add(r.saleId);
+          }
+        });
+        setReturnedSaleIds(ids);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -42,7 +55,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
-  if (sales.length === 0 && page === 1 && !statusFilter) {
+  if (sales.length === 0 && page === 1 && statusFilter === "ALL") {
     return (
       <EmptyState
         message="Nenhuma venda registada."
@@ -66,6 +79,10 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     );
   }
 
+  const filteredSales = statusFilter === "RETURNED"
+    ? sales.filter((s) => returnedSaleIds.has(s.id))
+    : sales;
+
   return (
     <div>
       <PageHeader
@@ -77,14 +94,13 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
         <label style={{ marginRight: "0.5rem", fontWeight: 500 }}>Estado:</label>
         <select
           value={statusFilter}
-          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as SaleStatus | ""); }}
+          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
           className="input"
           style={{ display: "inline-block", width: "auto" }}
         >
-          <option value="">Todos</option>
-          <option value="DRAFT">Rascunho</option>
+          <option value="ALL">Todos</option>
           <option value="CONFIRMED">Concluída</option>
-          <option value="CANCELLED">Cancelada</option>
+          <option value="RETURNED">Reembolsada</option>
         </select>
       </div>
 
@@ -100,22 +116,33 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
             </tr>
           </thead>
           <tbody>
-            {sales.map((s) => (
-              <tr key={s.id}>
-                <td>{s.saleNumber}</td>
-                <td>{new Date(s.createdAt).toLocaleString()}</td>
-                <td>{parseFloat(s.total).toFixed(2)} MT</td>
-                <td>{statusBadge(s.status)}</td>
-                <td>
-                  <Link 
-                    to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
-                    style={{ color: "#2563eb", textDecoration: "none" }}
-                  >
-                    Ver Detalhe
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {filteredSales.map((s) => {
+              const isReturned = returnedSaleIds.has(s.id);
+              return (
+                <tr key={s.id}>
+                  <td>{s.saleNumber}</td>
+                  <td>{formatDateTime(s.createdAt)}</td>
+                  <td>{parseFloat(s.total).toFixed(2)} MT</td>
+                  <td>
+                    {isReturned ? (
+                      <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#fef3c7", color: "#92400e" }}>
+                        Reembolsada
+                      </span>
+                    ) : (
+                      statusBadge(s.status)
+                    )}
+                  </td>
+                  <td>
+                    <Link 
+                      to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
+                      style={{ color: "#2563eb", textDecoration: "none" }}
+                    >
+                      Ver Detalhe
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

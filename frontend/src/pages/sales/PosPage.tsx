@@ -7,7 +7,6 @@ import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import "../../styles/responsive.css";
 
 interface CartItem {
   productId: string;
@@ -45,8 +44,11 @@ export default function PosPage() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    const timer = setTimeout(() => {
+      load(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   function addItem(product: Product) {
     setCart((prev) => {
@@ -84,9 +86,9 @@ export default function PosPage() {
       if (!session) {
         try {
           session = await openCash({ openingBalance: 0 });
-          toast.success("Caixa aberta automaticamente para esta venda.");
+          toast.success("Caixa aberta automaticamente.");
         } catch (openErr: any) {
-          toast.error("É necessário abrir a caixa manualmente no menu 'Caixa' antes de vender.");
+          toast.error("Abra a caixa manualmente antes de vender.");
           setSubmitting(false);
           return;
         }
@@ -100,7 +102,7 @@ export default function PosPage() {
         method: paymentMethod,
       });
 
-      toast.success("Venda confirmada com sucesso!");
+      toast.success("Venda confirmada!");
       setCompletedSale({ id: confirmed.id, saleNumber: confirmed.saleNumber, total: confirmed.total });
       setCart([]);
     } catch (err: any) {
@@ -116,16 +118,16 @@ export default function PosPage() {
     load();
   }
 
-  if (loading) return <LoadingState />;
+  if (loading && products.length === 0) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={() => load(search)} />;
 
   if (completedSale) {
     return (
-      <div className="card" style={{ padding: "2rem", textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
+      <div style={{ backgroundColor: "white", padding: "3rem", textAlign: "center", maxWidth: "600px", margin: "0 auto", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }}>
         <h2 style={{ color: "#15803d", marginBottom: "1rem" }}>✅ Venda Concluída</h2>
-        <p><strong>Nº:</strong> {completedSale.saleNumber}</p>
-        <p><strong>Total:</strong> {parseFloat(completedSale.total).toFixed(2)} MT</p>
-        <button onClick={startNewSale} className="btn btn-primary" style={{ marginTop: "1.5rem", width: "100%" }}>
+        <p style={{ fontSize: "1.1rem" }}><strong>Nº:</strong> {completedSale.saleNumber}</p>
+        <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}><strong>Total:</strong> {parseFloat(completedSale.total).toFixed(2)} MT</p>
+        <button onClick={startNewSale} style={{ marginTop: "2rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
           Nova Venda
         </button>
       </div>
@@ -133,85 +135,119 @@ export default function PosPage() {
   }
 
   return (
-    <div className="pos-container">
-      <div className="card pos-col-produtos">
-        <h2 style={{ marginBottom: "1rem" }}>Produtos</h2>
-        
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", alignItems: "stretch", height: "calc(100vh - 160px)" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+        <div style={{ marginBottom: "1rem", flexShrink: 0 }}>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Produtos</h1>
+          <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>Pesquise e adicione produtos à venda</p>
+        </div>
+
+        <div style={{ marginBottom: "1rem", flexShrink: 0 }}>
           <input
             type="text"
-            placeholder="Pesquisar produto…"
+            placeholder="Pesquisar produto..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") load(search); }}
-            style={{ flex: "1 1 200px", padding: "0.5rem", border: "1px solid #d1d5db", borderRadius: "4px" }}
+            style={{ width: "100%", padding: "0.75rem 1rem", border: "2px solid #93c5fd", borderRadius: "8px", fontSize: "0.95rem", outline: "none", backgroundColor: "#fff", boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)", boxSizing: "border-box" }}
           />
-          <button onClick={() => load(search)} className="btn btn-secondary" style={{ flex: "0 0 auto" }}>Pesquisar</button>
         </div>
 
-        {products.length === 0 ? (
-          <p style={{ color: "#6b7280" }}>Nenhum produto encontrado.</p>
-        ) : (
-          products.map((p) => (
-            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #eee", flexWrap: "wrap", gap: "0.5rem" }}>
-              <span>{p.name} — {parseFloat(p.salePrice).toFixed(2)} MT</span>
-              <button onClick={() => addItem(p)} className="btn btn-secondary">+ Adicionar</button>
-            </div>
-          ))
-        )}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem", paddingRight: "0.5rem" }}>
+          {loading ? (
+            <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>A pesquisar…</p>
+          ) : products.length === 0 ? (
+            <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>Nenhum produto encontrado.</p>
+          ) : (
+            products.map((p) => (
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc", flexShrink: 0 }}>
+                <div style={{ fontWeight: "normal", flex: 1 }}>
+                  {p.name}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <span style={{ fontWeight: "bold", color: "#1e293b" }}>{parseFloat(p.salePrice).toFixed(2)} MT</span>
+                  <button onClick={() => addItem(p)} style={{ padding: "0.4rem 0.8rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>Adicionar</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      <div className="card pos-col-carrinho">
-        <h2 style={{ marginBottom: "1rem" }}>Carrinho</h2>
-        {cart.length === 0 ? (
-          <p style={{ color: "#6b7280" }}>Carrinho vazio.</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {cart.map((item) => (
-              <li key={item.productId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #eee", flexWrap: "wrap", gap: "0.5rem" }}>
-                <span style={{ fontWeight: 500 }}>{item.productName}</span>
-                <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value, 10) || 1)}
-                    style={{ width: "60px", padding: "0.25rem", textAlign: "center" }}
-                  />
-                  <span style={{ fontWeight: "bold" }}>{(parseFloat(item.unitPrice) * item.quantity).toFixed(2)} MT</span>
-                  <button onClick={() => removeItem(item.productId)} style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer", fontSize: "1.25rem", padding: "0 0.5rem" }}>×</button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <h2 style={{ marginTop: "1rem", textAlign: "right", fontSize: "1.5rem" }}>Total: {total.toFixed(2)} MT</h2>
-
-        <div style={{ marginTop: "1rem", borderTop: "1px solid #e5e7eb", paddingTop: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Método de Pagamento:</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-            {PAYMENT_METHODS.map((m) => (
-              <button
-                key={m.value}
-                onClick={() => setPaymentMethod(m.value)}
-                className={`btn ${paymentMethod === m.value ? "btn-primary" : "btn-secondary"}`}
-                style={{ width: "100%" }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ backgroundColor: "#dbeafe", padding: "1rem 1.5rem", borderBottom: "1px solid #bfdbfe", flexShrink: 0 }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: "bold", margin: 0 }}>Itens selecionados</h2>
         </div>
 
-        <button
-          onClick={handleCheckout}
-          disabled={submitting || cart.length === 0}
-          className="btn btn-primary"
-          style={{ marginTop: "1rem", width: "100%", padding: "1rem", fontSize: "1.1rem", fontWeight: "bold" }}
-        >
-          {submitting ? "A processar…" : "Finalizar Venda"}
-        </button>
+        <div style={{ padding: "1.5rem", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flex: 1, overflowY: "auto", marginBottom: "1rem" }}>
+            {cart.length === 0 ? (
+              <p style={{ color: "#94a3b8", textAlign: "center", padding: "2rem 0" }}>Carrinho vazio.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {cart.map((item) => (
+                  <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "bold", fontSize: "0.9rem" }}>{item.productName}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{item.quantity} x {parseFloat(item.unitPrice).toFixed(2)} MT</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value, 10) || 1)}
+                        style={{ width: "50px", padding: "0.25rem", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                      />
+                      <span style={{ fontWeight: "bold", fontSize: "0.9rem", minWidth: "70px", textAlign: "right" }}>{(parseFloat(item.unitPrice) * item.quantity).toFixed(2)} MT</span>
+                      <button onClick={() => removeItem(item.productId)} style={{ color: "#ef4444", border: "none", background: "none", cursor: "pointer", fontSize: "1.2rem" }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "1.1rem", margin: 0 }}>Total</h3>
+              <span style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#2563eb" }}>{total.toFixed(2)} MT</span>
+            </div>
+
+            <div style={{ marginTop: "1.5rem" }}>
+              <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: "bold", fontSize: "0.9rem" }}>Método de Pagamento</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => setPaymentMethod(m.value)}
+                    style={{
+                      padding: "0.75rem",
+                      borderRadius: "8px",
+                      border: paymentMethod === m.value ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                      backgroundColor: paymentMethod === m.value ? "#eff6ff" : "white",
+                      color: paymentMethod === m.value ? "#2563eb" : "#64748b",
+                      fontWeight: paymentMethod === m.value ? "bold" : "normal",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleCheckout}
+              disabled={submitting || cart.length === 0}
+              style={{ marginTop: "1.5rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: submitting || cart.length === 0 ? "not-allowed" : "pointer", opacity: submitting || cart.length === 0 ? 0.7 : 1 }}
+            >
+              {submitting ? "A processar…" : "Finalizar Venda"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
