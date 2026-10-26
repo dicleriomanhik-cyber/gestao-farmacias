@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createProduct, getProductById, updateProduct, getCategories } from "../../services/productService";
-import { getStockLots } from "../../services/stockService";
+import { getStockLots, adjustStock } from "../../services/stockService";
 import type { ProductRequest } from "../../types/products";
 import PageHeader from "../../components/ui/PageHeader";
 import { useToast } from "../../contexts/ToastContext";
@@ -19,6 +19,7 @@ export default function ProductFormPage() {
   const [salePrice, setSalePrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [lotId, setLotId] = useState("");
   const [loading, setLoading] = useState(isEdit);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +41,9 @@ export default function ProductFormPage() {
 
           const productLot = lots.find((l) => l.productId === p.id);
           if (productLot) {
-            setExpiryDate(productLot.expiryDate);
+            setLotId(productLot.id);
+            const d = new Date(productLot.expiryDate);
+            setExpiryDate(d.toISOString().split("T")[0]);
           }
         })
         .catch(() => setError(true))
@@ -64,6 +67,16 @@ export default function ProductFormPage() {
     try {
       if (isEdit && id) {
         await updateProduct(id, data);
+
+        // Atualizar a validade do lote
+        if (lotId && expiryDate) {
+          await adjustStock({
+            lotId,
+            quantity: 0,
+            reason: "Atualização de validade",
+            expiryDate: new Date(expiryDate).toISOString(),
+          });
+        }
         toast.success("Produto atualizado com sucesso.");
       } else {
         await createProduct(data);
@@ -96,14 +109,17 @@ export default function ProductFormPage() {
         {isEdit && expiryDate && (
           <>
             <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500 }}>Validade do Lote</label>
-            <input type="date" value={expiryDate.split("T")[0]} className="input" style={{ width: "100%", marginBottom: "0.5rem", backgroundColor: "#f3f4f6", color: "#6b7280" }} disabled />
-            <p style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "1.5rem" }}>
-              A validade é gerida na página de Stock. A alteração não está disponível nesta versão (limitação do Back-end).
-            </p>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="input"
+              style={{ width: "100%", marginBottom: "0.5rem" }}
+            />
           </>
         )}
 
-        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem", marginTop: "1rem" }}>
           {submitting ? "A guardar…" : "Guardar Produto"}
         </button>
       </form>
