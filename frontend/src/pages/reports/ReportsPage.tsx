@@ -122,7 +122,14 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Relatórios" />
+      <PageHeader
+        title="Relatórios"
+        actions={
+          <button onClick={load} className="btn btn-secondary" disabled={loading}>
+            {loading ? "A carregar…" : "Atualizar"}
+          </button>
+        }
+      />
 
       {/* BARRA DE FILTROS */}
       <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
@@ -331,3 +338,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
