@@ -17,24 +17,47 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [todaySales, setTodaySales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
+    
+    // Buscar um número alto de vendas recentes para calcular o "Hoje" no front-end
     Promise.allSettled([
       getReportSummary(),
       getReportStock(),
-      getSales({ limit: 5 }),
+      getSales({ limit: 100 }), // Puxa as últimas 100 para calcular o dia de hoje
     ]).then(([sumRes, stockRes, salesRes]) => {
       if (!mounted) return;
+      
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (stockRes.status === "fulfilled") setStock(stockRes.value);
-      if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
+      
+      if (salesRes.status === "fulfilled") {
+        const allSales = salesRes.value.data;
+        
+        // As 5 mais recentes para a tabela
+        setRecentSales(allSales.slice(0, 5));
+
+        // Filtrar as de hoje
+        const todayStr = new Date().toLocaleDateString("pt-PT");
+        const filteredToday = allSales.filter(s => {
+          const saleDate = new Date(s.createdAt).toLocaleDateString("pt-PT");
+          return saleDate === todayStr;
+        });
+        setTodaySales(filteredToday);
+      }
+      
       setLoading(false);
     });
     return () => { mounted = false; };
   }, []);
+
+  // Calcula os totais de hoje com base nas vendas filtradas
+  const todayTotal = todaySales.reduce((acc, s) => acc + parseFloat(String(s.total)), 0);
+  const todayCount = todaySales.length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -51,9 +74,9 @@ export default function DashboardPage() {
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas Hoje</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
-            {loading ? "…" : `${money(summary?.sales.total)} MT`}
+            {loading ? "…" : `${money(todayTotal)} MT`}
           </p>
-          <small style={{ color: "#6b7280" }}>{summary?.sales.count ?? 0} vendas</small>
+          <small style={{ color: "#6b7280" }}>{todayCount} vendas</small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
