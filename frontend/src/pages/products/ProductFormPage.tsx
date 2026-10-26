@@ -86,7 +86,6 @@ export default function ProductFormPage() {
         navigate("/produtos");
       } else {
         const product = await createProduct(data);
-        // Criar lote de stock se a validade e quantidade foram fornecidas
         if (expiryDate && quantity && unitCost) {
           await createLot({
             productId: product.id,
@@ -114,47 +113,64 @@ export default function ProductFormPage() {
   return (
     <div>
       <PageHeader title={isEdit ? "Editar Produto" : "Novo Produto"} />
-      <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
+      <form onSubmit={handleSubmit} className="card" style={{ padding: "1.25rem", maxWidth: "700px", margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Nome *</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input" style={{ width: "100%" }} />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Preço (MT) *</label>
+            <input type="number" step="0.01" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} required className="input" style={{ width: "100%" }} />
+          </div>
+        </div>
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Descrição</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={2} style={{ width: "100%", marginBottom: "1rem" }} />
+        <div style={{ marginBottom: "0.75rem" }}>
+          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Descrição</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={2} style={{ width: "100%" }} />
+        </div>
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Preço (MT) *</label>
-        <input type="number" step="0.01" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
-
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria *</label>
-        <div style={{ marginBottom: "1rem" }}>
+        <div style={{ marginBottom: "0.75rem" }}>
+          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Categoria *</label>
           <CustomSelect options={categoryOptions} value={categoryId} onChange={setCategoryId} placeholder="Seleciona uma categoria" />
         </div>
 
         {!isEdit && (
           <>
-            <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginTop: "1.5rem", marginBottom: "0.75rem", color: "#1e293b" }}>Stock Inicial (Opcional)</h3>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", marginTop: "1rem", marginBottom: "0.5rem", color: "#1e293b" }}>Stock Inicial (Opcional)</h3>
 
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número do Lote</label>
-            <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: LOTE-2026-001 (deixa vazio para automático)" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Número do Lote</label>
+                <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} className="input" style={{ width: "100%" }} placeholder="Automático se vazio" />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Validade</label>
+                <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="input" style={{ width: "100%" }} />
+              </div>
+            </div>
 
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Validade</label>
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="input" style={{ width: "100%", marginBottom: "1rem" }} />
-
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade</label>
-            <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: 100" />
-
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Custo Unitário (MT)</label>
-            <input type="number" step="0.01" min="0" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="input" style={{ width: "100%", marginBottom: "1.5rem" }} placeholder="Ex: 100.00" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Quantidade</label>
+                <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="input" style={{ width: "100%" }} placeholder="Ex: 100" />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Custo Unitário (MT)</label>
+                <input type="number" step="0.01" min="0" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="input" style={{ width: "100%" }} placeholder="Ex: 100.00" />
+              </div>
+            </div>
           </>
         )}
 
         {isEdit && expiryDate && (
-          <>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Validade do Lote</label>
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="input" style={{ width: "100%", marginBottom: "1.5rem" }} />
-          </>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Validade do Lote</label>
+            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="input" style={{ width: "100%" }} />
+          </div>
         )}
 
-        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.6rem" }}>
           {submitting ? "A guardar…" : "Guardar Produto"}
         </button>
       </form>
