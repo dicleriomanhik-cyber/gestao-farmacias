@@ -140,7 +140,13 @@ export default function PosPage() {
   if (completedSale) {
     return (
       <div style={{ backgroundColor: "white", padding: "3rem", textAlign: "center", maxWidth: "600px", margin: "0 auto", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }}>
-        <h2 style={{ color: "#15803d", marginBottom: "1rem" }}>✅ Venda Concluída</h2>
+        <h2 style={{ color: "#15803d", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Venda Concluída
+        </h2>
         <p style={{ fontSize: "1.1rem" }}><strong>Nº:</strong> {completedSale.saleNumber}</p>
         <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}><strong>Total:</strong> {parseFloat(completedSale.total).toFixed(2)} MT</p>
         
@@ -307,3 +313,4 @@ export default function PosPage() {
     </div>
   );
 }
+
