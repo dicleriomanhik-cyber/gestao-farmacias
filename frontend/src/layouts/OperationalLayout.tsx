@@ -15,7 +15,7 @@ export default function OperationalLayout() {
     { path: "/pos/historico", label: "Histórico" },
     { path: "/pos/stock", label: "Stock" },
     { path: "/pos/caixa", label: "Caixa" },
-    { path: "/pos/caixa/historico", label: "Histórico Caixa" },
+
     { path: "/pos/devolucoes", label: "Devoluções" },
   ];
 
