@@ -54,10 +54,10 @@ export default function CashSessionPage() {
           setMovements([]);
         }
 
-        const cashSales = data.totalsByMethod.CASH || 0;
+        const totalAllMethods = (data.totalsByMethod.CASH || 0) + (data.totalsByMethod.CARD || 0) + (data.totalsByMethod.MPESA || 0) + (data.totalsByMethod.EMOLA || 0);
         const totalOut = movementsData.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
         const totalIn = movementsData.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-        const expected = parseFloat(active.openingBalance.toString()) + cashSales + totalIn - totalOut;
+        const expected = parseFloat(active.openingBalance.toString()) + totalAllMethods + totalIn - totalOut;
         setAmount(expected.toFixed(2));
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
@@ -114,10 +114,11 @@ export default function CashSessionPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={load} />;
 
+  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const netCash = (totals.CASH || 0) - totalOut;
-  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + netCash + totalIn : 0;
+  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
