@@ -83,7 +83,8 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
 
   return (
     <div>
-      <PageHeader
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        <PageHeader
         title="Stock (Agrupado por Produto)"
         actions={
           !hideAdminActions ? (
@@ -94,8 +95,8 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
           ) : null
         }
       />
-
-      <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+      </div>
+<div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
           <thead>
             <tr>
@@ -141,3 +142,7 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
     </div>
   );
 }
+
+
+
+

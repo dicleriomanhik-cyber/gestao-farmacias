@@ -122,17 +122,18 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Relatórios"
-        actions={
-          <button onClick={load} className="btn btn-secondary" disabled={loading}>
-            {loading ? "A carregar…" : "Atualizar"}
-          </button>
-        }
-      />
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        <PageHeader
+          title="Relatórios"
+          actions={
+            <button onClick={load} className="btn btn-secondary" disabled={loading}>
+              {loading ? "A carregar…" : "Atualizar"}
+            </button>
+          }
+        />
 
-      {/* BARRA DE FILTROS */}
-      <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        {/* BARRA DE FILTROS */}
+        <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
           <select
@@ -150,18 +151,19 @@ export default function ReportsPage() {
           </select>
         </div>
 
-        {dateFilter === "CUSTOM" && (
-          <>
-            <div>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
-              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
-              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
-            </div>
-          </>
-        )}
+          {dateFilter === "CUSTOM" && (
+            <>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+                <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+                <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* CARDS DE RESUMO */}
@@ -338,4 +340,6 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
 

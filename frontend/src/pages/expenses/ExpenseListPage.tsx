@@ -141,13 +141,14 @@ export default function ExpenseListPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Despesas"
-        actions={canWrite ? <Link to="/despesas/novo" className="btn btn-primary">+ Nova Despesa</Link> : null}
-      />
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        <PageHeader
+          title="Despesas"
+          actions={canWrite ? <Link to="/despesas/novo" className="btn btn-primary">+ Nova Despesa</Link> : null}
+        />
 
-      {/* BARRA DE FILTROS */}
-      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        {/* BARRA DE FILTROS */}
+        <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
@@ -179,10 +180,11 @@ export default function ExpenseListPage() {
           </>
         )}
 
-        <div style={{ marginLeft: "auto", textAlign: "right" }}>
-          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
-          <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
-          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} despesas</div>
+          <div style={{ marginLeft: "auto", textAlign: "right" }}>
+            <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+            <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} despesas</div>
+          </div>
         </div>
       </div>
 
@@ -244,4 +246,6 @@ export default function ExpenseListPage() {
     </div>
   );
 }
+
+
 
