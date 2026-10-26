@@ -37,7 +37,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     setError(false);
     
     Promise.all([
-      getSales({ page, limit: 100 }), // Puxa as vendas sem filtro de estado
+      getSales({ page, limit: 100 }),
       getReturns({ page: 1, limit: 100 }),
     ])
       .then(([salesRes, returnsRes]) => {
@@ -75,7 +75,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   }
 
   // --- LÓGICA DE FILTRAGEM ---
-  // 1. Filtrar por estado
   let filteredSales = sales;
   if (statusFilter === "CONFIRMED") {
     filteredSales = filteredSales.filter((s) => !returnedSaleIds.has(s.id) && s.status === "CONFIRMED");
@@ -83,15 +82,13 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     filteredSales = filteredSales.filter((s) => returnedSaleIds.has(s.id));
   }
 
-  // 2. Filtrar por data
   const now = new Date();
-  
   if (dateFilter === "DAILY") {
     const todayStr = now.toLocaleDateString("pt-PT");
     filteredSales = filteredSales.filter(s => new Date(s.createdAt).toLocaleDateString("pt-PT") === todayStr);
   } else if (dateFilter === "WEEKLY") {
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Segunda-feira
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
     startOfWeek.setHours(0, 0, 0, 0);
     filteredSales = filteredSales.filter(s => new Date(s.createdAt) >= startOfWeek);
   } else if (dateFilter === "MONTHLY") {
@@ -113,7 +110,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     }
   }
 
-  // 3. Totais do período
   const totalPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
   const totalCount = filteredSales.length;
 
@@ -130,7 +126,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
       {/* BARRA DE FILTROS */}
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         
-        {/* Filtro de Estado */}
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Estado</label>
           <select
@@ -145,7 +140,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
           </select>
         </div>
 
-        {/* Filtro de Data */}
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
           <select
@@ -163,7 +157,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
           </select>
         </div>
 
-        {/* Datas Personalizadas */}
         {dateFilter === "CUSTOM" && (
           <>
             <div>
@@ -177,7 +170,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
           </>
         )}
 
-        {/* Resumo do Período */}
         <div style={{ marginLeft: "auto", textAlign: "right" }}>
           <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
           <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#166534" }}>{totalPeriod.toFixed(2)} MT</div>
@@ -185,53 +177,57 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
         </div>
       </div>
 
-      <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Nº</th>
-              <th>Data</th>
-              <th>Total</th>
-              <th>Estado</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSales.map((s) => {
-              const isReturned = returnedSaleIds.has(s.id);
-              return (
-                <tr key={s.id}>
-                  <td>{s.saleNumber}</td>
-                  <td>{formatDateTime(s.createdAt)}</td>
-                  <td>{parseFloat(s.total).toFixed(2)} MT</td>
-                  <td>
-                    {isReturned ? (
-                      <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#fef3c7", color: "#92400e" }}>
-                        Reembolsada
-                      </span>
-                    ) : (
-                      statusBadge(s.status)
-                    )}
-                  </td>
-                  <td>
-                    <Link 
-                      to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
-                      style={{ color: "#2563eb", textDecoration: "underline" }}
-                    >
-                      Ver Detalhe
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {filteredSales.length === 0 && (
-          <p style={{ textAlign: "center", color: "#64748b", padding: "1rem" }}>Nenhuma venda encontrada para este filtro.</p>
-        )}
-      </div>
+      {/* CONTEÚDO DA TABELA OU MENSAGEM VAZIA */}
+      {filteredSales.length === 0 ? (
+        <div className="card" style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+          <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma venda encontrada para este filtro.</p>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Nº</th>
+                <th>Data</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSales.map((s) => {
+                const isReturned = returnedSaleIds.has(s.id);
+                return (
+                  <tr key={s.id}>
+                    <td>{s.saleNumber}</td>
+                    <td>{formatDateTime(s.createdAt)}</td>
+                    <td>{parseFloat(s.total).toFixed(2)} MT</td>
+                    <td>
+                      {isReturned ? (
+                        <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#fef3c7", color: "#92400e" }}>
+                          Reembolsada
+                        </span>
+                      ) : (
+                        statusBadge(s.status)
+                      )}
+                    </td>
+                    <td>
+                      <Link 
+                        to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
+                        style={{ color: "#2563eb", textDecoration: "underline" }}
+                      >
+                        Ver Detalhe
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {meta && meta.totalPages > 1 && (
+      {meta && meta.totalPages > 1 && filteredSales.length > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-secondary" style={{ opacity: page <= 1 ? 0.5 : 1 }}>
             Anterior
