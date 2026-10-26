@@ -50,7 +50,12 @@ export async function createProduct(data: ProductRequest): Promise<Product> {
   return resp.data.data;
 }
 
+export async function deleteProduct(id: string): Promise<void> {
+  await apiClient.delete(/products/ + id);
+}
+
 export async function updateProduct(id: string, data: ProductRequest): Promise<Product> {
   const resp = await apiClient.patch<Envelope<Product>>(`/products/${id}`, data);
   return resp.data.data;
 }
+

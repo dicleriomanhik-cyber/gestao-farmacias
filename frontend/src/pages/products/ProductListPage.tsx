@@ -1,15 +1,17 @@
 ﻿import PageHeader from "../../components/ui/PageHeader";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getProducts } from "../../services/productService";
+import { getProducts, deleteProduct } from "../../services/productService";
 import { getStockLots } from "../../services/stockService";
 import type { Product, PaginatedMeta } from "../../types/products";
 import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function ProductListPage() {
+  const toast = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [lots, setLots] = useState<StockLot[]>([]);
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
@@ -17,6 +19,7 @@ export default function ProductListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -51,13 +54,28 @@ export default function ProductListPage() {
     return productLots.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0].expiryDate;
   }
 
-  // Função para formatar a data em DD/MM/AAAA
   function formatDate(dateStr: string) {
     const d = new Date(dateStr);
     const day = String(d.getUTCDate()).padStart(2, "0");
     const month = String(d.getUTCMonth() + 1).padStart(2, "0");
     const year = d.getUTCFullYear();
     return `${day}/${month}/${year}`;
+  }
+
+  async function handleDelete(product: Product) {
+    if (!window.confirm(`Tens a certeza que queres eliminar o produto "${product.name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    setDeletingId(product.id);
+    try {
+      await deleteProduct(product.id);
+      toast.success("Produto eliminado com sucesso.");
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao eliminar o produto.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   if (loading) return <LoadingState />;
@@ -99,12 +117,17 @@ export default function ProductListPage() {
               return (
                 <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                   <td style={{ padding: "0.75rem" }}>{p.name}</td>
-                  <td style={{ padding: "0.75rem" }}>
-                    {expiry ? formatDate(expiry) : "—"}
-                  </td>
+                  <td style={{ padding: "0.75rem" }}>{expiry ? formatDate(expiry) : "—"}</td>
                   <td style={{ padding: "0.75rem" }}>{parseFloat(p.salePrice).toFixed(2)} MT</td>
-                  <td style={{ padding: "0.75rem" }}>
+                  <td style={{ padding: "0.75rem", display: "flex", gap: "1rem" }}>
                     <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
+                    <button
+                      onClick={() => handleDelete(p)}
+                      disabled={deletingId === p.id}
+                      style={{ color: "#b91c1c", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      {deletingId === p.id ? "A eliminar…" : "Eliminar"}
+                    </button>
                   </td>
                 </tr>
               );
@@ -115,21 +138,13 @@ export default function ProductListPage() {
 
       {meta && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            style={{ padding: "0.5rem 1rem", cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}
-          >
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: "0.5rem 1rem", cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}>
             Anterior
           </button>
           <span style={{ color: "#6b7280" }}>
             Página {meta.page} de {meta.totalPages} — {meta.total} registos
           </span>
-          <button
-            onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-            disabled={page >= meta.totalPages}
-            style={{ padding: "0.5rem 1rem", cursor: page >= meta.totalPages ? "not-allowed" : "pointer", opacity: page >= meta.totalPages ? 0.5 : 1 }}
-          >
+          <button onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))} disabled={page >= meta.totalPages} style={{ padding: "0.5rem 1rem", cursor: page >= meta.totalPages ? "not-allowed" : "pointer", opacity: page >= meta.totalPages ? 0.5 : 1 }}>
             Próxima
           </button>
         </div>
