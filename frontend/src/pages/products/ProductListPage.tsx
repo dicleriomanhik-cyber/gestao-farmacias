@@ -26,7 +26,7 @@ export default function ProductListPage() {
     setLoading(true);
     setError(false);
     Promise.all([
-      getProducts({ page, limit: 5, search }),
+      getProducts({ page, limit: 5, search, status: "ACTIVE" }),
       getStockLots(),
     ])
       .then(([prodRes, lotsRes]) => {
