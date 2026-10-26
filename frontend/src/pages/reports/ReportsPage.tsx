@@ -33,6 +33,7 @@ export default function ReportsPage() {
   const [expenses, setExpenses] = useState<ReportExpensesData | null>(null);
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [returns, setReturns] = useState<SaleReturn[]>([]);
+  const [selectedReturn, setSelectedReturn] = useState<SaleReturn | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const canFinancial = canAccessFinancialReports(user?.permissions);
@@ -154,7 +155,7 @@ export default function ReportsPage() {
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Devoluções do Período</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "15%" }}>Nº</th><th style={{ width: "15%" }}>Venda</th><th style={{ width: "50%" }}>Motivo</th><th style={{ width: "20%" }}>Total</th></tr>
+              <tr><th style={{ width: "12%" }}>Nº</th><th style={{ width: "12%" }}>Venda</th><th style={{ width: "45%" }}>Motivo</th><th style={{ width: "16%" }}>Total</th><th style={{ width: "15%" }}>Ações</th></tr>
             </thead>
             <tbody>
               {returns.map((r) => (
@@ -163,6 +164,11 @@ export default function ReportsPage() {
                   <td>{r.sale?.saleNumber ?? "—"}</td>
                   <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.reason}>{r.reason}</td>
                   <td>{money(r.totalRefund)} MT</td>
+                  <td>
+                    <button onClick={() => setSelectedReturn(r)} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                      Ver
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -193,6 +199,67 @@ export default function ReportsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* MODAL DE DETALHES DA DEVOLUÇÃO */}
+      {selectedReturn && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setSelectedReturn(null)}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "1.5rem",
+              maxWidth: "600px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem", color: "#1e293b" }}>
+              Devolução {selectedReturn.returnNumber}
+            </h2>
+            <p><strong>Venda:</strong> {selectedReturn.sale?.saleNumber ?? "—"}</p>
+            <p><strong>Estado:</strong> {selectedReturn.status}</p>
+            <p><strong>Total Reembolso:</strong> {parseFloat(selectedReturn.totalRefund).toFixed(2)} MT</p>
+            <p style={{ marginTop: "1rem" }}><strong>Motivo:</strong></p>
+            <p style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {selectedReturn.reason}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+              <button
+                onClick={() => setSelectedReturn(null)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#e2e8f0",
+                  color: "#1e293b",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
