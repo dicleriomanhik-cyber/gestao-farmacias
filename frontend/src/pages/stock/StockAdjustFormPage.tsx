@@ -5,6 +5,7 @@ import type { StockLot } from "../../types/stock";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 export default function StockAdjustFormPage() {
   const navigate = useNavigate();
@@ -40,7 +41,6 @@ export default function StockAdjustFormPage() {
     if (isNaN(qtyNum) || qtyNum === 0) return toast.error("Quantidade deve ser diferente de zero.");
     if (!reason.trim()) return toast.error("Motivo é obrigatório.");
 
-    // Validação local: o ajuste não pode deixar o stock negativo
     if (selectedLot && selectedLot.quantityAvailable + qtyNum < 0) {
       return toast.error(`Ajuste resultaria em stock negativo (disponível: ${selectedLot.quantityAvailable}).`);
     }
@@ -70,25 +70,23 @@ export default function StockAdjustFormPage() {
     );
   }
 
+  const lotOptions = lots.map((lot) => ({
+    value: lot.id,
+    label: `${lot.product?.name ?? "?"} — ${lot.lotNumber} (Disponível: ${lot.quantityAvailable})`,
+  }));
+
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Ajustar Stock</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Lote *</label>
-          <select
+          <CustomSelect
+            options={lotOptions}
             value={lotId}
-            onChange={(e) => setLotId(e.target.value)}
-            required
-            className="input"
-          >
-            <option value="">Seleciona um lote</option>
-            {lots.map((lot) => (
-              <option key={lot.id} value={lot.id}>
-                {lot.product?.name ?? "?"} — {lot.lotNumber} (Disponível: {lot.quantityAvailable})
-              </option>
-            ))}
-          </select>
+            onChange={setLotId}
+            placeholder="Seleciona um lote"
+          />
         </div>
 
         {selectedLot && (
