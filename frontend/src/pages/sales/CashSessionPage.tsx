@@ -85,7 +85,6 @@ export default function CashSessionPage() {
     try {
       await openCash({ openingBalance: num });
       toast.success("Caixa aberto.");
-      setAmount("");
       load();
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao abrir caixa.");
@@ -103,7 +102,6 @@ export default function CashSessionPage() {
     try {
       await closeCash(session.id, { countedBalance: num });
       toast.success("Caixa fechado.");
-      setAmount("");
       setSession(null);
       load();
     } catch (err: any) {
