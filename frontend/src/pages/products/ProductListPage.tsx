@@ -20,6 +20,7 @@ export default function ProductListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   function load() {
     setLoading(true);
@@ -62,14 +63,13 @@ export default function ProductListPage() {
     return `${day}/${month}/${year}`;
   }
 
-  async function handleDelete(product: Product) {
-    if (!window.confirm(`Tens a certeza que queres eliminar o produto "${product.name}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-    setDeletingId(product.id);
+  async function handleDelete() {
+    if (!productToDelete) return;
+    setDeletingId(productToDelete.id);
     try {
-      await deleteProduct(product.id);
+      await deleteProduct(productToDelete.id);
       toast.success("Produto eliminado com sucesso.");
+      setProductToDelete(null);
       load();
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao eliminar o produto.");
@@ -122,7 +122,7 @@ export default function ProductListPage() {
                   <td style={{ padding: "0.75rem", display: "flex", gap: "1rem" }}>
                     <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
                     <button
-                      onClick={() => handleDelete(p)}
+                      onClick={() => setProductToDelete(p)}
                       disabled={deletingId === p.id}
                       style={{ color: "#b91c1c", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
                     >
@@ -147,6 +147,78 @@ export default function ProductListPage() {
           <button onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))} disabled={page >= meta.totalPages} style={{ padding: "0.5rem 1rem", cursor: page >= meta.totalPages ? "not-allowed" : "pointer", opacity: page >= meta.totalPages ? 0.5 : 1 }}>
             Próxima
           </button>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO */}
+      {productToDelete && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setProductToDelete(null)}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "1.5rem",
+              maxWidth: "450px",
+              width: "90%",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#1e293b" }}>
+              Eliminar Produto
+            </h2>
+            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>
+              Tens a certeza que queres eliminar o produto <strong>"{productToDelete.name}"</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setProductToDelete(null)}
+                disabled={deletingId !== null}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#e2e8f0",
+                  color: "#1e293b",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deletingId !== null}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#dc2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: deletingId !== null ? "not-allowed" : "pointer",
+                  opacity: deletingId !== null ? 0.7 : 1,
+                }}
+              >
+                {deletingId ? "A eliminar…" : "Eliminar"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
