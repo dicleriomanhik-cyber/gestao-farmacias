@@ -12,11 +12,10 @@ export default function OperationalLayout() {
 
   const navItems = [
     { path: "/pos", label: "Nova Venda", end: true },
-    { path: "/pos/historico", label: "Histórico" },
-    { path: "/pos/stock", label: "Stock" },
     { path: "/pos/caixa", label: "Caixa" },
-
+    { path: "/pos/stock", label: "Stock" },
     { path: "/pos/devolucoes", label: "Devoluções" },
+    { path: "/pos/historico", label: "Histórico" },
   ];
 
   return (
@@ -25,7 +24,7 @@ export default function OperationalLayout() {
         <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "bold" }}>Sistema de Gestão</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
           <span style={{ fontSize: "0.875rem" }}>{user?.name || user?.email}</span>
-          <Link to="/" style={{ color: "#94a3b8", textDecoration: "none", fontSize: "0.875rem" }}>Sair do POS</Link>
+          <Link to="/" style={{ color: "#93c5fd", textDecoration: "none", fontSize: "0.875rem" }}>Sair do POS</Link>
           <button onClick={onLogout} style={{ background: "none", border: "1px solid #475569", color: "white", padding: "0.4rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
             Sair
           </button>
@@ -52,7 +51,7 @@ export default function OperationalLayout() {
         ))}
       </nav>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", width: "100%", boxSizing: "border-box" }}>
         <Outlet />
       </div>
     </div>
