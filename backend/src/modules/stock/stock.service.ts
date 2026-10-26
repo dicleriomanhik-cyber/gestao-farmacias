@@ -80,10 +80,7 @@ export class StockService {
         },
       });
 
-      const updatedLot = await tx.stockLot.update({
-        where: { id: lot.id },
-        data: { quantityAvailable: { increment: dto.quantity } },
-      });
+      const updateData: any = { quantityAvailable: { increment: dto.quantity } }; if (dto.expiryDate) { updateData.expiryDate = new Date(dto.expiryDate); } const updatedLot = await tx.stockLot.update({ where: { id: lot.id }, data: updateData });
 
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.receive', entity: 'StockLot', entityId: lot.id },
@@ -187,7 +184,7 @@ export class StockService {
       const lot = lots[0];
       if (!lot) throw new NotFoundException('Lote nÃ£o encontrado.');
 
-      if (dto.quantity === 0) throw new BadRequestException('Ajuste com quantidade zero nÃ£o Ã© permitido.');
+      if (dto.quantity === 0 && !dto.expiryDate) { throw new BadRequestException('Ajuste com quantidade zero requer nova validade.'); }
       if (lot.quantityAvailable + dto.quantity < 0) {
         throw new BadRequestException('Ajuste resultaria em stock negativo.');
       }
@@ -204,10 +201,7 @@ export class StockService {
         },
       });
 
-      const updatedLot = await tx.stockLot.update({
-        where: { id: lot.id },
-        data: { quantityAvailable: { increment: dto.quantity } },
-      });
+      const updateData: any = { quantityAvailable: { increment: dto.quantity } }; if (dto.expiryDate) { updateData.expiryDate = new Date(dto.expiryDate); } const updatedLot = await tx.stockLot.update({ where: { id: lot.id }, data: updateData });
 
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.adjust', entity: 'StockLot', entityId: lot.id },
@@ -232,3 +226,4 @@ export class StockService {
     });
   }
 }
+
