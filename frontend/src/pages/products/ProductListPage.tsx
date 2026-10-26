@@ -1,5 +1,5 @@
 ﻿import PageHeader from "../../components/ui/PageHeader";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { getProducts, deleteProduct } from "../../services/productService";
 import { getStockLots } from "../../services/stockService";
@@ -21,6 +21,8 @@ export default function ProductListPage() {
   const [error, setError] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLTableCellElement>(null);
 
   function load() {
     setLoading(true);
@@ -42,6 +44,16 @@ export default function ProductListPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -108,7 +120,7 @@ export default function ProductListPage() {
               <th style={{ padding: "0.75rem" }}>Nome</th>
               <th style={{ padding: "0.75rem" }}>Validade</th>
               <th style={{ padding: "0.75rem" }}>Preço</th>
-              <th style={{ padding: "0.75rem" }}>Ações</th>
+              <th style={{ padding: "0.75rem", width: "80px" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -119,15 +131,71 @@ export default function ProductListPage() {
                   <td style={{ padding: "0.75rem" }}>{p.name}</td>
                   <td style={{ padding: "0.75rem" }}>{expiry ? formatDate(expiry) : "—"}</td>
                   <td style={{ padding: "0.75rem" }}>{parseFloat(p.salePrice).toFixed(2)} MT</td>
-                  <td style={{ padding: "0.75rem", display: "flex", gap: "1rem" }}>
-                    <Link to={`/produtos/${p.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
+                  <td style={{ padding: "0.75rem", position: "relative" }} ref={openMenuId === p.id ? menuRef : null}>
                     <button
-                      onClick={() => setProductToDelete(p)}
-                      disabled={deletingId === p.id}
-                      style={{ color: "#b91c1c", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                      onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "1.25rem",
+                        padding: "0.25rem 0.5rem",
+                        borderRadius: "4px",
+                        color: "#64748b",
+                      }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = "#f1f5f9"}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = "transparent"}
                     >
-                      {deletingId === p.id ? "A eliminar…" : "Eliminar"}
+                      ⋯
                     </button>
+
+                    {openMenuId === p.id && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          right: 0,
+                          backgroundColor: "white",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "8px",
+                          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                          zIndex: 1000,
+                          minWidth: "150px",
+                        }}
+                      >
+                        <Link
+                          to={`/produtos/${p.id}/editar`}
+                          style={{
+                            display: "block",
+                            padding: "0.75rem 1rem",
+                            color: "#1e293b",
+                            textDecoration: "none",
+                            borderBottom: "1px solid #f1f5f9",
+                          }}
+                          onClick={() => setOpenMenuId(null)}
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            setProductToDelete(p);
+                          }}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "0.75rem 1rem",
+                            color: "#b91c1c",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -150,7 +218,6 @@ export default function ProductListPage() {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO */}
       {productToDelete && (
         <div
           style={{
