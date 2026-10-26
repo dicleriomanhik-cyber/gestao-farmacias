@@ -121,17 +121,30 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
       <PageHeader
         title="Vendas"
         actions={
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             {!hideNewSaleButton && canCreateSales(user?.permissions) && (
               <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link>
             )}
             {isOperational && (
-              <button
-                onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
-                className="btn btn-secondary"
-              >
-                {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
-              </button>
+              <>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
+                  className="input"
+                  style={{ padding: "0.4rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem" }}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="CONFIRMED">Concluída</option>
+                  <option value="RETURNED">Reembolsada</option>
+                </select>
+                <button
+                  onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
+                  className="btn btn-secondary"
+                  style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}
+                >
+                  {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+                </button>
+              </>
             )}
           </div>
         }
@@ -257,6 +270,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
 
 
 
