@@ -32,5 +32,13 @@ export async function adjustStock(data: StockAdjustRequest): Promise<StockLot> {
   return resp.data.data;
 }
 
-
-
+export async function createLot(data: {
+  productId: string;
+  lotNumber: string;
+  expiryDate: string;
+  quantity: number;
+  unitCost: number;
+}): Promise<StockLot> {
+  const resp = await apiClient.post<Envelope<StockLot>>("/stock/lots", data);
+  return resp.data.data;
+}

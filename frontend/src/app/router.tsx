@@ -19,6 +19,7 @@ import StockLotListPage from "../pages/stock/StockLotListPage";
 import StockMovementListPage from "../pages/stock/StockMovementListPage";
 import StockReceiveFormPage from "../pages/stock/StockReceiveFormPage";
 import StockAdjustFormPage from "../pages/stock/StockAdjustFormPage";
+import StockCreateFormPage from "../pages/stock/StockCreateFormPage";
 import ExpenseListPage from "../pages/expenses/ExpenseListPage";
 import ExpenseFormPage from "../pages/expenses/ExpenseFormPage";
 import ReportsPage from "../pages/reports/ReportsPage";
@@ -73,6 +74,7 @@ export default function AppRouter() {
           <Route path="stock/lotes" element={<ProtectedRoute requiredPermission="stock:read"><StockLotListPage /></ProtectedRoute>} />
           <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
           <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
+          <Route path="stock/novo" element={<ProtectedRoute requiredPermission="stock:write"><StockCreateFormPage /></ProtectedRoute>} />
           <Route path="stock/ajustar" element={<ProtectedRoute requiredPermission="stock:adjust"><StockAdjustFormPage /></ProtectedRoute>} />
 
           <Route path="despesas" element={<ProtectedRoute requiredPermission="expenses:read"><ExpenseListPage /></ProtectedRoute>} />
