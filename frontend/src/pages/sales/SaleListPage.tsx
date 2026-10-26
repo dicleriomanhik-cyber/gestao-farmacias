@@ -5,7 +5,7 @@ import { formatDateTime } from "../../utils/formatDate";
 import { getReturns } from "../../services/returnService";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
-import EmptyState from "../../components/ui/EmptyState";
+
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../hooks/useAuth";
@@ -37,9 +37,9 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     setLoading(true);
     setError(false);
     
-    // Puxar as últimas 100 vendas para filtrar no front-end
+    // Puxar todas as vendas (sem filtro de estado na API, para podermos filtrar no frontend)
     Promise.all([
-      getSales({ page, limit: 100, status: statusFilter === "CONFIRMED" ? "CONFIRMED" : undefined }),
+      getSales({ page, limit: 100 }),
       getReturns({ page: 1, limit: 100 }),
     ])
       .then(([salesRes, returnsRes]) => {
@@ -60,7 +60,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter]);
+  }, [page]);
 
   function statusBadge(status: SaleStatus) {
     const map = {
@@ -77,9 +77,12 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   }
 
   // 1. Filtrar por estado
-  let filteredSales = statusFilter === "RETURNED"
-    ? sales.filter((s) => returnedSaleIds.has(s.id))
-    : sales;
+  let filteredSales = sales;
+  if (statusFilter === "CONFIRMED") {
+    filteredSales = filteredSales.filter((s) => !returnedSaleIds.has(s.id) && s.status === "CONFIRMED");
+  } else if (statusFilter === "RETURNED") {
+    filteredSales = filteredSales.filter((s) => returnedSaleIds.has(s.id));
+  }
 
   // 2. Filtrar por data
   const now = new Date();
@@ -115,15 +118,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
 
   if (loading && sales.length === 0) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
-  if (sales.length === 0 && page === 1 && statusFilter === "ALL") {
-    return (
-      <EmptyState
-        message="Nenhuma venda registada."
-        actionLabel={!hideNewSaleButton && canCreateSales(user?.permissions) ? "Nova Venda" : undefined}
-        actionLink={!hideNewSaleButton && canCreateSales(user?.permissions) ? "/pos" : undefined}
-      />
-    );
-  }
 
   return (
     <div>
@@ -250,3 +244,4 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
