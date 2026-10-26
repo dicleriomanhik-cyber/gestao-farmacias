@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -48,6 +48,17 @@ export class ProductsController {
   @ApiOperation({ summary: 'Obter produto' })
   findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
     return this.service.findOne(pharmacyId, id);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(PERMISSIONS.PRODUCTS_WRITE)
+  @ApiOperation({ summary: 'Eliminar produto' })
+  remove(
+    @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.delete(pharmacyId, user.id, id);
   }
 
   @Patch(':id')
