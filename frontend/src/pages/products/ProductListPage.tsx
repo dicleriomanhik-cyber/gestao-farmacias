@@ -109,7 +109,7 @@ export default function ProductListPage() {
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
         <PageHeader title="Produtos" actions={<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>} />
 
         <form onSubmit={onSearch} style={{ display: "flex", gap: "0.5rem" }}>
@@ -278,6 +278,7 @@ export default function ProductListPage() {
     </div>
   );
 }
+
 
 
 
