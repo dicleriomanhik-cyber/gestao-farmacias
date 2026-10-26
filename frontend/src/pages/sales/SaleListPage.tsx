@@ -152,7 +152,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
 
       {/* BARRA DE FILTROS (apenas para administração) */}
       {!isOperational && (
-        <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#fff", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
           
           <div>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Estado</label>
@@ -270,6 +270,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
 
 
 
