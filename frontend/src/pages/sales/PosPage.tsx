@@ -32,7 +32,10 @@ export default function PosPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [completedSale, setCompletedSale] = useState<{ id: string; saleNumber: string; total: string } | null>(null);
+  const [completedSale, setCompletedSale] = useState<{ id: string; saleNumber: string; total: string; change: number | null } | null>(null);
+
+  // Campo para o troco
+  const [amountPaid, setAmountPaid] = useState("");
 
   function load(query: string = "") {
     setLoading(true);
@@ -75,9 +78,15 @@ export default function PosPage() {
   }
 
   const total = cart.reduce((acc, i) => acc + parseFloat(i.unitPrice) * i.quantity, 0);
+  const paid = parseFloat(amountPaid) || 0;
+  const change = paid > 0 ? paid - total : 0;
 
   async function handleCheckout() {
     if (cart.length === 0) return toast.error("Carrinho vazio.");
+    if (paymentMethod === "CASH" && paid < total) {
+      return toast.error("O valor entregue é inferior ao total.");
+    }
+
     const lines: SaleLineRequest[] = cart.map((i) => ({ productId: i.productId, quantity: i.quantity }));
     
     setSubmitting(true);
@@ -103,8 +112,14 @@ export default function PosPage() {
       });
 
       toast.success("Venda confirmada!");
-      setCompletedSale({ id: confirmed.id, saleNumber: confirmed.saleNumber, total: confirmed.total });
+      setCompletedSale({
+        id: confirmed.id,
+        saleNumber: confirmed.saleNumber,
+        total: confirmed.total,
+        change: paymentMethod === "CASH" ? change : null
+      });
       setCart([]);
+      setAmountPaid("");
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao processar a venda.");
     } finally {
@@ -115,6 +130,7 @@ export default function PosPage() {
   function startNewSale() {
     setCompletedSale(null);
     setSearch("");
+    setAmountPaid("");
     load();
   }
 
@@ -127,6 +143,15 @@ export default function PosPage() {
         <h2 style={{ color: "#15803d", marginBottom: "1rem" }}>✅ Venda Concluída</h2>
         <p style={{ fontSize: "1.1rem" }}><strong>Nº:</strong> {completedSale.saleNumber}</p>
         <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}><strong>Total:</strong> {parseFloat(completedSale.total).toFixed(2)} MT</p>
+        
+        {completedSale.change !== null && completedSale.change >= 0 && (
+          <div style={{ backgroundColor: "#fef3c7", padding: "1rem", borderRadius: "8px", marginTop: "1rem", border: "1px solid #fde68a" }}>
+            <p style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#92400e", margin: 0 }}>
+              Troco a devolver: {completedSale.change.toFixed(2)} MT
+            </p>
+          </div>
+        )}
+
         <button onClick={startNewSale} style={{ marginTop: "2rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
           Nova Venda
         </button>
@@ -239,10 +264,40 @@ export default function PosPage() {
               </div>
             </div>
 
+            {/* Campo de Troco apenas para Dinheiro */}
+            {paymentMethod === "CASH" && (
+              <div style={{ marginTop: "1rem", backgroundColor: "#fefce8", padding: "1rem", borderRadius: "8px", border: "1px solid #fde047" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold", fontSize: "0.9rem", color: "#854d0e" }}>Valor Entregue (MT)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  placeholder="0.00"
+                  style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "1rem", boxSizing: "border-box" }}
+                />
+                {paid > 0 && (
+                  <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#854d0e" }}>Troco a devolver:</span>
+                    <span style={{ fontWeight: "bold", fontSize: "1.2rem", color: paid < total ? "#b91c1c" : "#166534" }}>
+                      {paid < total ? "Valor insuficiente" : `${change.toFixed(2)} MT`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={handleCheckout}
-              disabled={submitting || cart.length === 0}
-              style={{ marginTop: "1.5rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: submitting || cart.length === 0 ? "not-allowed" : "pointer", opacity: submitting || cart.length === 0 ? 0.7 : 1 }}
+              disabled={submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total)}
+              style={{
+                marginTop: "1.5rem", width: "100%", padding: "1rem",
+                backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px",
+                fontSize: "1rem", fontWeight: "bold",
+                cursor: submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total) ? "not-allowed" : "pointer",
+                opacity: submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total) ? 0.7 : 1,
+              }}
             >
               {submitting ? "A processar…" : "Finalizar Venda"}
             </button>
