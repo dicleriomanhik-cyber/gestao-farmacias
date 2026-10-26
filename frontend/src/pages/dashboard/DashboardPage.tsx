@@ -22,6 +22,13 @@ interface CashMovement {
   createdAt: string;
 }
 
+interface StockLot {
+  id: string;
+  expiryDate: string;
+  quantity: number;
+  status: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
@@ -29,10 +36,13 @@ export default function DashboardPage() {
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estado para o Caixa (espelho do POS)
+  // Estado para o Caixa
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
+  
+  // Lotes para calcular a expirar localmente
+  const [lots, setLots] = useState<StockLot[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -43,12 +53,17 @@ export default function DashboardPage() {
       getReportStock(),
       getSales({ limit: 5 }),
       getActiveCashSession(),
-    ]).then(async ([sumRes, stockRes, salesRes, cashRes]) => {
+      apiClient.get<{ success: boolean; data: StockLot[] }>("/stock/lots"), // Buscar lotes diretamente
+    ]).then(async ([sumRes, stockRes, salesRes, cashRes, lotsRes]) => {
       if (!mounted) return;
 
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (stockRes.status === "fulfilled") setStock(stockRes.value);
       if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
+
+      if (lotsRes.status === "fulfilled" && lotsRes.value.data?.data) {
+        setLots(lotsRes.value.data.data);
+      }
 
       if (cashRes.status === "fulfilled" && cashRes.value) {
         setCashSession(cashRes.value);
@@ -58,9 +73,7 @@ export default function DashboardPage() {
           
           const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
           if (mounted) setMovements(resp.data.data ?? []);
-        } catch {
-          // ignora falhas
-        }
+        } catch {}
       }
 
       if (mounted) setLoading(false);
@@ -69,13 +82,22 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, []);
 
-  // Cálculo do Saldo Total (igual ao POS)
+  // Cálculo do Caixa
   const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  
-  // Saldo Total = Fundo de Maneio + Todas as vendas + Entradas - Saídas
   const expectedTotalBalance = cashSession ? parseFloat(cashSession.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
+
+  // Cálculo de lotes a expirar (próximos 30 dias ou já expirados)
+  const today = new Date();
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+  const expiringLotsCount = lots.filter(lot => {
+    if (lot.status !== "ACTIVE") return false;
+    const expDate = new Date(lot.expiryDate);
+    return expDate <= thirtyDaysFromNow;
+  }).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -109,8 +131,8 @@ export default function DashboardPage() {
 
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lotes a Expirar</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: (summary?.stock.expiredLotsCount ?? 0) > 0 ? "#b91c1c" : "#166534" }}>
-            {loading ? "…" : summary?.stock.expiredLotsCount ?? 0}
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: expiringLotsCount > 0 ? "#b91c1c" : "#166534" }}>
+            {loading ? "…" : expiringLotsCount}
           </p>
           <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
         </div>
