@@ -2,9 +2,11 @@
 import { getReturns } from "../../services/returnService";
 import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
-import EmptyState from "../../components/ui/EmptyState";
+
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
+
+type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
 export default function ReturnListPage() {
   const [returns, setReturns] = useState<SaleReturn[]>([]);
@@ -19,8 +21,10 @@ export default function ReturnListPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLTableCellElement>(null);
 
-  // Filtro de data (por defeito mostra apenas hoje)
-  const [dateFilter, setDateFilter] = useState<"ALL" | "DAILY">("DAILY");
+  // Filtro de data (por defeito mostra hoje)
+  const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   // Estado para itens ocultos (LocalStorage)
   const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
@@ -68,36 +72,43 @@ export default function ReturnListPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
 
-  // 1. Filtrar por data
+  // --- FILTRAGEM DE DATA ---
+  const now = new Date();
   let filteredReturns = returns;
+
   if (dateFilter === "DAILY") {
-    const todayStr = new Date().toLocaleDateString("pt-PT");
+    const todayStr = now.toLocaleDateString("pt-PT");
     filteredReturns = filteredReturns.filter(r => new Date(r.createdAt).toLocaleDateString("pt-PT") === todayStr);
+  } else if (dateFilter === "WEEKLY") {
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+    filteredReturns = filteredReturns.filter(r => new Date(r.createdAt) >= startOfWeek);
+  } else if (dateFilter === "MONTHLY") {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    filteredReturns = filteredReturns.filter(r => new Date(r.createdAt) >= startOfMonth);
+  } else if (dateFilter === "YEARLY") {
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    filteredReturns = filteredReturns.filter(r => new Date(r.createdAt) >= startOfYear);
+  } else if (dateFilter === "CUSTOM") {
+    if (customStart) {
+      const start = new Date(customStart);
+      start.setHours(0, 0, 0, 0);
+      filteredReturns = filteredReturns.filter(r => new Date(r.createdAt) >= start);
+    }
+    if (customEnd) {
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      filteredReturns = filteredReturns.filter(r => new Date(r.createdAt) <= end);
+    }
   }
 
   // 2. Filtrar ocultos
   const visibleReturns = filteredReturns.filter((r) => showHidden || !hiddenIds.includes(r.id));
 
-  if (visibleReturns.length === 0 && page === 1) {
-    return (
-      <div>
-        <PageHeader
-          title="Devoluções"
-          actions={
-            <button onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")} className="btn btn-secondary">
-              {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
-            </button>
-          }
-        />
-        <EmptyState message={dateFilter === "DAILY" ? "Nenhuma devolução registada hoje." : "Nenhuma devolução registada."} />
-        {hiddenIds.length > 0 && (
-          <div style={{ textAlign: "center", marginTop: "1rem" }}>
-            <button onClick={() => { setHiddenIds([]); setShowHidden(true); }} className="btn btn-secondary">Mostrar Ocultos</button>
-          </div>
-        )}
-      </div>
-    );
-  }
+  // 3. Totais
+  const totalPeriod = visibleReturns.reduce((acc, r) => acc + parseFloat(r.totalRefund), 0);
+  const totalCount = visibleReturns.length;
 
   function statusBadge(status: string) {
     const map: Record<string, { bg: string; color: string; label: string }> = {
@@ -116,74 +127,115 @@ export default function ReturnListPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <PageHeader title="Devoluções" />
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")} className="btn btn-secondary">
-            {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
-          </button>
+      <PageHeader title="Devoluções" />
+
+      {/* BARRA DE FILTROS */}
+      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        
+        <div>
+          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="input"
+            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+          >
+            <option value="DAILY">Hoje</option>
+            <option value="WEEKLY">Esta Semana</option>
+            <option value="MONTHLY">Este Mês</option>
+            <option value="YEARLY">Este Ano</option>
+            <option value="CUSTOM">Personalizado</option>
+            <option value="ALL">Ver Tudo</option>
+          </select>
+        </div>
+
+        {dateFilter === "CUSTOM" && (
+          <>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+          </>
+        )}
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
           {hiddenIds.length > 0 && (
-            <button onClick={() => setShowHidden(!showHidden)} className="btn btn-secondary">
+            <button onClick={() => setShowHidden(!showHidden)} className="btn btn-secondary" style={{ padding: "0.5rem 0.75rem", fontSize: "0.85rem" }}>
               {showHidden ? "Ocultar Ocultos" : "Mostrar Ocultos"}
             </button>
           )}
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+            <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} devoluções</div>
+          </div>
         </div>
       </div>
 
-      <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-        <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
-          <thead>
-            <tr>
-              <th style={{ width: "15%" }}>Nº</th>
-              <th style={{ width: "15%" }}>Venda</th>
-              <th style={{ width: "40%" }}>Motivo</th>
-              <th style={{ width: "15%" }}>Total</th>
-              <th style={{ width: "10%" }}>Estado</th>
-              <th style={{ width: "5%", textAlign: "center" }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleReturns.map((r) => (
-              <tr key={r.id} style={{ opacity: hiddenIds.includes(r.id) ? 0.5 : 1 }}>
-                <td>{r.returnNumber}</td>
-                <td>{r.sale?.saleNumber ?? "—"}</td>
-                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.reason}>{r.reason}</td>
-                <td>{parseFloat(r.totalRefund).toFixed(2)} MT</td>
-                <td>{statusBadge(r.status)}</td>
-                <td style={{ textAlign: "center", position: "relative" }} ref={openMenuId === r.id ? menuRef : null}>
-                  <button
-                    onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", padding: "0 0.5rem" }}
-                  >
-                    ⋯
-                  </button>
-                  {openMenuId === r.id && (
-                    <div style={{
-                      position: "absolute", right: "100%", top: "50%", transform: "translateY(-50%)",
-                      backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "6px",
-                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)", zIndex: 10, minWidth: "120px",
-                      display: "flex", flexDirection: "column", padding: "0.25rem 0"
-                    }}>
-                      <button
-                        onClick={() => { setSelectedReturn(r); setOpenMenuId(null); }}
-                        style={{ padding: "0.5rem 1rem", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: "0.875rem" }}
-                      >
-                        Detalhe
-                      </button>
-                      <button
-                        onClick={() => { setDeleteTarget(r); setOpenMenuId(null); }}
-                        style={{ padding: "0.5rem 1rem", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: "0.875rem", color: "#ef4444" }}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  )}
-                </td>
+      {visibleReturns.length === 0 ? (
+        <div className="card" style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+          <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma devolução encontrada para este período.</p>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+          <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <thead>
+              <tr>
+                <th style={{ width: "15%" }}>Nº</th>
+                <th style={{ width: "15%" }}>Venda</th>
+                <th style={{ width: "40%" }}>Motivo</th>
+                <th style={{ width: "15%" }}>Total</th>
+                <th style={{ width: "10%" }}>Estado</th>
+                <th style={{ width: "5%", textAlign: "center" }}>Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {visibleReturns.map((r) => (
+                <tr key={r.id} style={{ opacity: hiddenIds.includes(r.id) ? 0.5 : 1 }}>
+                  <td>{r.returnNumber}</td>
+                  <td>{r.sale?.saleNumber ?? "—"}</td>
+                  <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.reason}>{r.reason}</td>
+                  <td>{parseFloat(r.totalRefund).toFixed(2)} MT</td>
+                  <td>{statusBadge(r.status)}</td>
+                  <td style={{ textAlign: "center", position: "relative" }} ref={openMenuId === r.id ? menuRef : null}>
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", padding: "0 0.5rem" }}
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === r.id && (
+                      <div style={{
+                        position: "absolute", right: "100%", top: "50%", transform: "translateY(-50%)",
+                        backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "6px",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)", zIndex: 10, minWidth: "120px",
+                        display: "flex", flexDirection: "column", padding: "0.25rem 0"
+                      }}>
+                        <button
+                          onClick={() => { setSelectedReturn(r); setOpenMenuId(null); }}
+                          style={{ padding: "0.5rem 1rem", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: "0.875rem" }}
+                        >
+                          Detalhe
+                        </button>
+                        <button
+                          onClick={() => { setDeleteTarget(r); setOpenMenuId(null); }}
+                          style={{ padding: "0.5rem 1rem", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: "0.875rem", color: "#ef4444" }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {meta && meta.totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
@@ -292,3 +344,4 @@ export default function ReturnListPage() {
     </div>
   );
 }
+
