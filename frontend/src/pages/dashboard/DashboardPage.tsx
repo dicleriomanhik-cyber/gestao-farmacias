@@ -3,8 +3,10 @@ import { useAuth } from "../../hooks/useAuth";
 import { getReportSummary, getReportStock } from "../../services/reportService";
 import { formatDateTime } from "../../utils/formatDate";
 import { getSales } from "../../services/saleService";
+import { getActiveCashSession, getPayments } from "../../services/cashService";
+import { apiClient } from "../../services/api";
 import type { ReportSummaryData, ReportStockData } from "../../types/reports";
-import type { Sale } from "../../types/sales";
+import type { Sale, CashSession, PaymentMethod } from "../../types/sales";
 import EmptyState from "../../components/ui/EmptyState";
 
 function money(v: string | number | undefined | null): string {
@@ -12,52 +14,68 @@ function money(v: string | number | undefined | null): string {
   return parseFloat(String(v)).toFixed(2);
 }
 
+interface CashMovement {
+  id: string;
+  type: "IN" | "OUT";
+  amount: string;
+  reason: string;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
-  const [todaySales, setTodaySales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estado para o Caixa (espelho do POS)
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
+  const [movements, setMovements] = useState<CashMovement[]>([]);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    
-    // Buscar um número alto de vendas recentes para calcular o "Hoje" no front-end
+
     Promise.allSettled([
       getReportSummary(),
       getReportStock(),
-      getSales({ limit: 100 }), // Puxa as últimas 100 para calcular o dia de hoje
-    ]).then(([sumRes, stockRes, salesRes]) => {
+      getSales({ limit: 5 }),
+      getActiveCashSession(),
+    ]).then(async ([sumRes, stockRes, salesRes, cashRes]) => {
       if (!mounted) return;
-      
+
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (stockRes.status === "fulfilled") setStock(stockRes.value);
-      
-      if (salesRes.status === "fulfilled") {
-        const allSales = salesRes.value.data;
-        
-        // As 5 mais recentes para a tabela
-        setRecentSales(allSales.slice(0, 5));
+      if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
 
-        // Filtrar as de hoje
-        const todayStr = new Date().toLocaleDateString("pt-PT");
-        const filteredToday = allSales.filter(s => {
-          const saleDate = new Date(s.createdAt).toLocaleDateString("pt-PT");
-          return saleDate === todayStr;
-        });
-        setTodaySales(filteredToday);
+      if (cashRes.status === "fulfilled" && cashRes.value) {
+        setCashSession(cashRes.value);
+        try {
+          const data = await getPayments();
+          if (mounted) setTotals(data.totalsByMethod);
+          
+          const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
+          if (mounted) setMovements(resp.data.data ?? []);
+        } catch {
+          // ignora falhas
+        }
       }
-      
-      setLoading(false);
+
+      if (mounted) setLoading(false);
     });
+
     return () => { mounted = false; };
   }, []);
 
-  // Calcula os totais de hoje com base nas vendas filtradas
-  const todayTotal = todaySales.reduce((acc, s) => acc + parseFloat(String(s.total)), 0);
-  const todayCount = todaySales.length;
+  // Cálculo do Saldo Total (igual ao POS)
+  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
+  const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  
+  // Saldo Total = Fundo de Maneio + Todas as vendas + Entradas - Saídas
+  const expectedTotalBalance = cashSession ? parseFloat(cashSession.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -71,12 +89,14 @@ export default function DashboardPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas Hoje</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
-            {loading ? "…" : `${money(todayTotal)} MT`}
+        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #2563eb" }}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo Total (Caixa)</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}>
+            {loading ? "…" : `${money(expectedTotalBalance)} MT`}
           </p>
-          <small style={{ color: "#6b7280" }}>{todayCount} vendas</small>
+          <small style={{ color: "#6b7280" }}>
+            {cashSession ? "Caixa aberta" : "Caixa fechada"}
+          </small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
