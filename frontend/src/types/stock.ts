@@ -54,8 +54,5 @@ export interface StockAdjustRequest {
   lotId: string;
   quantity: number;
   reason: string;
+  expiryDate?: string;
 }
-
-
-
-

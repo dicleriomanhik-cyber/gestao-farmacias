@@ -68,7 +68,6 @@ export default function ProductFormPage() {
       if (isEdit && id) {
         await updateProduct(id, data);
 
-        // Atualizar a validade do lote
         if (lotId && expiryDate) {
           await adjustStock({
             lotId,
