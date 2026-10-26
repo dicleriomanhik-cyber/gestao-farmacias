@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsOptional, IsString, IsUUID, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AdjustStockDto {
@@ -20,4 +20,9 @@ export class AdjustStockDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({ example: '2027-12-31' })
+  @IsDateString()
+  @IsOptional()
+  expiryDate?: string;
 }

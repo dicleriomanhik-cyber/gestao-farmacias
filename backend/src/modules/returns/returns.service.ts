@@ -17,7 +17,7 @@ export class ReturnsService {
         where: { id: dto.saleId, pharmacyId },
         include: { lines: true },
       });
-      if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
+      if (!sale) throw new NotFoundException('Venda não encontrada.');
       if (sale.status !== 'CONFIRMED') throw new BadRequestException('Apenas vendas confirmadas podem ser devolvidas.');
 
       let totalRefund = new Decimal(0);
@@ -25,7 +25,7 @@ export class ReturnsService {
 
       for (const lineDto of dto.lines) {
         const saleLine = sale.lines.find(l => l.id === lineDto.saleLineId);
-        if (!saleLine) throw new BadRequestException(`Linha de venda ${lineDto.saleLineId} nÃ£o encontrada.`);
+        if (!saleLine) throw new BadRequestException(`Linha de venda ${lineDto.saleLineId} não encontrada.`);
 
         const previousReturns = await tx.saleReturnLine.aggregate({
           where: { saleLineId: saleLine.id, return: { status: 'CONFIRMED' } },
@@ -90,6 +90,15 @@ export class ReturnsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  async findOne(pharmacyId: string, id: string) {
+    const ret = await this.prisma.saleReturn.findFirst({
+      where: { id, pharmacyId },
+      include: { lines: { include: { product: true } }, sale: { select: { saleNumber: true } } },
+    });
+    if (!ret) throw new NotFoundException('Devolução não encontrada.');
+    return ret;
+  }
+
   async listQuarantine(pharmacyId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
@@ -104,14 +113,6 @@ export class ReturnsService {
     ]);
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
-  async findOne(pharmacyId: string, id: string) {
-    const saleReturn = await this.prisma.saleReturn.findFirst({
-      where: { id, pharmacyId },
-      include: { lines: true },
-    });
-    if (!saleReturn) throw new NotFoundException('DevoluÃ§Ã£o nÃ£o encontrada.');
-    return saleReturn;
-  }
 
   async confirm(pharmacyId: string, userId: string, returnId: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -121,7 +122,7 @@ export class ReturnsService {
         FOR UPDATE
       ` as Array<{ id: string; saleId: string; status: string }>;
       const saleReturn = returns[0];
-      if (!saleReturn) throw new NotFoundException('DevoluÃ§Ã£o nÃ£o encontrada.');
+      if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
       if (saleReturn.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
 
       await tx.$queryRaw`SELECT id FROM "sales" WHERE id = ${saleReturn.saleId}::uuid FOR UPDATE`;
@@ -177,16 +178,16 @@ export class ReturnsService {
         FOR UPDATE
       ` as Array<{ id: string; productId: string; lotNumber: string; expiryDate: Date; quantityReceived: number; quantityInspected: number; unitCost: Decimal }>;
       const q = quarantines[0];
-      if (!q) throw new NotFoundException('Registo de quarentena nÃ£o encontrado.');
+      if (!q) throw new NotFoundException('Registo de quarentena não encontrado.');
       
       const availableToInspect = q.quantityReceived - q.quantityInspected;
       if (dto.quantityToRelease > availableToInspect) {
-        throw new BadRequestException('Quantidade superior ao disponÃ­vel para inspeÃ§Ã£o.');
+        throw new BadRequestException('Quantidade superior ao disponível para inspeção.');
       }
 
       if (dto.condition === 'RESELLABLE') {
         if (q.lotNumber === 'DESCONHECIDO' || !q.expiryDate) {
-          throw new BadRequestException('NÃ£o Ã© possÃ­vel libertar artigo sem lote e validade verificÃ¡veis.');
+          throw new BadRequestException('Não é possível libertar artigo sem lote e validade verificáveis.');
         }
 
         let lot = await tx.stockLot.findFirst({
@@ -264,21 +265,21 @@ export class ReturnsService {
           FOR UPDATE
         ` as Array<{ id: string; saleId: string; status: string; totalRefund: Decimal; returnNumber: string }>;
         const saleReturn = returns[0];
-        if (!saleReturn) throw new NotFoundException('DevoluÃ§Ã£o nÃ£o encontrada.');
-        if (saleReturn.status !== 'CONFIRMED') throw new BadRequestException('DevoluÃ§Ã£o nÃ£o confirmada.');
+        if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
+        if (saleReturn.status !== 'CONFIRMED') throw new BadRequestException('Devolução não confirmada.');
 
         const returnLine = await tx.saleReturnLine.findFirst({
           where: { id: dto.returnLineId, returnId: saleReturn.id },
         });
-        if (!returnLine) throw new BadRequestException('Linha de devoluÃ§Ã£o nÃ£o encontrada.');
+        if (!returnLine) throw new BadRequestException('Linha de devolução não encontrada.');
 
         const salePayment = await tx.salePayment.findFirst({
           where: { id: dto.salePaymentId, saleId: saleReturn.saleId },
         });
-        if (!salePayment) throw new BadRequestException('Pagamento original nÃ£o encontrado.');
+        if (!salePayment) throw new BadRequestException('Pagamento original não encontrado.');
 
         if (salePayment.method !== dto.method) {
-          throw new BadRequestException(`MÃ©todo de reembolso (${dto.method}) nÃ£o coincide com o pagamento original (${salePayment.method}).`);
+          throw new BadRequestException(`Método de reembolso (${dto.method}) não coincide com o pagamento original (${salePayment.method}).`);
         }
 
         if (dto.idempotencyKey) {
@@ -304,16 +305,16 @@ export class ReturnsService {
         const eligibleAmount = availableFromPayment.lt(availableFromLine) ? availableFromPayment : availableFromLine;
 
         if (new Decimal(dto.amount).gt(eligibleAmount)) {
-          throw new BadRequestException(`Valor excede o saldo reembolsÃ¡vel (${eligibleAmount.toFixed(2)}).`);
+          throw new BadRequestException(`Valor excede o saldo reembolsável (${eligibleAmount.toFixed(2)}).`);
         }
 
         let cashSessionId = dto.cashSessionId;
         let status: 'PENDING' | 'COMPLETED' = 'PENDING';
 
         if (dto.method === 'CASH') {
-          if (!cashSessionId) throw new BadRequestException('SessÃ£o de caixa obrigatÃ³ria para reembolso em dinheiro.');
+          if (!cashSessionId) throw new BadRequestException('Sessão de caixa obrigatória para reembolso em dinheiro.');
           const session = await tx.cashSession.findFirst({ where: { id: cashSessionId, pharmacyId, status: 'OPEN' } });
-          if (!session) throw new BadRequestException('SessÃ£o de caixa invÃ¡lida ou fechada.');
+          if (!session) throw new BadRequestException('Sessão de caixa inválida ou fechada.');
           status = 'COMPLETED';
         }
 
@@ -336,7 +337,7 @@ export class ReturnsService {
               cashSessionId,
               type: 'OUT',
               amount: dto.amount,
-              reason: `Reembolso devoluÃ§Ã£o ${saleReturn.returnNumber}`,
+              reason: `Reembolso devolução ${saleReturn.returnNumber}`,
               userId,
             }
           });
@@ -365,7 +366,7 @@ export class ReturnsService {
         FOR UPDATE
       ` as Array<{ id: string; status: string }>;
       const refund = refunds[0];
-      if (!refund) throw new NotFoundException('Reembolso nÃ£o encontrado.');
+      if (!refund) throw new NotFoundException('Reembolso não encontrado.');
       if (refund.status !== 'PENDING') throw new BadRequestException('Apenas reembolsos pendentes podem ser confirmados.');
 
       const updated = await tx.returnRefund.update({
