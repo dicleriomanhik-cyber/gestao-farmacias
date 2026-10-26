@@ -11,7 +11,7 @@ export class ProductsService {
   async create(pharmacyId: string, actorId: string, dto: CreateProductDto) {
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria invÃ¡lida.');
+      if (!cat) throw new BadRequestException('Categoria inválida.');
     }
 
     try {
@@ -26,7 +26,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou CÃ³digo de Barras jÃ¡ existe nesta farmÃ¡cia.');
+        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
       }
       throw e;
     }
@@ -72,26 +72,23 @@ export class ProductsService {
       where: { id, pharmacyId },
       include: { category: true },
     });
-    if (!product) throw new NotFoundException('Produto nÃ£o encontrado.');
+    if (!product) throw new NotFoundException('Produto não encontrado.');
     return product;
   }
 
   async delete(pharmacyId: string, actorId: string, id: string) {
     const product = await this.findOne(pharmacyId, id);
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.product.delete({ where: { id } });
-        await tx.auditLog.create({
-          data: { pharmacyId, userId: actorId, action: 'product.delete', entity: 'Product', entityId: id },
-        });
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: { status: 'INACTIVE' },
       });
-      return { success: true };
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
-        throw new BadRequestException('Não é possível eliminar: o produto tem stock ou vendas associadas.');
-      }
-      throw e;
-    }
+      await tx.auditLog.create({
+        data: { pharmacyId, userId: actorId, action: 'product.deactivate', entity: 'Product', entityId: id },
+      });
+      return updated;
+    });
   }
 
   async update(pharmacyId: string, actorId: string, id: string, dto: UpdateProductDto) {
@@ -99,7 +96,7 @@ export class ProductsService {
 
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria invÃ¡lida.');
+      if (!cat) throw new BadRequestException('Categoria inválida.');
     }
 
     try {
@@ -115,7 +112,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou CÃ³digo de Barras jÃ¡ existe nesta farmÃ¡cia.');
+        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
       }
       throw e;
     }
