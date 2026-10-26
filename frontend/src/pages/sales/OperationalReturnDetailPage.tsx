@@ -165,7 +165,7 @@ export default function OperationalReturnDetailPage() {
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
         <p><strong>Venda:</strong> {ret.sale?.saleNumber ?? "—"}</p>
-        <p><strong>Motivo:</strong> {ret.reason}</p>
+        <p><strong>Motivo:</strong></p><p style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: "1rem" }}>{ret.reason}</p>
         <p><strong>Total Reembolso:</strong> {parseFloat(ret.totalRefund).toFixed(2)} MT</p>
         <p><strong>Estado:</strong> {statusLabels[ret.status] ?? ret.status}</p>
       </div>
