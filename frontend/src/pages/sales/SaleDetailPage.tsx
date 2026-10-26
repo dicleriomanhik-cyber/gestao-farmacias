@@ -130,7 +130,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   }
 
   const backLink = isOperational ? "/pos/historico" : "/vendas";
-  const backLabel = isOperational ? "Voltar ao Histórico" : "← Voltar às Vendas";
+  const backLabel = isOperational ? "Voltar ao Histórico" : "Voltar às Vendas";
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
@@ -231,3 +231,4 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     </div>
   );
 }
+
