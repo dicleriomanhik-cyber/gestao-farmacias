@@ -131,7 +131,7 @@ export default function ProductListPage() {
               <th>Nome</th>
               <th>Validade</th>
               <th>Preço</th>
-              <th style={{ width: "80px", textAlign: "center" }}>Ações</th>
+              <th style={{ width: "80px", textAlign: "right", paddingRight: "2rem" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -168,7 +168,7 @@ export default function ProductListPage() {
                     {openMenuId === p.id && (
                       <div
                         style={{
-                          position: "absolute", top: "100%", right: 0,
+                          position: "absolute", top: "100%", right: "100%", marginRight: "8px",
                           backgroundColor: "white", border: "1px solid #e2e8f0",
                           borderRadius: "8px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
                           zIndex: 1000, minWidth: "150px",
@@ -276,3 +276,4 @@ export default function ProductListPage() {
     </div>
   );
 }
+
