@@ -19,6 +19,9 @@ export default function ReturnListPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLTableCellElement>(null);
 
+  // Filtro de data (por defeito mostra apenas hoje)
+  const [dateFilter, setDateFilter] = useState<"ALL" | "DAILY">("DAILY");
+
   // Estado para itens ocultos (LocalStorage)
   const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
     const saved = localStorage.getItem("hidden_returns");
@@ -29,7 +32,7 @@ export default function ReturnListPage() {
   function load() {
     setLoading(true);
     setError(false);
-    getReturns({ page, limit: 10 })
+    getReturns({ page, limit: 100 })
       .then((res) => {
         setReturns(res.data);
         setMeta(res.meta);
@@ -65,13 +68,28 @@ export default function ReturnListPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
 
-  const visibleReturns = returns.filter((r) => showHidden || !hiddenIds.includes(r.id));
+  // 1. Filtrar por data
+  let filteredReturns = returns;
+  if (dateFilter === "DAILY") {
+    const todayStr = new Date().toLocaleDateString("pt-PT");
+    filteredReturns = filteredReturns.filter(r => new Date(r.createdAt).toLocaleDateString("pt-PT") === todayStr);
+  }
+
+  // 2. Filtrar ocultos
+  const visibleReturns = filteredReturns.filter((r) => showHidden || !hiddenIds.includes(r.id));
 
   if (visibleReturns.length === 0 && page === 1) {
     return (
       <div>
-        <PageHeader title="Devoluções" />
-        <EmptyState message="Nenhuma devolução registada (ou todas ocultas)." />
+        <PageHeader
+          title="Devoluções"
+          actions={
+            <button onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")} className="btn btn-secondary">
+              {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+            </button>
+          }
+        />
+        <EmptyState message={dateFilter === "DAILY" ? "Nenhuma devolução registada hoje." : "Nenhuma devolução registada."} />
         {hiddenIds.length > 0 && (
           <div style={{ textAlign: "center", marginTop: "1rem" }}>
             <button onClick={() => { setHiddenIds([]); setShowHidden(true); }} className="btn btn-secondary">Mostrar Ocultos</button>
@@ -101,6 +119,9 @@ export default function ReturnListPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <PageHeader title="Devoluções" />
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")} className="btn btn-secondary">
+            {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+          </button>
           {hiddenIds.length > 0 && (
             <button onClick={() => setShowHidden(!showHidden)} className="btn btn-secondary">
               {showHidden ? "Ocultar Ocultos" : "Mostrar Ocultos"}

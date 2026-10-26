@@ -28,7 +28,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   const [error, setError] = useState(false);
 
   // Filtros de data
-  const [dateFilter, setDateFilter] = useState<DateFilter>("ALL");
+  const [dateFilter, setDateFilter] = useState<DateFilter>(isOperational ? "DAILY" : "ALL");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
@@ -120,7 +120,21 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     <div>
       <PageHeader
         title="Vendas"
-        actions={!hideNewSaleButton && canCreateSales(user?.permissions) ? <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link> : null}
+        actions={
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {!hideNewSaleButton && canCreateSales(user?.permissions) && (
+              <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link>
+            )}
+            {isOperational && (
+              <button
+                onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
+                className="btn btn-secondary"
+              >
+                {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+              </button>
+            )}
+          </div>
+        }
       />
 
       {/* BARRA DE FILTROS (apenas para administração) */}
@@ -243,5 +257,6 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
 
 
