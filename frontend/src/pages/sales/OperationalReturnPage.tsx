@@ -1,8 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getSaleById, getSales } from "../../services/saleService";
+import { getReturns, createReturn } from "../../services/returnService";
 import { formatDateTime } from "../../utils/formatDate";
-import { createReturn } from "../../services/returnService";
 import type { Sale } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
@@ -16,11 +16,14 @@ export default function OperationalReturnPage() {
   const toast = useToast();
   const [sale, setSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [returnedSaleIds, setReturnedSaleIds] = useState<Set<string>>(new Set());
   const [reason, setReason] = useState("");
   const [lines, setLines] = useState<{ saleLineId: string; quantity: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  const [dateFilter, setDateFilter] = useState<"ALL" | "DAILY">("DAILY");
 
   useEffect(() => {
     if (saleId) {
@@ -34,8 +37,20 @@ export default function OperationalReturnPage() {
         .finally(() => setLoading(false));
     } else {
       setLoading(true);
-      getSales({ limit: 50, status: "CONFIRMED" })
-        .then((res) => setSales(res.data))
+      Promise.all([
+        getSales({ limit: 100, status: "CONFIRMED" }),
+        getReturns({ page: 1, limit: 100 })
+      ])
+        .then(([salesRes, returnsRes]) => {
+          setSales(salesRes.data);
+          const ids = new Set<string>();
+          returnsRes.data.forEach((r) => {
+            if (r.status === "CONFIRMED" || r.status === "COMPLETED" || r.status === "DRAFT") {
+              ids.add(r.saleId);
+            }
+          });
+          setReturnedSaleIds(ids);
+        })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
     }
@@ -68,46 +83,63 @@ export default function OperationalReturnPage() {
   if (error) return <ErrorState message="Erro ao carregar dados." onRetry={() => window.location.reload()} />;
 
   if (!saleId) {
-    if (sales.length === 0) {
-      return <EmptyState message="Nenhuma venda confirmada para devolver." />;
+    // Filtrar vendas por data
+    let filteredSales = sales;
+    if (dateFilter === "DAILY") {
+      const todayStr = new Date().toLocaleDateString("pt-PT");
+      filteredSales = filteredSales.filter(s => new Date(s.createdAt).toLocaleDateString("pt-PT") === todayStr);
     }
+
+    // Remover vendas já devolvidas
+    filteredSales = filteredSales.filter(s => !returnedSaleIds.has(s.id));
+
     return (
       <div>
-        <PageHeader title="Devoluções" />
-        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-          <p style={{ marginBottom: "1rem", color: "#64748b" }}>Selecione a venda que deseja devolver:</p>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nº</th>
-                <th>Produtos</th>
-                <th>Data</th>
-                <th>Total</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((s) => {
-                const hasReturns = (s as any).returns && (s as any).returns.some((r: any) => r.status === "CONFIRMED");
-                return (
+        <PageHeader
+          title="Devoluções"
+          actions={
+            <button
+              onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
+              className="btn btn-secondary"
+            >
+              {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+            </button>
+          }
+        />
+        
+        {filteredSales.length === 0 ? (
+          <EmptyState message={dateFilter === "DAILY" ? "Nenhuma venda disponível para devolução hoje." : "Nenhuma venda disponível para devolução."} />
+        ) : (
+          <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+            <p style={{ marginBottom: "1rem", color: "#64748b" }}>Selecione a venda que deseja devolver:</p>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nº</th>
+                  <th>Produtos</th>
+                  <th>Data</th>
+                  <th>Total</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSales.map((s) => (
                   <tr key={s.id}>
                     <td>{s.saleNumber}</td>
                     <td>{(s.lines ?? []).map((l) => l.product?.name ?? "").join(", ")}</td>
                     <td>{formatDateTime(s.createdAt)}</td>
                     <td>{parseFloat(s.total).toFixed(2)} MT</td>
                     <td>
-                      {hasReturns ? (
-                        <span style={{ color: "#6b7280", fontSize: "0.85rem", fontWeight: 500 }}>Devolvido</span>
-                      ) : (
-                        <Link to={`/pos/devolucoes/nova/${s.id}`} className="btn btn-primary" style={{ padding: "0.25rem 0.75rem" }}>Selecionar</Link>
-                      )}
+                      <Link to={`/pos/devolucoes/nova/${s.id}`} className="btn btn-primary" style={{ padding: "0.25rem 0.75rem" }}>
+                        Selecionar
+                      </Link>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }
