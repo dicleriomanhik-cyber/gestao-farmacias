@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { createLot } from "../../services/stockService";
 import { getProducts } from "../../services/productService";
 import type { Product } from "../../types/products";
@@ -23,11 +23,15 @@ export default function StockCreateFormPage() {
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  function loadProducts() {
     getProducts({ page: 1, limit: 100, status: "ACTIVE" })
       .then((res) => setProducts(Array.isArray(res?.data) ? res.data : []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadProducts();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -67,7 +71,12 @@ export default function StockCreateFormPage() {
     <div>
       <PageHeader title="Adicionar Stock (Novo Lote)" />
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Produto *</label>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <label style={{ fontWeight: 500 }}>Produto *</label>
+          <Link to="/produtos/novo" style={{ color: "#2563eb", fontSize: "0.85rem", textDecoration: "underline" }}>
+            + Novo Produto
+          </Link>
+        </div>
         <div style={{ marginBottom: "1rem" }}>
           <CustomSelect
             options={productOptions}
