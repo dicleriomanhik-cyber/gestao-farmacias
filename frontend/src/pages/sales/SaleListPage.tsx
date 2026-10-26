@@ -123,59 +123,61 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
         actions={!hideNewSaleButton && canCreateSales(user?.permissions) ? <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link> : null}
       />
 
-      {/* BARRA DE FILTROS */}
-      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
-        
-        <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Estado</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
-            className="input"
-            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-          >
-            <option value="ALL">Todos</option>
-            <option value="CONFIRMED">Concluída</option>
-            <option value="RETURNED">Reembolsada</option>
-          </select>
-        </div>
+      {/* BARRA DE FILTROS (apenas para administração) */}
+      {!isOperational && (
+        <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+          
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Estado</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
+              className="input"
+              style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+            >
+              <option value="ALL">Todos</option>
+              <option value="CONFIRMED">Concluída</option>
+              <option value="RETURNED">Reembolsada</option>
+            </select>
+          </div>
 
-        <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-            className="input"
-            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-          >
-            <option value="ALL">Tudo</option>
-            <option value="DAILY">Hoje</option>
-            <option value="WEEKLY">Esta Semana</option>
-            <option value="MONTHLY">Este Mês</option>
-            <option value="YEARLY">Este Ano</option>
-            <option value="CUSTOM">Personalizado</option>
-          </select>
-        </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+              className="input"
+              style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+            >
+              <option value="ALL">Tudo</option>
+              <option value="DAILY">Hoje</option>
+              <option value="WEEKLY">Esta Semana</option>
+              <option value="MONTHLY">Este Mês</option>
+              <option value="YEARLY">Este Ano</option>
+              <option value="CUSTOM">Personalizado</option>
+            </select>
+          </div>
 
-        {dateFilter === "CUSTOM" && (
-          <>
-            <div>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
-              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
-              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
-            </div>
-          </>
-        )}
+          {dateFilter === "CUSTOM" && (
+            <>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+                <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+                <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </div>
+            </>
+          )}
 
-        <div style={{ marginLeft: "auto", textAlign: "right" }}>
-          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
-          <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#166534" }}>{totalPeriod.toFixed(2)} MT</div>
-          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} vendas</div>
+          <div style={{ marginLeft: "auto", textAlign: "right" }}>
+            <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+            <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#166534" }}>{totalPeriod.toFixed(2)} MT</div>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} vendas</div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* CONTEÚDO DA TABELA OU MENSAGEM VAZIA */}
       {filteredSales.length === 0 ? (
@@ -241,3 +243,5 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
+
