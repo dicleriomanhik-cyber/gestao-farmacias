@@ -116,7 +116,8 @@ export default function CashSessionPage() {
 
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut : 0;
+  const netCash = (totals.CASH || 0) - totalOut;
+  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + netCash + totalIn : 0;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -158,8 +159,8 @@ export default function CashSessionPage() {
             <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Vendas por Método de Pagamento</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro (líquido)</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: netCash >= 0 ? "#166534" : "#b91c1c" }}>{money(netCash)} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
