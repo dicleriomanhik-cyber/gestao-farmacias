@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { getExpenses, confirmExpense, cancelExpense } from "../../services/expenseService";
 import type { Expense, ExpenseCategory, ExpenseMethod } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
-import EmptyState from "../../components/ui/EmptyState";
+
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useToast } from "../../contexts/ToastContext";
@@ -30,6 +30,8 @@ const METHOD_LABELS: Record<ExpenseMethod, string> = {
   OTHER: "Outro",
 };
 
+type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
+
 export default function ExpenseListPage() {
   const { user } = useAuth();
   const toast = useToast();
@@ -38,10 +40,15 @@ export default function ExpenseListPage() {
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Filtro de data
+  const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
   function load() {
     setLoading(true);
     setError(false);
-    getExpenses({ limit: 100 })
+    getExpenses({ limit: 1000 }) // Buscar o máximo para filtrar no frontend
       .then((res) => setExpenses(res.data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -80,9 +87,41 @@ export default function ExpenseListPage() {
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar as despesas." onRetry={load} />;
-  if (expenses.length === 0) {
-    return <EmptyState message="Nenhuma despesa registada." actionLabel="Nova Despesa" actionLink="/despesas/novo" />;
+
+  // --- FILTRAGEM ---
+  const now = new Date();
+  let filteredExpenses = expenses;
+
+  if (dateFilter === "DAILY") {
+    const todayStr = now.toLocaleDateString("pt-PT");
+    filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate).toLocaleDateString("pt-PT") === todayStr);
+  } else if (dateFilter === "WEEKLY") {
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Segunda-feira
+    startOfWeek.setHours(0, 0, 0, 0);
+    filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) >= startOfWeek);
+  } else if (dateFilter === "MONTHLY") {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) >= startOfMonth);
+  } else if (dateFilter === "YEARLY") {
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) >= startOfYear);
+  } else if (dateFilter === "CUSTOM") {
+    if (customStart) {
+      const start = new Date(customStart);
+      start.setHours(0, 0, 0, 0);
+      filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) >= start);
+    }
+    if (customEnd) {
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) <= end);
+    }
   }
+
+  // Total do período filtrado
+  const totalPeriod = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const totalCount = filteredExpenses.length;
 
   function statusBadge(status: string) {
     const map: Record<string, { bg: string; color: string; label: string }> = {
@@ -107,55 +146,102 @@ export default function ExpenseListPage() {
         actions={canWrite ? <Link to="/despesas/novo" className="btn btn-primary">+ Nova Despesa</Link> : null}
       />
 
-      <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Descrição</th>
-              <th>Categoria</th>
-              <th>Método</th>
-              <th>Valor</th>
-              <th>Estado</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {expenses.map((e) => (
-              <tr key={e.id}>
-                <td>{new Date(e.expenseDate).toLocaleDateString()}</td>
-                <td>{e.description}</td>
-                <td>{CATEGORY_LABELS[e.category] ?? e.category}</td>
-                <td>{METHOD_LABELS[e.method] ?? e.method}</td>
-                <td>{parseFloat(e.amount).toFixed(2)} MT</td>
-                <td>{statusBadge(e.status)}</td>
-                <td style={{ display: "flex", gap: "0.5rem" }}>
-                  {e.status === "DRAFT" && canWrite && (
-                    <>
-                      <button
-                        onClick={() => handleConfirm(e.id)}
-                        disabled={actionLoading === e.id}
-                        className="btn btn-success"
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                      >
-                        Confirmar
-                      </button>
-                      <button
-                        onClick={() => handleCancel(e.id)}
-                        disabled={actionLoading === e.id}
-                        className="btn btn-danger"
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                      >
-                        Cancelar
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* BARRA DE FILTROS */}
+      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        
+        <div>
+          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="input"
+            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+          >
+            <option value="DAILY">Hoje</option>
+            <option value="WEEKLY">Esta Semana</option>
+            <option value="MONTHLY">Este Mês</option>
+            <option value="YEARLY">Este Ano</option>
+            <option value="CUSTOM">Personalizado</option>
+            <option value="ALL">Ver Tudo</option>
+          </select>
+        </div>
+
+        {dateFilter === "CUSTOM" && (
+          <>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+          </>
+        )}
+
+        <div style={{ marginLeft: "auto", textAlign: "right" }}>
+          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+          <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
+          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} despesas</div>
+        </div>
       </div>
+
+      {filteredExpenses.length === 0 ? (
+        <div className="card" style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+          <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma despesa encontrada para este período.</p>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Método</th>
+                <th>Valor</th>
+                <th>Estado</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.map((e) => (
+                <tr key={e.id}>
+                  <td>{new Date(e.expenseDate).toLocaleDateString("pt-PT")}</td>
+                  <td>{e.description}</td>
+                  <td>{CATEGORY_LABELS[e.category] ?? e.category}</td>
+                  <td>{METHOD_LABELS[e.method] ?? e.method}</td>
+                  <td>{parseFloat(e.amount).toFixed(2)} MT</td>
+                  <td>{statusBadge(e.status)}</td>
+                  <td style={{ display: "flex", gap: "0.5rem" }}>
+                    {e.status === "DRAFT" && canWrite && (
+                      <>
+                        <button
+                          onClick={() => handleConfirm(e.id)}
+                          disabled={actionLoading === e.id}
+                          className="btn btn-success"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          Confirmar
+                        </button>
+                        <button
+                          onClick={() => handleCancel(e.id)}
+                          disabled={actionLoading === e.id}
+                          className="btn btn-danger"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
+
