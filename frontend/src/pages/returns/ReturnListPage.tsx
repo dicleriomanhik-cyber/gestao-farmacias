@@ -15,6 +15,14 @@ export default function ReturnListPage() {
   const [error, setError] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<SaleReturn | null>(null);
 
+  // Estado para itens ocultos (LocalStorage)
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem("hidden_returns");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [showHidden, setShowHidden] = useState(false);
+
   function load() {
     setLoading(true);
     setError(false);
@@ -29,10 +37,39 @@ export default function ReturnListPage() {
 
   useEffect(() => { load(); }, [page]);
 
+  // Sincronizar LocalStorage
+  useEffect(() => {
+    localStorage.setItem("hidden_returns", JSON.stringify(hiddenIds));
+  }, [hiddenIds]);
+
+  function handleClearHistory() {
+    if (!window.confirm("Tem a certeza que deseja ocultar TODO o histórico desta página? (Pode ser recuperado depois)")) return;
+    const idsToHide = returns.map((r) => r.id);
+    setHiddenIds((prev) => [...new Set([...prev, ...idsToHide])]);
+  }
+
+  function handleRestoreHistory() {
+    setHiddenIds([]);
+    setShowHidden(true);
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
-  if (returns.length === 0 && page === 1) {
-    return <EmptyState message="Nenhuma devolução registada." />;
+
+  const visibleReturns = returns.filter((r) => showHidden || !hiddenIds.includes(r.id));
+
+  if (visibleReturns.length === 0 && page === 1) {
+    return (
+      <div>
+        <PageHeader title="Devoluções" />
+        <EmptyState message="Nenhuma devolução registada (ou todas ocultas)." />
+        {hiddenIds.length > 0 && (
+          <div style={{ textAlign: "center", marginTop: "1rem" }}>
+            <button onClick={handleRestoreHistory} className="btn btn-secondary">Mostrar Ocultos</button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function statusBadge(status: string) {
@@ -52,7 +89,20 @@ export default function ReturnListPage() {
 
   return (
     <div>
-      <PageHeader title="Devoluções" />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <PageHeader title="Devoluções" />
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {hiddenIds.length > 0 && (
+            <button onClick={() => setShowHidden(!showHidden)} className="btn btn-secondary">
+              {showHidden ? "Ocultar Ocultos" : "Mostrar Ocultos"}
+            </button>
+          )}
+          <button onClick={handleClearHistory} className="btn btn-danger" style={{ backgroundColor: "#ef4444", color: "white", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
+            Limpar Histórico
+          </button>
+        </div>
+      </div>
+
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
           <thead>
@@ -66,7 +116,7 @@ export default function ReturnListPage() {
             </tr>
           </thead>
           <tbody>
-            {returns.map((r) => (
+            {visibleReturns.map((r) => (
               <tr key={r.id}>
                 <td>{r.returnNumber}</td>
                 <td>{r.sale?.saleNumber ?? "—"}</td>
@@ -100,30 +150,18 @@ export default function ReturnListPage() {
       {selectedReturn && (
         <div
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
           }}
           onClick={() => setSelectedReturn(null)}
         >
           <div
             className="card"
             style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "1.5rem",
-              maxWidth: "600px",
-              width: "90%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+              backgroundColor: "white", borderRadius: "12px", padding: "1.5rem",
+              maxWidth: "600px", width: "90%", maxHeight: "80vh",
+              overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -141,13 +179,9 @@ export default function ReturnListPage() {
               <button
                 onClick={() => setSelectedReturn(null)}
                 style={{
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "#e2e8f0",
-                  color: "#1e293b",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontWeight: "500",
-                  cursor: "pointer",
+                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
+                  color: "#1e293b", border: "none", borderRadius: "6px",
+                  fontWeight: "500", cursor: "pointer",
                 }}
               >
                 Fechar
