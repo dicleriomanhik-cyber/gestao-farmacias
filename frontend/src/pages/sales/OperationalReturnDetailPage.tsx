@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getReturnById, confirmReturn, inspectReturnLine, createRefund } from "../../services/returnService";
 import { getSalePayments } from "../../services/saleService";
 import { getActiveCashSession } from "../../services/cashService";
@@ -36,6 +36,7 @@ const methodLabels: Record<string, string> = {
 
 export default function OperationalReturnDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const toast = useToast();
   const [ret, setRet] = useState<SaleReturn | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -142,7 +143,8 @@ export default function OperationalReturnDetailPage() {
         cashSessionId: refundMethod === "CASH" ? cashSession?.id : undefined,
       });
       toast.success("Reembolso registado.");
-      load();
+      // Redirecionar para o caixa após o reembolso
+      navigate("/pos/caixa");
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message ?? "Erro ao reembolsar.";
       toast.error(String(msg).replace(/Ã¡/g, "á").replace(/Ã©/g, "é").replace(/Ã­/g, "í").replace(/Ã³/g, "ó").replace(/Ãº/g, "ú").replace(/Ã£/g, "ã").replace(/Ã§/g, "ç"));
