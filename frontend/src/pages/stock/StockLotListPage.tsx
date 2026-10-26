@@ -63,7 +63,7 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
           !hideAdminActions ? (
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <Link to="/stock/novo" className="btn btn-primary">+ Adicionar Stock</Link>
-              <Link to="/stock/movimentos" className="btn btn-secondary">Movimentos</Link>
+
               <Link to="/stock/ajustar" className="btn btn-warning">Ajustar Stock</Link>
             </div>
           ) : null
