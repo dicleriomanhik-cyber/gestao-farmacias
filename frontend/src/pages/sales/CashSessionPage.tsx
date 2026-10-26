@@ -54,10 +54,11 @@ export default function CashSessionPage() {
           setMovements([]);
         }
 
-        const totalAllMethods = (data.totalsByMethod.CASH || 0) + (data.totalsByMethod.CARD || 0) + (data.totalsByMethod.MPESA || 0) + (data.totalsByMethod.EMOLA || 0);
         const totalOut = movementsData.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
         const totalIn = movementsData.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-        const expected = parseFloat(active.openingBalance.toString()) + totalAllMethods + totalIn - totalOut;
+        
+        // CORREÇÃO: O valor esperado em gaveta é APENAS o dinheiro físico (CASH)
+        const expected = parseFloat(active.openingBalance.toString()) + (data.totalsByMethod.CASH || 0) + totalIn - totalOut;
         setAmount(expected.toFixed(2));
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
@@ -114,11 +115,14 @@ export default function CashSessionPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={load} />;
 
-  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const netCash = (totals.CASH || 0) - totalOut;
-  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
+  
+  // Dinheiro líquido na gaveta
+  const netCash = (totals.CASH || 0) - totalOut + totalIn;
+  
+  // CORREÇÃO: O Saldo Esperado (físico) é o inicial + dinheiro líquido
+  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + netCash : 0;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -151,7 +155,7 @@ export default function CashSessionPage() {
               <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(session.openingBalance)} MT</p>
             </div>
             <div className="card" style={{ padding: "0.75rem", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}>
-              <h3 style={{ color: "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Esperado</h3>
+              <h3 style={{ color: "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Esperado (Gaveta)</h3>
               <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#2563eb", margin: 0 }}>{money(expectedBalance)} MT</p>
             </div>
           </div>
