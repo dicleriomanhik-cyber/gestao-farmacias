@@ -109,9 +109,10 @@ export default function ProductListPage() {
 
   return (
     <div>
-      <PageHeader title="Produtos" actions={<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>} />
+      <div style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem" }}>
+        <PageHeader title="Produtos" actions={<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>} />
 
-      <form onSubmit={onSearch} style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
+        <form onSubmit={onSearch} style={{ display: "flex", gap: "0.5rem" }}>
         <input
           type="text"
           placeholder="Pesquisar por nome…"
@@ -119,10 +120,11 @@ export default function ProductListPage() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1, padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: "6px", outline: "none" }}
         />
-        <button type="submit" className="btn btn-primary" style={{ padding: "0.5rem 1rem" }}>
-          Pesquisar
-        </button>
-      </form>
+          <button type="submit" className="btn btn-primary" style={{ padding: "0.5rem 1rem" }}>
+            Pesquisar
+          </button>
+        </form>
+      </div>
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
@@ -276,5 +278,6 @@ export default function ProductListPage() {
     </div>
   );
 }
+
 
 
