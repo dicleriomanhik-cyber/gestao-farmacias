@@ -122,7 +122,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
         title="Vendas"
         actions={
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            {!hideNewSaleButton && canCreateSales(user?.permissions) && (
+            {isOperational && !hideNewSaleButton && canCreateSales(user?.permissions) && (
               <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link>
             )}
             {isOperational && (
@@ -270,6 +270,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
 
 
 
