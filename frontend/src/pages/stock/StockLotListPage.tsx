@@ -49,21 +49,46 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
     return `${day}/${month}/${year}`;
   }
 
+  // Agrupar os lotes por produto
+  const groupedLots = lots.reduce((acc, lot) => {
+    const productName = lot.product?.name ?? "Desconhecido";
+    if (!acc[productName]) {
+      acc[productName] = {
+        productName,
+        totalQuantity: 0,
+        earliestExpiry: lot.expiryDate,
+        lotNumbers: [],
+        status: lot.status,
+      };
+    }
+    
+    acc[productName].totalQuantity += lot.quantityAvailable;
+    acc[productName].lotNumbers.push(lot.lotNumber);
+    
+    // Guardar a validade mais próxima (ou a mais antiga se já expirou)
+    if (new Date(lot.expiryDate) < new Date(acc[productName].earliestExpiry)) {
+      acc[productName].earliestExpiry = lot.expiryDate;
+    }
+
+    return acc;
+  }, {} as Record<string, { productName: string; totalQuantity: number; earliestExpiry: string; lotNumbers: string[]; status: string }>);
+
+  const groupedArray = Object.values(groupedLots);
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os lotes de stock." onRetry={load} />;
-  if (lots.length === 0) {
+  if (groupedArray.length === 0) {
     return <EmptyState message="Nenhum lote em stock. Recebe mercadoria para começar." />;
   }
 
   return (
     <div>
       <PageHeader
-        title="Lotes de Stock"
+        title="Stock (Agrupado por Produto)"
         actions={
           !hideAdminActions ? (
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <Link to="/stock/novo" className="btn btn-primary">+ Adicionar Stock</Link>
-
               <Link to="/stock/ajustar" className="btn btn-warning">Ajustar Stock</Link>
             </div>
           ) : null
@@ -75,37 +100,37 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
           <thead>
             <tr>
               <th>Produto</th>
-              <th>Lote</th>
-              <th>Quantidade</th>
-              <th>Validade</th>
+              <th>Lotes</th>
+              <th>Qtd Total</th>
+              <th>Próx. Validade</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
-            {lots.map((lot) => (
-              <tr key={lot.id}>
-                <td>{lot.product?.name ?? "—"}</td>
-                <td>{lot.lotNumber}</td>
-                <td>{lot.quantityAvailable}</td>
+            {groupedArray.map((group) => (
+              <tr key={group.productName}>
+                <td>{group.productName}</td>
+                <td style={{ fontSize: "0.85rem", color: "#64748b" }}>{group.lotNumbers.join(", ")}</td>
+                <td style={{ fontWeight: "bold" }}>{group.totalQuantity}</td>
                 <td
                   style={{
-                    fontWeight: isExpiringSoon(lot.expiryDate) || isExpired(lot.expiryDate) ? "bold" : "normal",
-                    color: isExpired(lot.expiryDate) ? "#b91c1c" : isExpiringSoon(lot.expiryDate) ? "#ca8a04" : "inherit",
+                    fontWeight: isExpiringSoon(group.earliestExpiry) || isExpired(group.earliestExpiry) ? "bold" : "normal",
+                    color: isExpired(group.earliestExpiry) ? "#b91c1c" : isExpiringSoon(group.earliestExpiry) ? "#ca8a04" : "inherit",
                   }}
                 >
-                  {formatDate(lot.expiryDate)}
-                  {isExpired(lot.expiryDate) && " (Expirado)"}
-                  {!isExpired(lot.expiryDate) && isExpiringSoon(lot.expiryDate) && " (A expirar)"}
+                  {formatDate(group.earliestExpiry)}
+                  {isExpired(group.earliestExpiry) && " (Expirado)"}
+                  {!isExpired(group.earliestExpiry) && isExpiringSoon(group.earliestExpiry) && " (A expirar)"}
                 </td>
                 <td>
                   <span style={{
                     padding: "0.25rem 0.5rem",
                     borderRadius: "4px",
                     fontSize: "0.875rem",
-                    backgroundColor: lot.status === "ACTIVE" ? "#dcfce7" : "#fee2e2",
-                    color: lot.status === "ACTIVE" ? "#166534" : "#991b1b",
+                    backgroundColor: group.status === "ACTIVE" ? "#dcfce7" : "#fee2e2",
+                    color: group.status === "ACTIVE" ? "#166534" : "#991b1b",
                   }}>
-                    {lot.status}
+                    {group.status}
                   </span>
                 </td>
               </tr>
@@ -116,4 +141,3 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
     </div>
   );
 }
-
