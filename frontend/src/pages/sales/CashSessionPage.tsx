@@ -123,6 +123,9 @@ export default function CashSessionPage() {
   
   // CORREÇÃO: O Saldo Esperado (físico) é o inicial + dinheiro líquido
   const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + netCash : 0;
+  
+  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
+  const expectedTotalBalance = session ? parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -149,7 +152,7 @@ export default function CashSessionPage() {
 
       {session && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
             <div className="card" style={{ padding: "0.75rem" }}>
               <h3 style={{ color: "#6b7280", fontSize: "0.75rem", margin: "0 0 0.25rem" }}>Valor Inicial</h3>
               <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(session.openingBalance)} MT</p>
@@ -157,6 +160,10 @@ export default function CashSessionPage() {
             <div className="card" style={{ padding: "0.75rem", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}>
               <h3 style={{ color: "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Esperado (Gaveta)</h3>
               <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#2563eb", margin: 0 }}>{money(expectedBalance)} MT</p>
+            </div>
+            <div className="card" style={{ padding: "0.75rem", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+              <h3 style={{ color: "#166534", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Total (Geral)</h3>
+              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#15803d", margin: 0 }}>{money(expectedTotalBalance)} MT</p>
             </div>
           </div>
 
@@ -228,3 +235,4 @@ export default function CashSessionPage() {
     </div>
   );
 }
+
