@@ -5,7 +5,6 @@ import { formatDateTime } from "../../utils/formatDate";
 import { getReturns } from "../../services/returnService";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
-
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../hooks/useAuth";
@@ -37,9 +36,8 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     setLoading(true);
     setError(false);
     
-    // Puxar todas as vendas (sem filtro de estado na API, para podermos filtrar no frontend)
     Promise.all([
-      getSales({ page, limit: 100 }),
+      getSales({ page, limit: 100 }), // Puxa as vendas sem filtro de estado
       getReturns({ page: 1, limit: 100 }),
     ])
       .then(([salesRes, returnsRes]) => {
@@ -76,6 +74,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     );
   }
 
+  // --- LÓGICA DE FILTRAGEM ---
   // 1. Filtrar por estado
   let filteredSales = sales;
   if (statusFilter === "CONFIRMED") {
@@ -86,11 +85,13 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
 
   // 2. Filtrar por data
   const now = new Date();
+  
   if (dateFilter === "DAILY") {
     const todayStr = now.toLocaleDateString("pt-PT");
     filteredSales = filteredSales.filter(s => new Date(s.createdAt).toLocaleDateString("pt-PT") === todayStr);
   } else if (dateFilter === "WEEKLY") {
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); // Segunda-feira
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Segunda-feira
     startOfWeek.setHours(0, 0, 0, 0);
     filteredSales = filteredSales.filter(s => new Date(s.createdAt) >= startOfWeek);
   } else if (dateFilter === "MONTHLY") {
@@ -244,4 +245,3 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
-
