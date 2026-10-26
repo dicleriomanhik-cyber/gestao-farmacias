@@ -155,6 +155,8 @@ export default function OperationalReturnDetailPage() {
   if (error) return <ErrorState message="Devolução não encontrada." onRetry={() => window.location.reload()} />;
   if (!ret) return <ErrorState message="Devolução não encontrada." onRetry={() => window.location.reload()} />;
 
+  const selectedPaymentData = payments.find((p) => p.id === selectedPayment);
+
   return (
     <div>
       <PageHeader title={`Devolução ${ret.returnNumber}`} actions={<Link to="/pos/devolucoes" className="btn btn-secondary">Voltar</Link>} />
@@ -223,6 +225,13 @@ export default function OperationalReturnDetailPage() {
             ))}
           </select>
 
+          <label style={{ display: "block", marginBottom: "0.5rem" }}>Pagamento original:</label>
+          <select value={selectedPayment} onChange={(e) => setSelectedPayment(e.target.value)} className="input" style={{ marginBottom: "1rem" }}>
+            {payments.map((p) => (
+              <option key={p.id} value={p.id}>{methodLabels[p.method] ?? p.method} — {parseFloat(p.amount).toFixed(2)} MT</option>
+            ))}
+          </select>
+
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Método de reembolso:</label>
           <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as any)} className="input" style={{ marginBottom: "1rem" }}>
             <option value="CASH">Dinheiro</option>
@@ -231,12 +240,11 @@ export default function OperationalReturnDetailPage() {
             <option value="EMOLA">e-Mola</option>
           </select>
 
-          <label style={{ display: "block", marginBottom: "0.5rem" }}>Pagamento original:</label>
-          <select value={selectedPayment} onChange={(e) => setSelectedPayment(e.target.value)} className="input" style={{ marginBottom: "1rem" }}>
-            {payments.map((p) => (
-              <option key={p.id} value={p.id}>{methodLabels[p.method] ?? p.method} — {parseFloat(p.amount).toFixed(2)} MT</option>
-            ))}
-          </select>
+          {selectedPaymentData && refundMethod !== selectedPaymentData.method && (
+            <p style={{ color: "#b91c1c", fontSize: "0.85rem", marginBottom: "1rem" }}>
+              ⚠️ O método de reembolso tem de ser igual ao pagamento original ({methodLabels[selectedPaymentData.method]}).
+            </p>
+          )}
 
           <button onClick={handleRefund} disabled={actionLoading} className="btn btn-success">{actionLoading ? "A processar…" : "Registar Reembolso"}</button>
         </div>
