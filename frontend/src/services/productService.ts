@@ -28,6 +28,7 @@ export async function getProducts(params: ListParams = {}): Promise<PaginatedRes
       page: params.page ?? 1,
       limit: params.limit ?? 20,
       ...(params.search ? { search: params.search } : {}),
+      ...(params.status ? { status: params.status } : {}),
     },
   });
   return resp.data.data;

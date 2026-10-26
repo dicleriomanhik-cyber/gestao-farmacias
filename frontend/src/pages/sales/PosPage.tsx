@@ -37,7 +37,7 @@ export default function PosPage() {
   function load(query: string = "") {
     setLoading(true);
     setError(false);
-    getProducts({ page: 1, limit: 100, search: query || undefined })
+    getProducts({ page: 1, limit: 100, search: query || undefined, status: "ACTIVE" })
       .then((res) => setProducts(Array.isArray(res?.data) ? res.data : []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
