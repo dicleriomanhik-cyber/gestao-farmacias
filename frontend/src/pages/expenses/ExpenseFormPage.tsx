@@ -24,7 +24,9 @@ const METHODS: { value: ExpenseMethod; label: string }[] = [
   { value: "OTHER", label: "Outro" },
 ];
 
-export default function ExpenseFormPage() {
+interface Props { isOperational?: boolean }
+
+export default function ExpenseFormPage({ isOperational = false }: Props) {
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -44,7 +46,7 @@ export default function ExpenseFormPage() {
     try {
       await createExpense({ description: description.trim(), amount: num, category, method });
       toast.success("Despesa criada como rascunho.");
-      navigate("/despesas");
+      navigate(isOperational ? "/pos/despesas" : "/despesas");
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message;
       toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? "Erro ao criar despesa."));
@@ -88,3 +90,5 @@ export default function ExpenseFormPage() {
     </div>
   );
 }
+
+

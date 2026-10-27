@@ -50,6 +50,8 @@ export default function AppRouter() {
           <Route path="devolucoes" element={<OperationalReturnPage />} />
           <Route path="devolucoes/nova/:saleId" element={<OperationalReturnPage />} />
           <Route path="devolucoes/:id" element={<OperationalReturnDetailPage />} />
+          <Route path="despesas" element={<ExpenseListPage isOperational={true} />} />
+          <Route path="despesas/novo" element={<ExpenseFormPage isOperational={true} />} />
           <Route path="stock" element={<OperationalStockPage />} /><Route path="caixa" element={<CashSessionPage />} />
 
         </Route>
@@ -104,3 +106,5 @@ export default function AppRouter() {
     </BrowserRouter>
   );
 }
+
+

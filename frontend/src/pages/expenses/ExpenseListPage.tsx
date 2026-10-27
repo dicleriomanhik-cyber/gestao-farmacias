@@ -32,7 +32,9 @@ const METHOD_LABELS: Record<ExpenseMethod, string> = {
 
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
-export default function ExpenseListPage() {
+interface Props { isOperational?: boolean }
+
+export default function ExpenseListPage({ isOperational = false }: Props) {
   const { user } = useAuth();
   const toast = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -144,7 +146,7 @@ export default function ExpenseListPage() {
       <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
         <PageHeader
           title="Despesas"
-          actions={canWrite ? <Link to="/despesas/novo" className="btn btn-primary">+ Nova Despesa</Link> : null}
+          actions={canWrite && !isOperational ? <Link to="/despesas/novo" className="btn btn-primary">+ Nova Despesa</Link> : null}
         />
 
         {/* BARRA DE FILTROS */}
@@ -246,6 +248,8 @@ export default function ExpenseListPage() {
     </div>
   );
 }
+
+
 
 
 

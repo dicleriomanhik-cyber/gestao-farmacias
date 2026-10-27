@@ -13,6 +13,7 @@ export default function OperationalLayout() {
   const navItems = [
     { path: "/pos", label: "Nova Venda", end: true },
     { path: "/pos/caixa", label: "Caixa" },
+    { path: "/pos/despesas", label: "Despesas" },
     { path: "/pos/stock", label: "Stock" },
     { path: "/pos/devolucoes", label: "Devoluções" },
     { path: "/pos/historico", label: "Histórico" },
@@ -57,3 +58,4 @@ export default function OperationalLayout() {
     </div>
   );
 }
+
