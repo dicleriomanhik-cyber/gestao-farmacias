@@ -39,20 +39,21 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
         disabled={disabled}
         style={{
           width: "100%",
-          padding: "0.75rem 1rem",
+          padding: "0.4rem 0.6rem",
           backgroundColor: disabled ? "#f3f4f6" : "white",
           border: open ? "2px solid #2563eb" : "1px solid #e2e8f0",
-          borderRadius: "8px",
+          borderRadius: "6px",
           textAlign: "left",
           cursor: disabled ? "not-allowed" : "pointer",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          fontSize: "0.95rem",
+          fontSize: "0.85rem",
           color: selected ? "#1e293b" : "#94a3b8",
           outline: "none",
           boxShadow: open ? "0 0 0 3px rgba(37, 99, 235, 0.1)" : "none",
           transition: "all 0.2s",
+          ...style,
         }}
       >
         <span>{selected ? selected.label : placeholder}</span>
@@ -86,7 +87,7 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
                 setOpen(false);
               }}
               style={{
-                padding: "0.75rem 1rem",
+                padding: "0.4rem 0.6rem",
                 cursor: opt.disabled ? "not-allowed" : "pointer",
                 backgroundColor: opt.value === value ? "#eff6ff" : "white",
                 color: opt.disabled ? "#94a3b8" : opt.value === value ? "#2563eb" : "#1e293b",
@@ -112,3 +113,4 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
     </div>
   );
 }
+
