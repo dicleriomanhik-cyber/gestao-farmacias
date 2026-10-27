@@ -53,6 +53,19 @@ export default function PosPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Enter global para finalizar venda (quando não está em input de pesquisa)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Enter") return;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea") return;
+      document.dispatchEvent(new CustomEvent("__pos_enter"));
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   function addItem(product: Product) {
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
@@ -80,6 +93,18 @@ export default function PosPage() {
   const total = cart.reduce((acc, i) => acc + parseFloat(i.unitPrice) * i.quantity, 0);
   const paid = parseFloat(amountPaid) || 0;
   const change = paid > 0 ? paid - total : 0;
+
+  // Listener do evento customizado para Enter
+  useEffect(() => {
+    function onEnter() {
+      if (completedSale) return;
+      if (cart.length === 0 || submitting) return;
+      if (paymentMethod === "CASH" && paid < total) return;
+      handleCheckout();
+    }
+    document.addEventListener("__pos_enter", onEnter as EventListener);
+    return () => document.removeEventListener("__pos_enter", onEnter as EventListener);
+  }, [cart, submitting, paymentMethod, paid, total, completedSale]);
 
   async function handleCheckout() {
     if (cart.length === 0) return toast.error("Carrinho vazio.");
@@ -340,6 +365,8 @@ export default function PosPage() {
     </div>
   );
 }
+
+
 
 
 
