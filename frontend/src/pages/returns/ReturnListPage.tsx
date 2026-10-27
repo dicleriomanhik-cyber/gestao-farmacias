@@ -74,7 +74,7 @@ export default function ReturnListPage() {
 
   // --- FILTRAGEM DE DATA ---
   const now = new Date();
-  let filteredReturns = returns;
+  let filteredReturns = returns.filter(r => r.status !== "CANCELLED");
 
   if (dateFilter === "DAILY") {
     const todayStr = now.toLocaleDateString("pt-PT");
@@ -346,6 +346,7 @@ export default function ReturnListPage() {
     </div>
   );
 }
+
 
 
 

@@ -92,7 +92,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
 
   // --- FILTRAGEM ---
   const now = new Date();
-  let filteredExpenses = expenses;
+  let filteredExpenses = expenses.filter(e => e.status !== "CANCELLED");
 
   if (dateFilter === "DAILY") {
     const todayStr = now.toLocaleDateString("pt-PT");
@@ -248,6 +248,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     </div>
   );
 }
+
 
 
 

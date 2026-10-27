@@ -75,7 +75,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   }
 
   // --- LÓGICA DE FILTRAGEM ---
-  let filteredSales = sales;
+  let filteredSales = sales.filter(s => s.status !== "CANCELLED");
   if (statusFilter === "CONFIRMED") {
     filteredSales = filteredSales.filter((s) => !returnedSaleIds.has(s.id) && s.status === "CONFIRMED");
   } else if (statusFilter === "RETURNED") {
@@ -270,6 +270,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
 
 
 
