@@ -9,6 +9,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
+import { exportToExcel, exportToPDF } from "../../utils/export";
 
 export default function ProductListPage() {
   const toast = useToast();
@@ -86,6 +87,26 @@ export default function ProductListPage() {
     return new Date(dateStr).getTime() < Date.now();
   }
 
+  function handleExportExcel() {
+    const headers = ["Nome", "Validade", "Preço (MT)"];
+    const rows = products.map((p) => ({
+      Nome: p.name,
+      Validade: getNearestExpiry(p.id) ? formatDate(getNearestExpiry(p.id)!) : "—",
+      "Preço (MT)": parseFloat(p.salePrice).toFixed(2),
+    }));
+    exportToExcel("produtos", headers, rows, "Produtos");
+  }
+
+  function handleExportPDF() {
+    const headers = ["Nome", "Validade", "Preço (MT)"];
+    const rows = products.map((p) => [
+      p.name,
+      getNearestExpiry(p.id) ? formatDate(getNearestExpiry(p.id)!) : "—",
+      parseFloat(p.salePrice).toFixed(2),
+    ]);
+    exportToPDF("produtos", "Lista de Produtos", headers, rows);
+  }
+
   async function handleDelete() {
     if (!productToDelete) return;
     setDeletingId(productToDelete.id);
@@ -109,10 +130,18 @@ export default function ProductListPage() {
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <PageHeader title="Produtos" actions={<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>} />
+      <PageHeader
+        title="Produtos"
+        actions={
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={handleExportExcel} className="btn btn-secondary" style={{ padding: "0.5rem 1rem" }}>📊 Excel</button>
+            <button onClick={handleExportPDF} className="btn btn-secondary" style={{ padding: "0.5rem 1rem" }}>📄 PDF</button>
+            <Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>
+          </div>
+        }
+      />
 
-        <form onSubmit={onSearch} style={{ display: "flex", gap: "0.5rem" }}>
+      <form onSubmit={onSearch} style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
         <input
           type="text"
           placeholder="Pesquisar por nome…"
@@ -120,11 +149,10 @@ export default function ProductListPage() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1, padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: "6px", outline: "none" }}
         />
-          <button type="submit" className="btn btn-primary" style={{ padding: "0.5rem 1rem" }}>
-            Pesquisar
-          </button>
-        </form>
-      </div>
+        <button type="submit" className="btn btn-primary" style={{ padding: "0.5rem 1rem" }}>
+          Pesquisar
+        </button>
+      </form>
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
@@ -210,7 +238,7 @@ export default function ProductListPage() {
         </table>
       </div>
 
-      {meta && (
+      {meta && meta.totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-secondary" style={{ opacity: page <= 1 ? 0.5 : 1 }}>
             Anterior
@@ -278,7 +306,3 @@ export default function ProductListPage() {
     </div>
   );
 }
-
-
-
-
