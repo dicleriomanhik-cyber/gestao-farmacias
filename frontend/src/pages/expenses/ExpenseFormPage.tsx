@@ -32,7 +32,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
 
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<ExpenseCategory>(isOperational ? "OTHER" : "OTHER");
+  const [category, setCategory] = useState<ExpenseCategory>("OTHER");
   const [method, setMethod] = useState<ExpenseMethod>("CASH");
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,7 +44,12 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
 
     setSubmitting(true);
     try {
-      await createExpense({ description: description.trim(), amount: num, category: isOperational ? "OTHER" : category, method });
+      await createExpense({
+        description: description.trim(),
+        amount: num,
+        category: isOperational ? "OTHER" : category,
+        method,
+      });
       toast.success("Despesa criada como rascunho.");
       navigate(isOperational ? "/pos/despesas" : "/despesas");
     } catch (err: any) {
@@ -61,20 +66,22 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Descrição *</label>
-          <input type="text" className="input" value={description} onChange={(e) => setDescription(e.target.value)} required />
+          <input type="text" className="input" value={description} onChange={(e) => setDescription(e.target.value)} required placeholder="Ex: Transporte, Refeição…" />
         </div>
 
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Valor (MT) *</label>
-          <input type="number" step="0.01" min="0.01" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <input type="number" step="0.01" min="0.01" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} required placeholder="Ex: 100.00" />
         </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria *</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className="input">
-            {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-        </div>
+        {!isOperational && (
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria *</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className="input">
+              {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+        )}
 
         <div style={{ marginBottom: "1.5rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento *</label>
@@ -90,6 +97,3 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
     </div>
   );
 }
-
-
-
