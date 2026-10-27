@@ -89,7 +89,6 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar as despesas." onRetry={load} />;
 
-  // --- FILTRAGEM ---
   const now = new Date();
   let filteredExpenses = expenses.filter(e => e.status !== "CANCELLED");
 
@@ -206,7 +205,6 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
             <thead>
               <tr>
                 <th>Data</th>
-                <th>Descrição</th>
                 <th>Categoria</th>
                 <th>Método</th>
                 <th>Valor</th>
@@ -219,9 +217,6 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
               {filteredExpenses.map((e) => (
                 <tr key={e.id}>
                   <td>{new Date(e.expenseDate).toLocaleDateString("pt-PT")}</td>
-                  <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "200px" }} title={e.description}>
-                    {e.description.length > 30 ? e.description.substring(0, 30) + "…" : e.description}
-                  </td>
                   <td>{CATEGORY_LABELS[e.category] ?? e.category}</td>
                   <td>{METHOD_LABELS[e.method] ?? e.method}</td>
                   <td>{parseFloat(e.amount).toFixed(2)} MT</td>
@@ -262,7 +257,6 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
         </div>
       )}
 
-      {/* MODAL DE DETALHES */}
       {selectedExpense && (
         <div
           style={{
@@ -312,4 +306,3 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     </div>
   );
 }
-
