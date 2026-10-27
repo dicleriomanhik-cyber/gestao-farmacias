@@ -1,6 +1,7 @@
-ï»¿import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
+import { StockService } from '../stock/stock.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -15,7 +16,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 @UseGuards(PermissionsGuard)
 @Controller('sales')
 export class SalesController {
-  constructor(private readonly service: SalesService) {}
+  constructor(private readonly service: SalesService, private readonly stockService: StockService) {}
 
   @Post()
   @RequirePermissions(PERMISSIONS.SALES_CREATE)
@@ -68,5 +69,12 @@ export class SalesController {
   @ApiOperation({ summary: 'Confirmar venda (aplica FEFO e reduz stock)' })
   confirm(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.service.confirm(pharmacyId, user.id, id);
+  }
+
+  @Get('pos/stock')
+  @RequirePermissions(PERMISSIONS.SALES_READ)
+  @ApiOperation({ summary: 'Stock do POS (colaborador) — somente leitura' })
+  getPosStock(@Tenant() pharmacyId: string) {
+    return this.stockService.getPosStock(pharmacyId);
   }
 }

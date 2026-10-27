@@ -145,16 +145,16 @@ export class SalesService {
         let remainingQty = line.quantity;
 
         const lots = await txc.$queryRaw`
-          SELECT id, "quantityAvailable", "expiryDate" 
+          SELECT id, "quantityAvailable", "expiryDate", "createdAt"
           FROM "stock_lots" 
           WHERE "productId" = ${line.productId}::uuid 
             AND "pharmacyId" = ${pharmacyId}::uuid 
             AND "quantityAvailable" > 0 
-            AND "expiryDate" > NOW() 
             AND status = 'ACTIVE'
-          ORDER BY "expiryDate" ASC
+            AND ("expiryDate" IS NULL OR "expiryDate" > NOW())
+          ORDER BY "expiryDate" ASC NULLS LAST, "createdAt" ASC
           FOR UPDATE
-        ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date }>;
+        ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date | null; createdAt: Date }>;
 
         if (lots.length === 0) throw new BadRequestException(`Sem stock valido para o produto ${line.productId}.`);
 

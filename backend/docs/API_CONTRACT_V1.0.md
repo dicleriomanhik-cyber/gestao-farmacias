@@ -179,3 +179,53 @@ O Pull consome agora uma tabela outbox_events transaccional. Cada alteraÃƒÂ§ÃƒÂ£
 - A operacao de Sync (SALE ou PAYMENT), o efeito de negocio correspondente (Sale + SaleLine + StockMovement + SaleLineLot, ou SalePayment), o AuditLog, o OutboxEvent e a actualizacao do SyncCheckpoint sao executados **numa unica transaccao de base de dados** quando originados por POST /sync/push. Um erro de infra-estrutura (ex: falha do PostgreSQL, excepcao nao relacionada com regra de negocio) provoca rollback de **todos** os efeitos; nenhum fica persistido isoladamente.
 - Erros de negocio conhecidos (BadRequestException, NotFoundException) sao tratados como rejeicoes e a SyncOperation e persistida com status: REJECTED ou CONFLICT, mantendo o contrato HTTP 201 e o resultado no array esults[]. Erros de infra-estrutura propagam como HTTP 500, o SyncOperation fica PENDING e a mesma idempotencyKey pode ser reenviada; o fencing por ttemptId garante que a proxima tentativa reivindica a operacao corretamente.
 - A idempotencyKey (SyncOperation.idempotencyKey e SalePayment.idempotencyKey) e unica **por farmacia**, nao por cliente Sync. Dois clientes Sync diferentes da mesma farmacia que enviem a mesma idempotencyKey com payloads identicos recebem o mesmo resultado persistido; com payloads diferentes recebem REJECTED / IDEMPOTENCY_KEY_CONFLICT. O isolamento entre farmacias e garantido pela chave composta (pharmacyId, idempotencyKey).
+## 10. Caixas Fisicas com QR Code (Extensao)
+
+### 10.1 Modelo
+- **Product.type** (`MEDICINE` | `PRODUCT`). Unidade de venda derivada: MEDICINE ? `carteira`, PRODUCT ? `unidade`. Exposto como `saleUnitLabel` calculado, nunca guardado.
+- **Product.hasExpiry** (Boolean). MEDICINE = sempre `true`. PRODUCT pode ser `false`.
+- **Product.minStock** (Int?): limite para classificacao LOW do POS.
+- **StockLot.qrCode** (String, unico por farmacia). Identificador fisico da caixa grande.
+- **StockLot.expiryDate** (DateTime?): opcional. Quando `hasExpiry = false`, deve ser `null`.
+- **StockLot.innerCount** e **unitsPerInner** (Int?): apenas para MEDICINE. `totalUnits = innerCount × unitsPerInner`.
+- **StockLot.totalUnits** (Int, obrigatorio): total de unidades de venda da caixa.
+- **StockLot.quantityAvailable** passa a significar **unidades de venda** disponiveis (carteiras para medicamentos, unidades para produtos).
+- **lotNumber**: preenchido a partir do `qrCode` quando nao fornecido.
+
+### 10.2 Derivacao de caixinhas (apenas MEDICINE)
+Nao sao guardadas. Calculadas a partir de `totalUnits`, `unitsPerInner`, `quantityAvailable`:
+- `consumedUnits = totalUnits - quantityAvailable`
+- `currentPack = floor(consumedUnits / unitsPerInner) + 1`
+- Cada caixinha e' `FULL` (nao consumida), `IN_USE` (parcialmente consumida) ou `EMPTY` (consumida). Apenas uma caixa `IN_USE` de cada vez.
+
+### 10.3 Ordem de consumo (FEFO)
+- Caixas com `expiryDate` primeiro, ASC.
+- Caixas com `expiryDate = null` por ultimo, ASC por `createdAt`.
+- Caixas com `expiryDate < NOW()` **excluidas**.
+
+### 10.4 Endpoints de administracao
+
+**`POST /api/v1/stock/boxes`** — permissao `stock:write`.
+- DTO `CreateBoxDto`: `productId`, `qrCode`, `lotNumber?`, `expiryDate?`, `innerCount?`, `unitsPerInner?`, `totalUnits?`, `unitCost`.
+- Validacoes: MEDICINE requer `innerCount` + `unitsPerInner` e `expiryDate` obrigatoria; PRODUCT requer `totalUnits`; `hasExpiry = false` implica `expiryDate` ausente.
+- HTTP 201 com o `StockLot` criado.
+
+**`GET /api/v1/stock/boxes?page&limit&type&state`** — permissao `stock:read`.
+- Lista paginada. `state` ? `ACTIVE` | `DEPLETED` | `EXPIRED`.
+- Retorna: `id`, `qrCode`, `productName`, `type`, `saleUnitLabel`, `hasExpiry`, `expiryDate`, `innerCount`, `unitsPerInner`, `totalUnits`, `quantityAvailable`, `state`.
+
+**`GET /api/v1/stock/boxes/:id`** — permissao `stock:read`.
+- Detalhe com `packs` calculados (MEDICINE) e `salesHistory` (venda, data, unidades, saldo após a venda).
+
+**`GET /api/v1/stock/products-summary`** — permissao `stock:read`.
+- Uma linha por produto: `productId`, `name`, `type`, `saleUnitLabel`, `hasExpiry`, `totalAvailable`, `nearestExpiry`, `boxesCount`.
+
+### 10.5 Endpoint do colaborador (POS)
+
+**`GET /api/v1/sales/pos/stock`** — permissao `sales:read`.
+- Devolve **apenas**: `productId`, `name`, `saleUnitLabel`, `totalAvailable`, `level` (`EMPTY` | `LOW` | `OK`), `nearestExpiry` (so quando `hasExpiry = true`).
+- **NAO devolve** `qrCode`, `innerCount`, `unitsPerInner`, `lotNumber`, `packs` nem `salesHistory`.
+
+### 10.6 Compatibilidade
+- `POST /api/v1/stock/lots` e `POST /api/v1/stock/receive` mantêm os DTOs antigos. Se `qrCode` nao for fornecido, e' gerado (UUID v4). `lotNumber` fica igual ao `qrCode` quando nao fornecido.
+- `StockLot.qrCode` tem `@default(uuid())` a nivel de base de dados; `totalUnits` tem `@default(0)` (compat).

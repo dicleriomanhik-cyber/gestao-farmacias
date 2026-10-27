@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
-import { ProductStatus } from '@prisma/client';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import { ProductStatus, ProductType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
@@ -24,6 +24,11 @@ export class CreateProductDto {
   @IsOptional()
   barcode?: string;
 
+  @ApiPropertyOptional({ enum: ProductType, default: ProductType.PRODUCT })
+  @IsEnum(ProductType)
+  @IsOptional()
+  type?: ProductType;
+
   @ApiPropertyOptional({ example: 'Paracetamol' })
   @IsString()
   @IsOptional()
@@ -39,7 +44,19 @@ export class CreateProductDto {
   @IsOptional()
   strength?: string;
 
-  @ApiPropertyOptional({ example: 'CX' })
+  @ApiPropertyOptional({ default: true })
+  @IsBoolean()
+  @IsOptional()
+  hasExpiry?: boolean;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  @IsOptional()
+  minStock?: number;
+
+  @ApiPropertyOptional({ example: 'CX', deprecated: true })
   @IsString()
   @IsOptional()
   unit?: string;

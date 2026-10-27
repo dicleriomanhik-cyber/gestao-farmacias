@@ -1,18 +1,36 @@
-Ôªøimport { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
 import { emitOutboxEvent } from '../sync/outbox.helper';
+import { saleUnitLabel } from './sale-unit.helper';
+import { ProductType } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  private validateProductShape(dto: { type?: ProductType | string; hasExpiry?: boolean; strength?: string; activeIngredient?: string }) {
+    const type = (dto.type ?? 'PRODUCT') as string;
+    if (type === 'MEDICINE') {
+      if (!dto.strength || !dto.activeIngredient) {
+        throw new BadRequestException('MEDICINE requer strength e activeIngredient.');
+      }
+      if (dto.hasExpiry === false) {
+        throw new BadRequestException('MEDICINE tem sempre hasExpiry = true.');
+      }
+    }
+  }
+
+  private withSaleUnit<T extends { type: ProductType | string }>(product: T): T & { saleUnitLabel: string } {
+    return { ...product, saleUnitLabel: saleUnitLabel(product.type) };
+  }
   async create(pharmacyId: string, actorId: string, dto: CreateProductDto) {
+    this.validateProductShape(dto);
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inv√°lida.');
+      if (!cat) throw new BadRequestException('Categoria inv·lida.');
     }
 
     try {
@@ -28,7 +46,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou C√≥digo de Barras j√° existe nesta farm√°cia.');
+        throw new ConflictException('SKU ou CÛdigo de Barras j· existe nesta farm·cia.');
       }
       throw e;
     }
@@ -66,7 +84,7 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    return { data: data.map((p) => this.withSaleUnit(p)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
   async findOne(pharmacyId: string, id: string) {
@@ -74,8 +92,8 @@ export class ProductsService {
       where: { id, pharmacyId },
       include: { category: true },
     });
-    if (!product) throw new NotFoundException('Produto n√£o encontrado.');
-    return product;
+    if (!product) throw new NotFoundException('Produto nao encontrado.');
+    return this.withSaleUnit(product);
   }
 
   async delete(pharmacyId: string, actorId: string, id: string) {
@@ -95,10 +113,11 @@ export class ProductsService {
 
   async update(pharmacyId: string, actorId: string, id: string, dto: UpdateProductDto) {
     const product = await this.findOne(pharmacyId, id);
+    this.validateProductShape(dto);
 
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inv√°lida.');
+      if (!cat) throw new BadRequestException('Categoria inv·lida.');
     }
 
     try {
@@ -115,7 +134,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou C√≥digo de Barras j√° existe nesta farm√°cia.');
+        throw new ConflictException('SKU ou CÛdigo de Barras j· existe nesta farm·cia.');
       }
       throw e;
     }

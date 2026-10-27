@@ -172,6 +172,10 @@ model Category {
   @@map("categories")
 }
 
+enum ProductType {
+  MEDICINE
+  PRODUCT
+}
 model Product {
   id                 String        @id @default(uuid()) @db.Uuid
   pharmacyId         String        @db.Uuid
@@ -183,7 +187,10 @@ model Product {
   activeIngredient   String?
   dosageForm         String?
   strength           String?
-  unit               String        @default("UN")
+  type               ProductType   @default(PRODUCT)
+  hasExpiry          Boolean       @default(true)
+  minStock           Int?
+  unit               String        @default("UN") // DEPRECATED: nao usar em novos fluxos; derivar de type via saleUnitLabel
   salePrice          Decimal       @db.Decimal(10, 2)
   referenceCost      Decimal?      @db.Decimal(10, 2)
   status             ProductStatus @default(ACTIVE)
@@ -273,10 +280,14 @@ model StockLot {
   pharmacyId                String      @db.Uuid
   productId                 String      @db.Uuid
   purchaseLineId            String?     @db.Uuid
+  qrCode                    String      @default(uuid())
   lotNumber                 String
-  expiryDate                DateTime
+  expiryDate                DateTime?
   quantityReceived          Int
   quantityReceivedFromLine  Int         @default(0)
+  innerCount                Int?
+  unitsPerInner             Int?
+  totalUnits                Int         @default(0)
   quantityAvailable         Int         @default(0)
   unitCost                  Decimal     @db.Decimal(10, 2)
   status                    LotStatus   @default(ACTIVE)
@@ -291,6 +302,7 @@ model StockLot {
   returnLines               SaleReturnLine[]
 
   @@unique([pharmacyId, productId, lotNumber])
+  @@unique([pharmacyId, qrCode])
   @@index([pharmacyId])
   @@index([productId])
   @@index([expiryDate])
