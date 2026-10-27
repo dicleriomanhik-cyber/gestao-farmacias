@@ -37,6 +37,7 @@ export default function AdminCashPage() {
   const [error, setError] = useState(false);
   const [forcing, setForcing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSales, setShowSales] = useState(true);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
@@ -242,8 +243,20 @@ export default function AdminCashPage() {
 
           {/* VENDAS DO PERÍODO */}
           <div className="card" style={{ padding: "1rem", marginTop: "1rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>Vendas do Período</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showSales ? "1rem" : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>Vendas do Período</h2>
+                <button
+                  onClick={() => setShowSales(!showSales)}
+                  style={{
+                    background: "none", border: "1px solid #cbd5e1", borderRadius: "6px",
+                    cursor: "pointer", padding: "0.25rem 0.5rem", fontSize: "0.85rem",
+                    color: "#475569", display: "flex", alignItems: "center", gap: "0.25rem"
+                  }}
+                >
+                  {showSales ? "▲ Minimizar" : "▼ Expandir"}
+                </button>
+              </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
                 <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#166534" }}>{money(totalSalesPeriod)} MT</div>
@@ -251,37 +264,39 @@ export default function AdminCashPage() {
               </div>
             </div>
 
-            {filteredSales.length === 0 ? (
-              <p style={{ textAlign: "center", color: "#64748b", padding: "1rem" }}>Nenhuma venda encontrada para este filtro.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Nº</th>
-                    <th>Data</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSales.map((s) => (
-                    <tr key={s.id}>
-                      <td>{s.saleNumber}</td>
-                      <td>{formatDateTime(s.createdAt)}</td>
-                      <td>{money(s.total)} MT</td>
-                      <td>
-                        <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#dcfce7", color: "#166534" }}>
-                          Concluída
-                        </span>
-                      </td>
-                      <td>
-                        <a href={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "underline" }}>Ver Detalhe</a>
-                      </td>
+            {showSales && (
+              filteredSales.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#64748b", padding: "1rem" }}>Nenhuma venda encontrada para este filtro.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Nº</th>
+                      <th>Data</th>
+                      <th>Total</th>
+                      <th>Estado</th>
+                      <th>Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredSales.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.saleNumber}</td>
+                        <td>{formatDateTime(s.createdAt)}</td>
+                        <td>{money(s.total)} MT</td>
+                        <td>
+                          <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#dcfce7", color: "#166534" }}>
+                            Concluída
+                          </span>
+                        </td>
+                        <td>
+                          <a href={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "underline" }}>Ver Detalhe</a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             )}
           </div>
         </div>
@@ -343,3 +358,4 @@ export default function AdminCashPage() {
     </div>
   );
 }
+
