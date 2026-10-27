@@ -110,33 +110,6 @@ export default function ReportsPage() {
   const totalSales = filteredSalesList.reduce((acc, s) => acc + parseFloat(s.total), 0);
   const totalExpenses = filteredExpensesList.reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
-  async function handleExportExcel() {
-    const XLSX = await import("xlsx");
-    const wb = XLSX.utils.book_new();
-
-    const wsResumo = XLSX.utils.aoa_to_sheet([
-      ["Resumo Financeiro"],
-      [],
-      ["Total Vendas", totalSales.toFixed(2) + " MT"],
-      ["Total Despesas", totalExpenses.toFixed(2) + " MT"],
-      ["Lucro / Prejuízo", (totalSales - totalExpenses).toFixed(2) + " MT"],
-    ]);
-    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
-
-    const salesRows = filteredSalesList.map(s => ({ "Nº": s.saleNumber, "Data": formatDate(s.createdAt), "Total (MT)": parseFloat(s.total).toFixed(2) }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(salesRows), "Vendas");
-
-    const expensesRows = filteredExpensesList.map(e => ({ "Data": formatDate(e.expenseDate), "Descrição": e.description, "Categoria": e.category, "Método": e.method, "Valor (MT)": parseFloat(e.amount).toFixed(2) }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expensesRows), "Despesas");
-
-    const returnsRows = filteredReturnsList.map(r => ({ "Nº": r.returnNumber, "Venda": r.sale?.saleNumber ?? "—", "Motivo": r.reason, "Total (MT)": parseFloat(r.totalRefund).toFixed(2) }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(returnsRows), "Devoluções");
-
-    const stockRows = (stock?.products ?? []).map(p => ({ "Produto": p.productName, "Disponível": p.totalAvailable, "Valor (MT)": parseFloat(p.totalValue).toFixed(2) }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockRows), "Stock");
-
-    XLSX.writeFile(wb, "relatorio-completo.xlsx");
-  }
 
   async function handleExportPDF() {
     const { default: jsPDF } = await import("jspdf");
@@ -188,7 +161,7 @@ export default function ReportsPage() {
           title="Relatórios"
           actions={
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button onClick={handleExportExcel} className="btn btn-secondary" disabled={loading}>📊 Excel</button>
+
               <button onClick={handleExportPDF} className="btn btn-secondary" disabled={loading}>📄 PDF</button>
               <button onClick={load} className="btn btn-secondary" disabled={loading}>
                 {loading ? "A carregar…" : "Atualizar"}
@@ -392,3 +365,6 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
+
