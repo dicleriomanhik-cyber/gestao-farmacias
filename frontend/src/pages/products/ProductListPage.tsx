@@ -64,7 +64,9 @@ export default function ProductListPage() {
   function getNearestExpiry(productId: string) {
     const productLots = lots.filter((l) => l.productId === productId && l.quantityAvailable > 0);
     if (productLots.length === 0) return null;
-    return productLots.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0].expiryDate;
+    const withExpiry = productLots.filter(l => l.expiryDate !== null);
+    if (withExpiry.length === 0) return null;
+    return withExpiry.sort((a, b) => new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime())[0].expiryDate;
   }
 
   function formatDate(dateStr: string) {
@@ -283,6 +285,7 @@ export default function ProductListPage() {
     </div>
   );
 }
+
 
 
 

@@ -66,12 +66,14 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
     acc[productName].lotNumbers.push(lot.lotNumber);
     
     // Guardar a validade mais próxima (ou a mais antiga se já expirou)
-    if (new Date(lot.expiryDate) < new Date(acc[productName].earliestExpiry)) {
-      acc[productName].earliestExpiry = lot.expiryDate;
+    if (lot.expiryDate) {
+      if (!acc[productName].earliestExpiry || new Date(lot.expiryDate) < new Date(acc[productName].earliestExpiry!)) {
+        acc[productName].earliestExpiry = lot.expiryDate;
+      }
     }
 
     return acc;
-  }, {} as Record<string, { productName: string; totalQuantity: number; earliestExpiry: string; lotNumbers: string[]; status: string }>);
+  }, {} as Record<string, { productName: string; totalQuantity: number; earliestExpiry: string | null; lotNumbers: string[]; status: string }>);
 
   const groupedArray = Object.values(groupedLots);
 
@@ -115,13 +117,13 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
                 <td style={{ fontWeight: "bold" }}>{group.totalQuantity}</td>
                 <td
                   style={{
-                    fontWeight: isExpiringSoon(group.earliestExpiry) || isExpired(group.earliestExpiry) ? "bold" : "normal",
-                    color: isExpired(group.earliestExpiry) ? "#b91c1c" : isExpiringSoon(group.earliestExpiry) ? "#ca8a04" : "inherit",
+                    fontWeight: group.earliestExpiry && (isExpiringSoon(group.earliestExpiry) || isExpired(group.earliestExpiry)) ? "bold" : "normal",
+                    color: !group.earliestExpiry ? "#64748b" : isExpired(group.earliestExpiry) ? "#b91c1c" : isExpiringSoon(group.earliestExpiry) ? "#ca8a04" : "inherit",
                   }}
                 >
-                  {formatDate(group.earliestExpiry)}
-                  {isExpired(group.earliestExpiry) && " (Expirado)"}
-                  {!isExpired(group.earliestExpiry) && isExpiringSoon(group.earliestExpiry) && " (A expirar)"}
+                  {group.earliestExpiry ? formatDate(group.earliestExpiry) : "Sem validade"}
+                  {group.earliestExpiry && isExpired(group.earliestExpiry) && " (Expirado)"}
+                  {group.earliestExpiry && !isExpired(group.earliestExpiry) && isExpiringSoon(group.earliestExpiry) && " (A expirar)"}
                 </td>
                 <td>
                   <span style={{
@@ -142,6 +144,9 @@ export default function StockLotListPage({ hideAdminActions = false }: Props) {
     </div>
   );
 }
+
+
+
 
 
 

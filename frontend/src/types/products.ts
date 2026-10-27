@@ -14,6 +14,8 @@ export interface ProductCategoryRef {
 
 export type ProductStatus = "ACTIVE" | "INACTIVE" | string;
 
+export type ProductType = "MEDICINE" | "PRODUCT";
+
 export interface Product {
   id: string;
   pharmacyId: string;
@@ -26,6 +28,11 @@ export interface Product {
   dosageForm: string | null;
   strength: string | null;
   unit: string;
+  // Novos campos do modelo (Back-end 7475c73)
+  type: ProductType;
+  hasExpiry: boolean;
+  minStock: number | null;
+  saleUnitLabel: string;
   salePrice: string;
   referenceCost: string | null;
   status: ProductStatus;
@@ -36,9 +43,15 @@ export interface Product {
 
 export interface ProductRequest {
   name: string;
-  description: string;
+  description?: string;
   salePrice: number;
   categoryId: string;
+  type: ProductType;
+  hasExpiry?: boolean;
+  activeIngredient?: string | null;
+  dosageForm?: string | null;
+  strength?: string | null;
+  minStock?: number | null;
 }
 
 export interface PaginatedMeta {
@@ -58,4 +71,28 @@ export interface ListParams {
   limit?: number;
   search?: string;
   status?: string;
+}
+
+// ===== Modelo novo: StockBox / ProductSummary / PosStockItem =====
+
+export interface ProductSummary {
+  productId: string;
+  name: string;
+  type: ProductType;
+  saleUnitLabel: string;
+  hasExpiry: boolean;
+  totalAvailable: number;
+  nearestExpiry: string | null;
+  boxesCount: number;
+}
+
+export type PosStockLevel = "EMPTY" | "LOW" | "OK";
+
+export interface PosStockItem {
+  productId: string;
+  name: string;
+  saleUnitLabel: string;
+  totalAvailable: number;
+  level: PosStockLevel;
+  nearestExpiry: string | null;
 }

@@ -49,8 +49,12 @@ export default function ProductFormPage() {
           if (productLot) {
             setLotId(productLot.id);
             setLotNumber(productLot.lotNumber);
-            const d = new Date(productLot.expiryDate);
-            setExpiryDate(d.toISOString().split("T")[0]);
+            if (productLot.expiryDate) {
+              const d = new Date(productLot.expiryDate);
+              setExpiryDate(d.toISOString().split("T")[0]);
+            } else {
+              setExpiryDate("");
+            }
           }
         })
         .catch(() => setError(true))
@@ -70,6 +74,7 @@ export default function ProductFormPage() {
       description,
       salePrice: parseFloat(salePrice),
       categoryId,
+      type: "MEDICINE",
     };
     try {
       if (isEdit && id) {
@@ -177,3 +182,4 @@ export default function ProductFormPage() {
     </div>
   );
 }
+
