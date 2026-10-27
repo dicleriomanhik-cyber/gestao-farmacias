@@ -1,6 +1,7 @@
 ﻿import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { hasPermission } from "../utils/permissions";
+import { hasPermission } from '../utils/permissions';
+import SyncStatusBadge from '../components/offline/SyncStatusBadge';
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
@@ -33,6 +34,7 @@ export default function MainLayout() {
       <header style={{ backgroundColor: "#1e293b", color: "white", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "bold" }}>Sistema de Gestão</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <SyncStatusBadge />
           <span style={{ fontSize: "0.875rem" }}>{displayName}</span>
           <Link to="/pos" style={{ color: "#93c5fd", textDecoration: "none", fontSize: "0.875rem" }}>Abrir POS</Link>
           <button onClick={onLogout} style={{ background: "none", border: "1px solid #475569", color: "white", padding: "0.4rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
@@ -67,4 +69,5 @@ export default function MainLayout() {
     </div>
   );
 }
+
 

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { createSale, confirmSale } from "../../services/saleService";
+import { createSale, confirmSale, createSaleOffline } from '../../services/saleService';
 import { getProducts } from "../../services/productService";
 import { registerPayment, getActiveCashSession, openCash } from "../../services/cashService";
 import type { Product } from "../../types/products";
@@ -116,6 +116,15 @@ export default function PosPage() {
     
     setSubmitting(true);
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await createSaleOffline({ lines }, { amount: total, method: paymentMethod });
+        toast.success("Venda guardada offline. Será sincronizada quando houver ligação.");
+        setCompletedSale({ id: `offline-${Date.now()}`, saleNumber: "OFFLINE", total: total.toFixed(2), change: paymentMethod === "CASH" ? change : null });
+        setCart([]);
+        setAmountPaid("");
+        return;
+      }
+
       let session = await getActiveCashSession();
       if (!session) {
         try {
@@ -123,35 +132,44 @@ export default function PosPage() {
           toast.success("Caixa aberta automaticamente.");
         } catch (openErr: any) {
           toast.error("Abra a caixa manualmente antes de vender.");
-          setSubmitting(false);
           return;
         }
       }
 
       const draft = await createSale({ lines });
       const confirmed = await confirmSale(draft.id);
-      await registerPayment({
-        saleId: confirmed.id,
-        amount: parseFloat(confirmed.total) || total,
-        method: paymentMethod,
-      });
+      await registerPayment({ saleId: confirmed.id, amount: parseFloat(confirmed.total) || total, method: paymentMethod });
 
       toast.success("Venda confirmada!");
-      setCompletedSale({
-        id: confirmed.id,
-        saleNumber: confirmed.saleNumber,
-        total: confirmed.total,
-        change: paymentMethod === "CASH" ? change : null
-      });
+      setCompletedSale({ id: confirmed.id, saleNumber: confirmed.saleNumber, total: confirmed.total, change: paymentMethod === "CASH" ? change : null });
       setCart([]);
       setAmountPaid("");
     } catch (err: any) {
+      const isNetworkError =
+        err?.message === "Network Error" ||
+        err?.code === "ERR_NETWORK" ||
+        err?.code === "ERR_INTERNET_DISCONNECTED" ||
+        err?.code === "ERR_FAILED" ||
+        (!err?.response && err?.request) ||
+        (typeof navigator !== "undefined" && !navigator.onLine);
+      if (isNetworkError) {
+        try {
+          await createSaleOffline({ lines }, { amount: total, method: paymentMethod });
+          toast.success("Sem ligação. Venda guardada offline para sincronização posterior.");
+          setCompletedSale({ id: `offline-${Date.now()}`, saleNumber: "OFFLINE", total: total.toFixed(2), change: paymentMethod === "CASH" ? change : null });
+          setCart([]);
+          setAmountPaid("");
+          return;
+        } catch {
+          toast.error("Falha ao guardar offline.");
+          return;
+        }
+      }
       toast.error(err?.response?.data?.error?.message ?? "Erro ao processar a venda.");
     } finally {
       setSubmitting(false);
     }
   }
-
   useEffect(() => {
     if (!completedSale) return;
     const timer = setTimeout(() => {
@@ -365,6 +383,10 @@ export default function PosPage() {
     </div>
   );
 }
+
+
+
+
 
 
 

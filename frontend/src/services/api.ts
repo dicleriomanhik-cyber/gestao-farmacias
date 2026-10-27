@@ -1,6 +1,6 @@
 ﻿import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const API_BASE_URL = "https://gestao-farmacia-g3vh.onrender.com/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://gestao-farmacia-g3vh.onrender.com/api/v1";
 
 const REFRESH_TOKEN_KEY = "sm.refreshToken";
 
@@ -102,3 +102,4 @@ apiClient.interceptors.response.use(
     }
   }
 );
+
