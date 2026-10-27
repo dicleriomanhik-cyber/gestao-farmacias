@@ -172,7 +172,7 @@ export default function ReportsPage() {
         />
 
         <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
-          <div style={{ minWidth: "200px" }}>
+          <div style={{ width: "220px" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
             <CustomSelect
               value={dateFilter}
@@ -185,6 +185,7 @@ export default function ReportsPage() {
                 { value: "CUSTOM", label: "Personalizado" },
                 { value: "ALL", label: "Ver Tudo" },
               ]}
+              style={{ width: "100%", fontSize: "0.85rem", padding: "0.4rem 0.6rem" }}
             />
           </div>
 
@@ -365,6 +366,7 @@ export default function ReportsPage() {
     </div>
   );
 }
+
 
 
 
