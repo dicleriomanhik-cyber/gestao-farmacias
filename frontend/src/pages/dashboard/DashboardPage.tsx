@@ -1,12 +1,14 @@
 ﻿import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { getReportSummary, getReportStock } from "../../services/reportService";
+
 import { formatDateTime } from "../../utils/formatDate";
 import { getSales } from "../../services/saleService";
+import { getExpenses } from "../../services/expenseService";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
 import { apiClient } from "../../services/api";
-import type { ReportSummaryData, ReportStockData } from "../../types/reports";
+
 import type { Sale, CashSession, PaymentMethod } from "../../types/sales";
+import type { Expense } from "../../types/expenses";
 import EmptyState from "../../components/ui/EmptyState";
 
 function money(v: string | number | undefined | null): string {
@@ -22,48 +24,44 @@ interface CashMovement {
   createdAt: string;
 }
 
-interface StockLot {
-  id: string;
-  expiryDate: string;
-  quantity: number;
-  status: string;
-}
+type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [summary, setSummary] = useState<ReportSummaryData | null>(null);
-  const [stock, setStock] = useState<ReportStockData | null>(null);
-  const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estado para o Caixa
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
-  
-  // Lotes para calcular a expirar localmente
-  const [lots, setLots] = useState<StockLot[]>([]);
+
+  const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
 
     Promise.allSettled([
-      getReportSummary(),
-      getReportStock(),
-      getSales({ limit: 5 }),
+      
+      
+      
+      getSales({ limit: 1000 }),
+      getExpenses({ limit: 1000 }),
       getActiveCashSession(),
-      apiClient.get<{ success: boolean; data: StockLot[] }>("/stock/lots"), // Buscar lotes diretamente
-    ]).then(async ([sumRes, stockRes, salesRes, cashRes, lotsRes]) => {
+    ]).then(async ([salesRes, expRes, cashRes]) => {
       if (!mounted) return;
 
-      if (sumRes.status === "fulfilled") setSummary(sumRes.value);
-      if (stockRes.status === "fulfilled") setStock(stockRes.value);
-      if (salesRes.status === "fulfilled") setRecentSales(salesRes.value.data);
-
-      if (lotsRes.status === "fulfilled" && lotsRes.value.data?.data) {
-        setLots(lotsRes.value.data.data);
+      
+      
+      if (salesRes.status === "fulfilled") {
+        setSales(salesRes.value.data);
+        setRecentSales(salesRes.value.data.slice(0, 5));
       }
+      if (expRes.status === "fulfilled") setExpenses(expRes.value.data);
 
       if (cashRes.status === "fulfilled" && cashRes.value) {
         setCashSession(cashRes.value);
@@ -82,22 +80,52 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, []);
 
-  // Cálculo do Caixa
-  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
-  const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const expectedTotalBalance = cashSession ? parseFloat(cashSession.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
+  // --- FILTRAGEM POR DATA ---
+  const now = new Date();
+  function isWithinPeriod(dateStr: string) {
+    const d = new Date(dateStr);
+    if (dateFilter === "DAILY") return d.toLocaleDateString("pt-PT") === now.toLocaleDateString("pt-PT");
+    if (dateFilter === "WEEKLY") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      start.setHours(0, 0, 0, 0);
+      return d >= start;
+    }
+    if (dateFilter === "MONTHLY") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (dateFilter === "YEARLY") return d.getFullYear() === now.getFullYear();
+    return true;
+  }
 
-  // Cálculo de lotes a expirar (próximos 30 dias ou já expirados)
-  const today = new Date();
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(today.getDate() + 30);
+  const filteredSales = sales.filter(s => s.status === "CONFIRMED" && isWithinPeriod(s.createdAt));
+  const filteredExpenses = expenses.filter(e => e.status === "CONFIRMED" && isWithinPeriod(e.expenseDate));
 
-  const expiringLotsCount = lots.filter(lot => {
-    if (lot.status !== "ACTIVE") return false;
-    const expDate = new Date(lot.expiryDate);
-    return expDate <= thirtyDaysFromNow;
-  }).length;
+  const totalSales = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
+  const totalExpenses = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const profit = totalSales - totalExpenses;
+
+  // --- PRODUTO MAIS VENDIDO ---
+  const productStats: Record<string, { name: string; qty: number; revenue: number }> = {};
+  filteredSales.forEach(s => {
+    s.lines?.forEach(line => {
+      const name = line.product?.name ?? "Desconhecido";
+      if (!productStats[name]) productStats[name] = { name, qty: 0, revenue: 0 };
+      productStats[name].qty += line.quantity;
+      productStats[name].revenue += parseFloat(line.subtotal);
+    });
+  });
+  const topByRevenue = Object.values(productStats).sort((a, b) => b.revenue - a.revenue)[0];
+  const topByQty = Object.values(productStats).sort((a, b) => b.qty - a.qty)[0];
+
+  // --- SALDO EM CAIXA ---
+  const totalOut = movements.filter(m => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalIn = movements.filter(m => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalExpensesCash = filteredExpenses.filter(e => e.method === "CASH").reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  
+  const cashInDrawer = cashSession 
+    ? parseFloat(cashSession.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
+    : 0;
+  
+  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -110,34 +138,114 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #2563eb" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo Total (Caixa)</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}>
-            {loading ? "…" : `${money(expectedTotalBalance)} MT`}
-          </p>
-          <small style={{ color: "#6b7280" }}>
-            {cashSession ? "Caixa aberta" : "Caixa fechada"}
-          </small>
-        </div>
-
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Produtos</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-            {loading ? "…" : stock?.summary.totalProducts ?? 0}
-          </p>
-          <small style={{ color: "#6b7280" }}>{stock?.summary.totalLots ?? 0} lotes</small>
-        </div>
-
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lotes a Expirar</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: expiringLotsCount > 0 ? "#b91c1c" : "#166534" }}>
-            {loading ? "…" : expiringLotsCount}
-          </p>
-          <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
+      {/* FILTRO DE PERÍODO */}
+      <div className="card" style={{ padding: "1rem", display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+        <div>
+          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="input"
+            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+          >
+            <option value="DAILY">Hoje</option>
+            <option value="WEEKLY">Esta Semana</option>
+            <option value="MONTHLY">Este Mês</option>
+            <option value="YEARLY">Este Ano</option>
+          </select>
         </div>
       </div>
 
+      {/* CARTÕES DE RESUMO */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #2563eb" }}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo Total (Caixa)</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: totalAllMethods < 0 ? "#b91c1c" : "#2563eb" }}>
+            {loading ? "…" : `${money(totalAllMethods)} MT`}
+          </p>
+          <small style={{ color: "#6b7280" }}>{cashSession ? "Caixa aberta" : "Caixa fechada"}</small>
+        </div>
+
+        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #166534" }}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas no Período</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
+            {loading ? "…" : `${money(totalSales)} MT`}
+          </p>
+          <small style={{ color: "#6b7280" }}>{filteredSales.length} vendas</small>
+        </div>
+
+        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #b91c1c" }}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Despesas no Período</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>
+            {loading ? "…" : `${money(totalExpenses)} MT`}
+          </p>
+          <small style={{ color: "#6b7280" }}>{filteredExpenses.length} despesas</small>
+        </div>
+
+        <div className="card" style={{ padding: "1rem", borderLeft: profit >= 0 ? "4px solid #15803d" : "4px solid #b91c1c" }}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lucro / Prejuízo</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: profit >= 0 ? "#15803d" : "#b91c1c" }}>
+            {loading ? "…" : `${money(profit)} MT`}
+          </p>
+          <small style={{ color: "#6b7280" }}>Vendas - Despesas</small>
+        </div>
+      </div>
+
+      {/* PRODUTOS MAIS VENDIDOS */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className="card" style={{ padding: "1rem" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1e293b" }}>🏆 Produto com Mais Receita</h3>
+          {topByRevenue ? (
+            <>
+              <p style={{ fontSize: "1.25rem", fontWeight: "bold", margin: "0.5rem 0 0.25rem", color: "#166534" }}>{topByRevenue.name}</p>
+              <p style={{ fontSize: "0.9rem", color: "#475569", margin: 0 }}>
+                {money(topByRevenue.revenue)} MT em {topByRevenue.qty} unidade(s)
+              </p>
+            </>
+          ) : (
+            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Sem dados no período.</p>
+          )}
+        </div>
+
+        <div className="card" style={{ padding: "1rem" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1e293b" }}>📦 Produto Mais Vendido (Qtd)</h3>
+          {topByQty ? (
+            <>
+              <p style={{ fontSize: "1.25rem", fontWeight: "bold", margin: "0.5rem 0 0.25rem", color: "#1e40af" }}>{topByQty.name}</p>
+              <p style={{ fontSize: "0.9rem", color: "#475569", margin: 0 }}>
+                {topByQty.qty} unidade(s) — {money(topByQty.revenue)} MT
+              </p>
+            </>
+          ) : (
+            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Sem dados no período.</p>
+          )}
+        </div>
+      </div>
+
+      {/* VENDAS POR MÉTODO */}
+      <div className="card" style={{ padding: "1rem" }}>
+        <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#1e293b" }}>Vendas por Método de Pagamento</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
+          <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
+          </div>
+          <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#1e40af" }}>{money(totals.CARD)} MT</div>
+          </div>
+          <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>M-Pesa</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#b45309" }}>{money(totals.MPESA)} MT</div>
+          </div>
+          <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>e-Mola</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
+          </div>
+        </div>
+      </div>
+
+      {/* VENDAS RECENTES */}
       <div className="card" style={{ padding: "1rem" }}>
         <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas Recentes</h2>
         {recentSales.length === 0 ? (
@@ -168,3 +276,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
