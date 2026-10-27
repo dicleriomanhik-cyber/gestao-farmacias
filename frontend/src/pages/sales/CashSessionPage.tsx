@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { getActiveCashSession, openCash, closeCash, getPayments } from "../../services/cashService";
+import { getExpenses } from "../../services/expenseService";
 import { apiClient } from "../../services/api";
 import type { CashSession, PaymentMethod } from "../../types/sales";
+import type { Expense } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
@@ -29,6 +31,7 @@ export default function CashSessionPage() {
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [amount, setAmount] = useState("");
@@ -45,6 +48,7 @@ export default function CashSessionPage() {
         const data = await getPayments();
         setTotals(data.totalsByMethod);
 
+        // Movimentos
         let movementsData: CashMovement[] = [];
         try {
           const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
@@ -54,15 +58,31 @@ export default function CashSessionPage() {
           setMovements([]);
         }
 
+        // Despesas da sessão atual (pagas em dinheiro)
+        let sessionExpenses: Expense[] = [];
+        try {
+          const expRes = await getExpenses({ page: 1, limit: 1000 });
+          sessionExpenses = expRes.data.filter(e => 
+            e.cashSessionId === active.id && 
+            e.method === "CASH" && 
+            (e.status === "CONFIRMED" || e.status === "DRAFT")
+          );
+          setExpenses(sessionExpenses);
+        } catch {
+          setExpenses([]);
+        }
+
+        // Cálculo do valor contado (saldo em gaveta)
         const totalOut = movementsData.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
         const totalIn = movementsData.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+        const totalExpensesCash = sessionExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
         
-        // CORREÇÃO: O valor esperado em gaveta é APENAS o dinheiro físico (CASH)
-        const expected = parseFloat(active.openingBalance.toString()) + (data.totalsByMethod.CASH || 0) + totalIn - totalOut;
+        const expected = parseFloat(active.openingBalance.toString()) + (data.totalsByMethod.CASH || 0) + totalIn - totalOut - totalExpensesCash;
         setAmount(expected.toFixed(2));
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
         setMovements([]);
+        setExpenses([]);
         setAmount("");
       }
     } catch {
@@ -117,15 +137,15 @@ export default function CashSessionPage() {
 
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalExpensesCash = expenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
   
-  // Dinheiro líquido na gaveta
-  const netCash = (totals.CASH || 0) - totalOut + totalIn;
+  // Saldo em Gaveta (Dinheiro físico)
+  const cashInDrawer = session 
+    ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
+    : 0;
   
-  // CORREÇÃO: O Saldo Esperado (físico) é o inicial + dinheiro líquido
-  const expectedBalance = session ? parseFloat(session.openingBalance.toString()) + netCash : 0;
-  
-  const totalAllMethods = (totals.CASH || 0) + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
-  const expectedTotalBalance = session ? parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut : 0;
+  // Saldo Total (Geral) = Dinheiro em Gaveta + Cartão + M-Pesa + e-Mola
+  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -152,18 +172,22 @@ export default function CashSessionPage() {
 
       {session && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
             <div className="card" style={{ padding: "0.75rem" }}>
               <h3 style={{ color: "#6b7280", fontSize: "0.75rem", margin: "0 0 0.25rem" }}>Valor Inicial</h3>
               <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(session.openingBalance)} MT</p>
             </div>
-            <div className="card" style={{ padding: "0.75rem", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}>
-              <h3 style={{ color: "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Esperado (Gaveta)</h3>
-              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#2563eb", margin: 0 }}>{money(expectedBalance)} MT</p>
+            <div className="card" style={{ padding: "0.75rem", backgroundColor: cashInDrawer < 0 ? "#fef2f2" : "#eff6ff", border: cashInDrawer < 0 ? "1px solid #fecaca" : "1px solid #bfdbfe" }}>
+              <h3 style={{ color: cashInDrawer < 0 ? "#b91c1c" : "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo em Gaveta</h3>
+              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: cashInDrawer < 0 ? "#b91c1c" : "#2563eb", margin: 0 }}>{money(cashInDrawer)} MT</p>
+            </div>
+            <div className="card" style={{ padding: "0.75rem", backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
+              <h3 style={{ color: "#b91c1c", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Despesas (Dinheiro)</h3>
+              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#b91c1c", margin: 0 }}>-{money(totalExpensesCash)} MT</p>
             </div>
             <div className="card" style={{ padding: "0.75rem", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
               <h3 style={{ color: "#166534", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Total (Geral)</h3>
-              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#15803d", margin: 0 }}>{money(expectedTotalBalance)} MT</p>
+              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#15803d", margin: 0 }}>{money(totalAllMethods)} MT</p>
             </div>
           </div>
 
@@ -172,7 +196,7 @@ export default function CashSessionPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro (líquido)</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: netCash >= 0 ? "#166534" : "#b91c1c" }}>{money(netCash)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
@@ -222,7 +246,7 @@ export default function CashSessionPage() {
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Valor Contado (MT)</label>
                   <input type="number" step="0.01" min="0" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ex: 1050.00" required style={{ width: "100%" }} />
                 </div>
-                <button type="submit" disabled={submitting} className="btn btn-danger" style={{ padding: "0.5rem 1.5rem" }}>
+                <button type="submit" disabled={submitting || cashInDrawer < 0} className="btn btn-danger" style={{ padding: "0.5rem 1.5rem", opacity: cashInDrawer < 0 ? 0.5 : 1 }}>
                   {submitting ? "A fechar…" : "Fechar Caixa"}
                 </button>
               </form>
