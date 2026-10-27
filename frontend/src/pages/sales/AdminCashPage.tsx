@@ -32,6 +32,7 @@ export default function AdminCashPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forcing, setForcing] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -80,9 +81,9 @@ export default function AdminCashPage() {
     load();
   }, []);
 
-  async function handleForceClose() {
+  async function confirmForceClose() {
     if (!session) return;
-    if (!window.confirm("Tens a certeza que queres forçar o fecho da caixa? O saldo ficará a zero para o colaborador.")) return;
+    setShowConfirm(false);
     setForcing(true);
     try {
       await closeCash(session.id, { countedBalance: 0 });
@@ -165,7 +166,7 @@ export default function AdminCashPage() {
             </p>
             <p style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
             <button
-              onClick={handleForceClose}
+              onClick={() => setShowConfirm(true)}
               disabled={forcing}
               className="btn btn-danger"
               style={{ width: "100%", padding: "1rem", marginTop: "1rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: forcing ? "not-allowed" : "pointer", opacity: forcing ? 0.6 : 1 }}
@@ -175,7 +176,63 @@ export default function AdminCashPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE CONFIRMAÇÃO */}
+      {showConfirm && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: "white", borderRadius: "12px", padding: "1.5rem",
+              maxWidth: "450px", width: "90%",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#1e293b" }}>
+              Forçar Fecho de Caixa
+            </h2>
+            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>
+              Tens a certeza que queres forçar o fecho da caixa? O saldo ficará a <strong>zero (0.00 MT)</strong> para o colaborador e todos os movimentos serão registados no histórico.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={forcing}
+                style={{
+                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
+                  color: "#1e293b", border: "none", borderRadius: "6px",
+                  fontWeight: "500", cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmForceClose}
+                disabled={forcing}
+                style={{
+                  padding: "0.5rem 1rem", backgroundColor: "#dc2626",
+                  color: "white", border: "none", borderRadius: "6px",
+                  fontWeight: "500", cursor: forcing ? "not-allowed" : "pointer",
+                  opacity: forcing ? 0.7 : 1,
+                }}
+              >
+                {forcing ? "A forçar…" : "Forçar Fecho"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
 
