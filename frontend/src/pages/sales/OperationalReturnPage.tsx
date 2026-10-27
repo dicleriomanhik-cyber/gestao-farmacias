@@ -83,8 +83,9 @@ export default function OperationalReturnPage() {
   if (error) return <ErrorState message="Erro ao carregar dados." onRetry={() => window.location.reload()} />;
 
   if (!saleId) {
-    // Filtrar vendas por data
-    let filteredSales = sales;
+    // Filtrar vendas por data e excluir canceladas
+    let filteredSales = sales.filter(s => s.status !== "CANCELLED");
+    
     if (dateFilter === "DAILY") {
       const todayStr = new Date().toLocaleDateString("pt-PT");
       filteredSales = filteredSales.filter(s => new Date(s.createdAt).toLocaleDateString("pt-PT") === todayStr);
@@ -177,3 +178,4 @@ export default function OperationalReturnPage() {
     </div>
   );
 }
+
