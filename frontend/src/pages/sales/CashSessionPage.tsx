@@ -213,28 +213,7 @@ export default function CashSessionPage() {
             </div>
           </div>
 
-          <div className="card" style={{ padding: "0.75rem" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Movimentos de Caixa</h3>
-            {movements.length === 0 ? (
-              <p style={{ color: "#64748b", fontSize: "0.85rem" }}>Nenhum movimento registado.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Valor</th></tr>
-                </thead>
-                <tbody>
-                  {movements.map((m) => (
-                    <tr key={m.id}>
-                      <td style={{ fontSize: "0.85rem" }}>{formatDateTime(m.createdAt)}</td>
-                      <td style={{ color: m.type === "IN" ? "#166534" : "#b91c1c", fontWeight: "bold" }}>{m.type === "IN" ? "Entrada" : "Saída"}</td>
-                      <td style={{ fontSize: "0.85rem" }}>{m.reason}</td>
-                      <td style={{ color: m.type === "IN" ? "#166534" : "#b91c1c", fontWeight: "bold" }}>{m.type === "OUT" ? "-" : "+"}{money(m.amount)} MT</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+
 
           <div className="card" style={{ padding: "0.75rem" }}>
             <p style={{ color: "#166534", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Caixa aberta.</p>
@@ -264,5 +243,6 @@ export default function CashSessionPage() {
     </div>
   );
 }
+
 
 
