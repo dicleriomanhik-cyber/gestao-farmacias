@@ -19,7 +19,7 @@ import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
-import { formatDate } from "../../utils/formatDate";
+import { formatDate } from '../../utils/formatDate';
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -340,6 +340,10 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
+
+
 
 
 

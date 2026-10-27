@@ -9,7 +9,6 @@ import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
-import { exportToExcel, exportToPDF } from "../../utils/export";
 
 export default function ProductListPage() {
   const toast = useToast();
@@ -87,25 +86,7 @@ export default function ProductListPage() {
     return new Date(dateStr).getTime() < Date.now();
   }
 
-  function handleExportExcel() {
-    const headers = ["Nome", "Validade", "Preço (MT)"];
-    const rows = products.map((p) => ({
-      Nome: p.name,
-      Validade: getNearestExpiry(p.id) ? formatDate(getNearestExpiry(p.id)!) : "—",
-      "Preço (MT)": parseFloat(p.salePrice).toFixed(2),
-    }));
-    exportToExcel("produtos", headers, rows, "Produtos");
-  }
 
-  function handleExportPDF() {
-    const headers = ["Nome", "Validade", "Preço (MT)"];
-    const rows = products.map((p) => [
-      p.name,
-      getNearestExpiry(p.id) ? formatDate(getNearestExpiry(p.id)!) : "—",
-      parseFloat(p.salePrice).toFixed(2),
-    ]);
-    exportToPDF("produtos", "Lista de Produtos", headers, rows);
-  }
 
   async function handleDelete() {
     if (!productToDelete) return;
@@ -133,11 +114,7 @@ export default function ProductListPage() {
       <PageHeader
         title="Produtos"
         actions={
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button onClick={handleExportExcel} className="btn btn-secondary" style={{ padding: "0.5rem 1rem" }}>📊 Excel</button>
-            <button onClick={handleExportPDF} className="btn btn-secondary" style={{ padding: "0.5rem 1rem" }}>📄 PDF</button>
-            <Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>
-          </div>
+<Link to="/produtos/novo" className="btn btn-primary">+ Novo Produto</Link>
         }
       />
 
@@ -306,3 +283,6 @@ export default function ProductListPage() {
     </div>
   );
 }
+
+
+
