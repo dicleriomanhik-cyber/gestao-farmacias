@@ -12,9 +12,9 @@ export default function MainLayout() {
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
     { path: "/vendas", label: "Vendas", show: hasPermission(permissions, "sales:read") },
+    { path: "/caixa-admin", label: "Gestão de Caixa", show: hasPermission(permissions, "cash:open") },
     { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
     { path: "/stock/lotes", label: "Stock", show: hasPermission(permissions, "stock:read") },
-
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
     { path: "/devolucoes", label: "Devoluções", show: hasPermission(permissions, "returns:read") },
     { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
@@ -67,5 +67,3 @@ export default function MainLayout() {
     </div>
   );
 }
-
-

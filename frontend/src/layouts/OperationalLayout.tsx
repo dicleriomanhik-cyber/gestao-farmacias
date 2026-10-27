@@ -17,6 +17,7 @@ export default function OperationalLayout() {
     { path: "/pos/stock", label: "Stock" },
     { path: "/pos/devolucoes", label: "Devoluções" },
     { path: "/pos/historico", label: "Histórico" },
+    { path: "/pos/movimentos", label: "Movimentos" },
   ];
 
   return (
@@ -58,4 +59,5 @@ export default function OperationalLayout() {
     </div>
   );
 }
+
 

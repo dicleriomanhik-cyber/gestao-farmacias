@@ -238,6 +238,11 @@ export default function CashSessionPage() {
 
           <div className="card" style={{ padding: "0.75rem" }}>
             <p style={{ color: "#166534", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Caixa aberta.</p>
+            {cashInDrawer < 0 && (
+              <p style={{ color: "#b91c1c", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>
+                ⚠️ Saldo em gaveta negativo. Contacte o administrador para forçar o fecho.
+              </p>
+            )}
             <p style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
 
             {allowed ? (
@@ -259,4 +264,5 @@ export default function CashSessionPage() {
     </div>
   );
 }
+
 

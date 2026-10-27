@@ -10,6 +10,8 @@ import PosPage from "../pages/sales/PosPage";
 
 import OperationalStockPage from "../pages/sales/OperationalStockPage";
 import CashSessionPage from "../pages/sales/CashSessionPage";
+import CashMovementsPage from "../pages/sales/CashMovementsPage";
+import AdminCashPage from "../pages/sales/AdminCashPage";
 import PurchaseListPage from "../pages/purchases/PurchaseListPage";
 import PurchaseDetailPage from "../pages/purchases/PurchaseDetailPage";
 import PurchaseFormPage from "../pages/purchases/PurchaseFormPage";
@@ -52,7 +54,7 @@ export default function AppRouter() {
           <Route path="devolucoes/:id" element={<OperationalReturnDetailPage />} />
           <Route path="despesas" element={<ExpenseListPage isOperational={true} />} />
           <Route path="despesas/novo" element={<ExpenseFormPage isOperational={true} />} />
-          <Route path="stock" element={<OperationalStockPage />} /><Route path="caixa" element={<CashSessionPage />} />
+          <Route path="stock" element={<OperationalStockPage />} /><Route path="caixa" element={<CashSessionPage />} />`r`n          <Route path="movimentos" element={<CashMovementsPage />} />
 
         </Route>
 
@@ -64,6 +66,7 @@ export default function AppRouter() {
           <Route path="vendas/:id" element={<ProtectedRoute requiredPermission="sales:read"><SaleDetailPage /></ProtectedRoute>} />
           <Route path="vendas/novo" element={<ProtectedRoute requiredPermission="sales:create"><PosPage /></ProtectedRoute>} />
           <Route path="caixa" element={<ProtectedRoute requiredPermission="cash:open"><CashSessionPage /></ProtectedRoute>} />
+          <Route path="caixa-admin" element={<ProtectedRoute requiredPermission="cash:open"><AdminCashPage /></ProtectedRoute>} />
 
           <Route path="compras" element={<ProtectedRoute requiredPermission="purchases:read"><PurchaseListPage /></ProtectedRoute>} />
           <Route path="compras/:id" element={<ProtectedRoute requiredPermission="purchases:read"><PurchaseDetailPage /></ProtectedRoute>} />
@@ -106,5 +109,7 @@ export default function AppRouter() {
     </BrowserRouter>
   );
 }
+
+
 
 
