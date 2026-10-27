@@ -1,6 +1,5 @@
 ﻿import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-
 import { getSales } from "../../services/saleService";
 import { getExpenses } from "../../services/expenseService";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
@@ -68,7 +67,6 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, []);
 
-  // --- FILTRAGEM POR DATA ---
   const now = new Date();
   function isWithinPeriod(dateStr: string) {
     const d = new Date(dateStr);
@@ -105,20 +103,6 @@ export default function DashboardPage() {
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
   const profit = totalSales - totalExpenses;
 
-  // --- PRODUTO MAIS VENDIDO ---
-  const productStats: Record<string, { name: string; qty: number; revenue: number }> = {};
-  filteredSales.forEach(s => {
-    s.lines?.forEach(line => {
-      const name = line.product?.name ?? "Desconhecido";
-      if (!productStats[name]) productStats[name] = { name, qty: 0, revenue: 0 };
-      productStats[name].qty += line.quantity;
-      productStats[name].revenue += parseFloat(line.subtotal);
-    });
-  });
-  const topByRevenue = Object.values(productStats).sort((a, b) => b.revenue - a.revenue)[0];
-  const topByQty = Object.values(productStats).sort((a, b) => b.qty - a.qty)[0];
-
-  // --- SALDO EM CAIXA ---
   const totalOut = movements.filter(m => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter(m => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalExpensesCash = filteredExpenses.filter(e => e.method === "CASH").reduce((acc, e) => acc + parseFloat(e.amount), 0);
@@ -207,37 +191,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* PRODUTOS MAIS VENDIDOS */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1e293b" }}>🏆 Produto com Mais Receita</h3>
-          {topByRevenue ? (
-            <>
-              <p style={{ fontSize: "1.25rem", fontWeight: "bold", margin: "0.5rem 0 0.25rem", color: "#166534" }}>{topByRevenue.name}</p>
-              <p style={{ fontSize: "0.9rem", color: "#475569", margin: 0 }}>
-                {money(topByRevenue.revenue)} MT em {topByRevenue.qty} unidade(s)
-              </p>
-            </>
-          ) : (
-            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Sem dados no período.</p>
-          )}
-        </div>
-
-        <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1e293b" }}>📦 Produto Mais Vendido (Qtd)</h3>
-          {topByQty ? (
-            <>
-              <p style={{ fontSize: "1.25rem", fontWeight: "bold", margin: "0.5rem 0 0.25rem", color: "#1e40af" }}>{topByQty.name}</p>
-              <p style={{ fontSize: "0.9rem", color: "#475569", margin: 0 }}>
-                {topByQty.qty} unidade(s) — {money(topByQty.revenue)} MT
-              </p>
-            </>
-          ) : (
-            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Sem dados no período.</p>
-          )}
-        </div>
-      </div>
-
       {/* VENDAS POR MÉTODO */}
       <div className="card" style={{ padding: "1rem" }}>
         <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#1e293b" }}>Vendas por Método de Pagamento</h3>
@@ -263,4 +216,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
