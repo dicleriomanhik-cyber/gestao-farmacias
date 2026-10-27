@@ -20,16 +20,20 @@ interface CashMovement {
   createdAt: string;
 }
 
+interface SaleWithPayments extends Sale {
+  payments?: { method: PaymentMethod; amount: string }[];
+}
+
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [sales, setSales] = useState<SaleWithPayments[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
-  const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
+  const [cashTotals, setCashTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
@@ -47,14 +51,28 @@ export default function DashboardPage() {
     ]).then(async ([salesRes, expRes, cashRes]) => {
       if (!mounted) return;
 
-      if (salesRes.status === "fulfilled") setSales(salesRes.value.data);
+      if (salesRes.status === "fulfilled") {
+        // Buscar pagamentos de cada venda
+        const salesWithPayments = await Promise.all(
+          salesRes.value.data.map(async (s) => {
+            try {
+              const payments = await apiClient.get<{ success: boolean; data: any[] }>(`/sales/${s.id}/payments`);
+              return { ...s, payments: payments.data.data.map(p => ({ method: p.method, amount: p.amount })) };
+            } catch {
+              return { ...s, payments: [] };
+            }
+          })
+        );
+        if (mounted) setSales(salesWithPayments);
+      }
+
       if (expRes.status === "fulfilled") setExpenses(expRes.value.data);
 
       if (cashRes.status === "fulfilled" && cashRes.value) {
         setCashSession(cashRes.value);
         try {
           const data = await getPayments();
-          if (mounted) setTotals(data.totalsByMethod);
+          if (mounted) setCashTotals(data.totalsByMethod);
           
           const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
           if (mounted) setMovements(resp.data.data ?? []);
@@ -103,15 +121,24 @@ export default function DashboardPage() {
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
   const profit = totalSales - totalExpenses;
 
+  // Totais por método de pagamento (filtrados)
+  const methodTotals: Record<PaymentMethod, number> = { CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 };
+  filteredSales.forEach(s => {
+    s.payments?.forEach(p => {
+      methodTotals[p.method] += parseFloat(p.amount);
+    });
+  });
+
+  // Saldo em caixa (usando os totais de cashSession)
   const totalOut = movements.filter(m => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter(m => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalExpensesCash = filteredExpenses.filter(e => e.method === "CASH").reduce((acc, e) => acc + parseFloat(e.amount), 0);
   
   const cashInDrawer = cashSession 
-    ? parseFloat(cashSession.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
+    ? parseFloat(cashSession.openingBalance.toString()) + (cashTotals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
     : 0;
   
-  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
+  const totalAllMethods = cashInDrawer + (cashTotals.CARD || 0) + (cashTotals.MPESA || 0) + (cashTotals.EMOLA || 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -197,19 +224,19 @@ export default function DashboardPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
           <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#166534" }}>{money(methodTotals.CASH)} MT</div>
           </div>
           <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#1e40af" }}>{money(totals.CARD)} MT</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#1e40af" }}>{money(methodTotals.CARD)} MT</div>
           </div>
           <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "0.75rem", color: "#64748b" }}>M-Pesa</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#b45309" }}>{money(totals.MPESA)} MT</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#b45309" }}>{money(methodTotals.MPESA)} MT</div>
           </div>
           <div style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "0.75rem", color: "#64748b" }}>e-Mola</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(methodTotals.EMOLA)} MT</div>
           </div>
         </div>
       </div>
