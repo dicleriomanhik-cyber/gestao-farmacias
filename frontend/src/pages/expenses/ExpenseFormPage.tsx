@@ -32,7 +32,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
 
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<ExpenseCategory>("OTHER");
+  const [category, setCategory] = useState<ExpenseCategory>(isOperational ? "OTHER" : "OTHER");
   const [method, setMethod] = useState<ExpenseMethod>("CASH");
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,7 +44,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
 
     setSubmitting(true);
     try {
-      await createExpense({ description: description.trim(), amount: num, category, method });
+      await createExpense({ description: description.trim(), amount: num, category: isOperational ? "OTHER" : category, method });
       toast.success("Despesa criada como rascunho.");
       navigate(isOperational ? "/pos/despesas" : "/despesas");
     } catch (err: any) {
@@ -90,5 +90,6 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
     </div>
   );
 }
+
 
 
