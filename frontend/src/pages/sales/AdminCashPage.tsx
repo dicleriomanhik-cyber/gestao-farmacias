@@ -131,9 +131,9 @@ export default function AdminCashPage() {
               <h3 style={{ color: "#b91c1c", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Despesas (Dinheiro)</h3>
               <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#b91c1c", margin: 0 }}>-{money(totalExpensesCash)} MT</p>
             </div>
-            <div className="card" style={{ padding: "0.75rem", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-              <h3 style={{ color: "#166534", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Total (Geral)</h3>
-              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#15803d", margin: 0 }}>{money(totalAllMethods)} MT</p>
+            <div className="card" style={{ padding: "0.75rem", backgroundColor: totalAllMethods < 0 ? "#fef2f2" : "#f0fdf4", border: totalAllMethods < 0 ? "1px solid #fecaca" : "1px solid #bbf7d0" }}>
+              <h3 style={{ color: totalAllMethods < 0 ? "#b91c1c" : "#166534", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo Total (Geral)</h3>
+              <p style={{ fontSize: "1.3rem", fontWeight: "bold", color: totalAllMethods < 0 ? "#b91c1c" : "#15803d", margin: 0 }}>{money(totalAllMethods)} MT</p>
             </div>
           </div>
 
@@ -178,3 +178,4 @@ export default function AdminCashPage() {
     </div>
   );
 }
+
