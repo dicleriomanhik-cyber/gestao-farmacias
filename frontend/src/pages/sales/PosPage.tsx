@@ -156,7 +156,7 @@ export default function PosPage() {
     if (!completedSale) return;
     const timer = setTimeout(() => {
       startNewSale();
-    }, 5000);
+    }, 10000);
     return () => clearTimeout(timer);
   }, [completedSale]);
 
@@ -205,7 +205,7 @@ export default function PosPage() {
           Nova Venda
         </button>
         <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#94a3b8" }}>
-          A voltar automaticamente em 5 segundos…
+          A voltar automaticamente em 10 segundos…
         </p>
       </div>
     );
@@ -365,6 +365,7 @@ export default function PosPage() {
     </div>
   );
 }
+
 
 
 
