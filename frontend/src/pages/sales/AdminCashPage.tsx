@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { getActiveCashSession, closeCash, getPayments } from "../../services/cashService";
 import { getExpenses } from "../../services/expenseService";
+import { getSales } from "../../services/saleService";
 import { apiClient } from "../../services/api";
-import type { CashSession, PaymentMethod } from "../../types/sales";
+import type { CashSession, PaymentMethod, Sale } from "../../types/sales";
 import type { Expense } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -23,52 +24,50 @@ interface CashMovement {
   createdAt: string;
 }
 
+type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
+
 export default function AdminCashPage() {
   const toast = useToast();
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forcing, setForcing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
   async function load() {
     setLoading(true);
     setError(false);
     try {
-      const active = await getActiveCashSession();
+      const [active, salesRes, expRes] = await Promise.all([
+        getActiveCashSession(),
+        getSales({ limit: 1000 }),
+        getExpenses({ limit: 1000 }),
+      ]);
       setSession(active);
+      setSales(salesRes.data);
+      setExpenses(expRes.data);
+
       if (active) {
         const data = await getPayments();
         setTotals(data.totalsByMethod);
-
-        let movementsData: CashMovement[] = [];
+        
         try {
           const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
-          movementsData = resp.data.data ?? [];
-          setMovements(movementsData);
+          setMovements(resp.data.data ?? []);
         } catch {
           setMovements([]);
-        }
-
-        let sessionExpenses: Expense[] = [];
-        try {
-          const expRes = await getExpenses({ page: 1, limit: 1000 });
-          sessionExpenses = expRes.data.filter(e => 
-            e.cashSessionId === active.id && 
-            e.method === "CASH" && 
-            (e.status === "CONFIRMED" || e.status === "DRAFT")
-          );
-          setExpenses(sessionExpenses);
-        } catch {
-          setExpenses([]);
         }
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
         setMovements([]);
-        setExpenses([]);
       }
     } catch {
       setError(true);
@@ -99,9 +98,43 @@ export default function AdminCashPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Erro ao carregar a caixa." onRetry={load} />;
 
+  // --- FILTRAGEM POR DATA ---
+  const now = new Date();
+  function isWithinPeriod(dateStr: string) {
+    const d = new Date(dateStr);
+    if (dateFilter === "DAILY") return d.toLocaleDateString("pt-PT") === now.toLocaleDateString("pt-PT");
+    if (dateFilter === "WEEKLY") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      start.setHours(0, 0, 0, 0);
+      return d >= start;
+    }
+    if (dateFilter === "MONTHLY") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (dateFilter === "YEARLY") return d.getFullYear() === now.getFullYear();
+    if (dateFilter === "CUSTOM") {
+      let ok = true;
+      if (customStart) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        if (d < start) ok = false;
+      }
+      if (customEnd) {
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) ok = false;
+      }
+      return ok;
+    }
+    return true;
+  }
+
+  const filteredSales = sales.filter(s => s.status === "CONFIRMED" && isWithinPeriod(s.createdAt));
+  const filteredExpenses = expenses.filter(e => e.status === "CONFIRMED" && isWithinPeriod(e.expenseDate));
+  const totalSalesPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
+
   const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalExpensesCash = expenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const totalExpensesCash = filteredExpenses.filter(e => e.method === "CASH").reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
   const cashInDrawer = session 
     ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
@@ -112,6 +145,38 @@ export default function AdminCashPage() {
   return (
     <div>
       <PageHeader title="Gestão de Caixa (Administrador)" />
+
+      {/* FILTRO DE PERÍODO */}
+      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+        <div>
+          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="input"
+            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+          >
+            <option value="DAILY">Hoje</option>
+            <option value="WEEKLY">Esta Semana</option>
+            <option value="MONTHLY">Este Mês</option>
+            <option value="YEARLY">Este Ano</option>
+            <option value="CUSTOM">Personalizado</option>
+            <option value="ALL">Ver Tudo</option>
+          </select>
+        </div>
+        {dateFilter === "CUSTOM" && (
+          <>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+          </>
+        )}
+      </div>
 
       {!session ? (
         <div className="card" style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
@@ -174,6 +239,51 @@ export default function AdminCashPage() {
               {forcing ? "A forçar fecho…" : "Forçar Fecho de Caixa"}
             </button>
           </div>
+
+          {/* VENDAS DO PERÍODO */}
+          <div className="card" style={{ padding: "1rem", marginTop: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>Vendas do Período</h2>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+                <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#166534" }}>{money(totalSalesPeriod)} MT</div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{filteredSales.length} vendas</div>
+              </div>
+            </div>
+
+            {filteredSales.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#64748b", padding: "1rem" }}>Nenhuma venda encontrada para este filtro.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Nº</th>
+                    <th>Data</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSales.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.saleNumber}</td>
+                      <td>{formatDateTime(s.createdAt)}</td>
+                      <td>{money(s.total)} MT</td>
+                      <td>
+                        <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#dcfce7", color: "#166534" }}>
+                          Concluída
+                        </span>
+                      </td>
+                      <td>
+                        <a href={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "underline" }}>Ver Detalhe</a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
@@ -233,6 +343,3 @@ export default function AdminCashPage() {
     </div>
   );
 }
-
-
-
