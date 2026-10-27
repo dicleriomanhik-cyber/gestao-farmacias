@@ -230,7 +230,7 @@ export default function PosPage() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", alignItems: "stretch", height: "calc(100vh - 220px)" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", alignItems: "stretch", height: "100%", minHeight: 0 }}>
       <div style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
         <div style={{ marginBottom: "1rem", flexShrink: 0 }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Produtos</h1>
@@ -383,6 +383,7 @@ export default function PosPage() {
     </div>
   );
 }
+
 
 
 

@@ -63,11 +63,14 @@ export default function MainLayout() {
         ))}
       </nav>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", width: "100%", boxSizing: "border-box" }}>
-        <Outlet />
+      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Outlet />
+        </div>
       </div>
     </div>
   );
 }
+
 
 
