@@ -2,7 +2,6 @@
 import { apiClient } from "../../services/api";
 import { formatDateTime } from "../../utils/formatDate";
 import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 
 function money(v: string | number | undefined | null): string {
@@ -21,17 +20,18 @@ interface CashMovement {
 export default function CashMovementsPage() {
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
     apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements")
       .then((resp) => setMovements(resp.data.data ?? []))
-      .catch(() => setError(true))
+      .catch(() => {
+        // Se a caixa estiver fechada (sem sessão), tratar como "sem movimentos".
+        setMovements([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar os movimentos." onRetry={() => window.location.reload()} />;
 
   return (
     <div>
