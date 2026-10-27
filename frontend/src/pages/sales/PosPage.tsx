@@ -127,6 +127,14 @@ export default function PosPage() {
     }
   }
 
+  useEffect(() => {
+    if (!completedSale) return;
+    const timer = setTimeout(() => {
+      startNewSale();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [completedSale]);
+
   function startNewSale() {
     setCompletedSale(null);
     setSearch("");
@@ -139,7 +147,17 @@ export default function PosPage() {
 
   if (completedSale) {
     return (
-      <div style={{ backgroundColor: "white", padding: "3rem", textAlign: "center", maxWidth: "600px", margin: "0 auto", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }}>
+      <div
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            startNewSale();
+          }
+        }}
+        tabIndex={0}
+        autoFocus
+        style={{ backgroundColor: "white", padding: "3rem", textAlign: "center", maxWidth: "600px", margin: "0 auto", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", outline: "none" }}
+      >
         <h2 style={{ color: "#15803d", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -161,6 +179,9 @@ export default function PosPage() {
         <button onClick={startNewSale} style={{ marginTop: "2rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
           Nova Venda
         </button>
+        <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#94a3b8" }}>
+          A voltar automaticamente em 5 segundos…
+        </p>
       </div>
     );
   }
@@ -319,5 +340,6 @@ export default function PosPage() {
     </div>
   );
 }
+
 
 
