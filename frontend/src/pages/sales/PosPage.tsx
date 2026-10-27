@@ -280,6 +280,12 @@ export default function PosPage() {
                   min="0"
                   value={amountPaid}
                   onChange={(e) => setAmountPaid(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!submitting && cart.length > 0 && paid >= total) handleCheckout();
+                    }
+                  }}
                   placeholder="0.00"
                   style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "1rem", boxSizing: "border-box" }}
                 />
@@ -313,4 +319,5 @@ export default function PosPage() {
     </div>
   );
 }
+
 
