@@ -6,7 +6,8 @@ import { getReturns } from "../../services/returnService";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from "../../components/ui/PageHeader";
+import PageHeader from '../../components/ui/PageHeader';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuth } from "../../hooks/useAuth";
 import { canCreateSales } from "../../utils/permissions";
 
@@ -127,16 +128,17 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
             )}
             {isOperational && (
               <>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
-                  className="input"
-                  style={{ padding: "0.4rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem" }}
-                >
-                  <option value="ALL">Todos</option>
-                  <option value="CONFIRMED">Concluída</option>
-                  <option value="RETURNED">Reembolsada</option>
-                </select>
+                <div style={{ width: "150px" }}>
+                  <CustomSelect
+                    value={statusFilter}
+                    onChange={(val) => { setPage(1); setStatusFilter(val as any); }}
+                    options={[
+                      { value: "ALL", label: "Todos" },
+                      { value: "CONFIRMED", label: "Concluída" },
+                      { value: "RETURNED", label: "Reembolsada" },
+                    ]}
+                  />
+                </div>
                 <button
                   onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
                   className="btn btn-secondary"
@@ -154,35 +156,33 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
       {!isOperational && (
         <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end", position: "sticky", top: 0, zIndex: 50, backgroundColor: "#fff", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
           
-          <div>
+          <div style={{ width: "180px" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Estado</label>
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => { setPage(1); setStatusFilter(e.target.value as any); }}
-              className="input"
-              style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="ALL">Todos</option>
-              <option value="CONFIRMED">Concluída</option>
-              <option value="RETURNED">Reembolsada</option>
-            </select>
+              onChange={(val) => { setPage(1); setStatusFilter(val as any); }}
+              options={[
+                { value: "ALL", label: "Todos" },
+                { value: "CONFIRMED", label: "Concluída" },
+                { value: "RETURNED", label: "Reembolsada" },
+              ]}
+            />
           </div>
 
-          <div>
+          <div style={{ width: "220px" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
-            <select
+            <CustomSelect
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-              className="input"
-              style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="ALL">Tudo</option>
-              <option value="DAILY">Hoje</option>
-              <option value="WEEKLY">Esta Semana</option>
-              <option value="MONTHLY">Este Mês</option>
-              <option value="YEARLY">Este Ano</option>
-              <option value="CUSTOM">Personalizado</option>
-            </select>
+              onChange={(val) => setDateFilter(val as DateFilter)}
+              options={[
+                { value: "ALL", label: "Tudo" },
+                { value: "DAILY", label: "Hoje" },
+                { value: "WEEKLY", label: "Esta Semana" },
+                { value: "MONTHLY", label: "Este Mês" },
+                { value: "YEARLY", label: "Este Ano" },
+                { value: "CUSTOM", label: "Personalizado" },
+              ]}
+            />
           </div>
 
           {dateFilter === "CUSTOM" && (
@@ -270,6 +270,8 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     </div>
   );
 }
+
+
 
 
 

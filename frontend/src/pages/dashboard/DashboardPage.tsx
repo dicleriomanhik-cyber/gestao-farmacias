@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from '../../hooks/useAuth';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { getSales } from "../../services/saleService";
 import { getExpenses } from "../../services/expenseService";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
@@ -153,20 +154,19 @@ export default function DashboardPage() {
 
       {/* FILTRO DE PERÍODO */}
       <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
-        <div>
+        <div style={{ width: "220px" }}>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
-          <select
+          <CustomSelect
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-            className="input"
-            style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-          >
-            <option value="DAILY">Hoje</option>
-            <option value="WEEKLY">Esta Semana</option>
-            <option value="MONTHLY">Este Mês</option>
-            <option value="YEARLY">Este Ano</option>
-            <option value="CUSTOM">Personalizado</option>
-          </select>
+            onChange={(val) => setDateFilter(val as DateFilter)}
+            options={[
+              { value: "DAILY", label: "Hoje" },
+              { value: "WEEKLY", label: "Esta Semana" },
+              { value: "MONTHLY", label: "Este Mês" },
+              { value: "YEARLY", label: "Este Ano" },
+              { value: "CUSTOM", label: "Personalizado" },
+            ]}
+          />
         </div>
 
         {dateFilter === "CUSTOM" && (
@@ -243,3 +243,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
