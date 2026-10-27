@@ -1,6 +1,8 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createExpense } from "../../services/expenseService";
+import { getActiveCashSession, getPayments } from "../../services/cashService";
+import { apiClient } from "../../services/api";
 import type { ExpenseCategory, ExpenseMethod } from "../../types/expenses";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -35,12 +37,44 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
   const [category, setCategory] = useState<ExpenseCategory>("OTHER");
   const [method, setMethod] = useState<ExpenseMethod>("CASH");
   const [submitting, setSubmitting] = useState(false);
+  
+  // Saldo total (para validação no POS)
+  const [availableBalance, setAvailableBalance] = useState<number | null>(null);
+
+  // Buscar saldo total se for POS
+  useEffect(() => {
+    if (!isOperational) return;
+    Promise.all([
+      getActiveCashSession(),
+      getPayments(),
+      apiClient.get<{ success: boolean; data: any[] }>("/cash/movements"),
+    ]).then(([session, payments, movements]) => {
+      if (!session) { setAvailableBalance(0); return; }
+      
+      const totalOut = movements.data.data.filter((m: any) => m.type === "OUT").reduce((acc: number, m: any) => acc + parseFloat(m.amount), 0);
+      const totalIn = movements.data.data.filter((m: any) => m.type === "IN").reduce((acc: number, m: any) => acc + parseFloat(m.amount), 0);
+      
+      const totalAllMethods = 
+        (payments.totalsByMethod.CASH || 0) + 
+        (payments.totalsByMethod.CARD || 0) + 
+        (payments.totalsByMethod.MPESA || 0) + 
+        (payments.totalsByMethod.EMOLA || 0);
+      
+      const balance = parseFloat(session.openingBalance.toString()) + totalAllMethods + totalIn - totalOut;
+      setAvailableBalance(balance);
+    }).catch(() => setAvailableBalance(null));
+  }, [isOperational]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) return toast.error("Descrição é obrigatória.");
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) return toast.error("Valor deve ser maior que zero.");
+
+    // Validar se no POS o valor excede o saldo total disponível
+    if (isOperational && availableBalance !== null && num > availableBalance) {
+      return toast.error(`Saldo total insuficiente. Disponível: ${availableBalance.toFixed(2)} MT.`);
+    }
 
     setSubmitting(true);
     try {
@@ -89,6 +123,13 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
             {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
+
+        {isOperational && availableBalance !== null && (
+          <p style={{ fontSize: "0.85rem", color: availableBalance < parseFloat(amount || "0") ? "#b91c1c" : "#475569", marginBottom: "1rem", fontWeight: availableBalance < parseFloat(amount || "0") ? "bold" : "normal" }}>
+            💰 Saldo total disponível: <strong>{availableBalance.toFixed(2)} MT</strong>
+            {availableBalance < parseFloat(amount || "0") && " — valor excede o saldo disponível!"}
+          </p>
+        )}
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
           {submitting ? "A criar…" : "Criar Despesa"}
