@@ -4,6 +4,7 @@ export interface AppConfig {
   apiPrefix: string;
   databaseUrl: string;
   frontendDistPath: string;
+  minClientVersion: string;
   jwt: {
     accessSecret: string;
     accessExpiresIn: string;
@@ -21,6 +22,7 @@ export default (): AppConfig => ({
   apiPrefix: process.env.API_PREFIX ?? 'api/v1',
   databaseUrl: process.env.DATABASE_URL as string,
   frontendDistPath: process.env.FRONTEND_DIST_PATH ?? 'frontend/dist',
+  minClientVersion: process.env.MIN_CLIENT_VERSION ?? '1.0.0',
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET as string,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',

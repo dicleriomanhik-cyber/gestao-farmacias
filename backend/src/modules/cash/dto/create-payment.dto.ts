@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum PaymentMethodDto {
@@ -26,8 +26,7 @@ export class CreatePaymentDto {
   @Type(() => Number)
   amount!: number;
 
-  @ApiPropertyOptional({ description: 'Chave de idempotência para evitar duplicação' })
-  @IsString()
-  @IsOptional()
-  idempotencyKey?: string;
+  @ApiProperty({ description: 'Chave de idempotencia (UUID v4) � obrigatoria' })
+  @IsUUID('4')
+  idempotencyKey!: string;
 }

@@ -80,7 +80,7 @@ describe('Returns (e2e)', () => {
     const paymentRes = await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId, method: 'MPESA', amount: 500 });
+      .send({ saleId, method: 'MPESA', amount: 500, idempotencyKey: '11111111-1111-4111-8111-000000001006' });
     salePaymentId = paymentRes.body.data.id;
   });
 

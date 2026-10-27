@@ -1,14 +1,16 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+import { emitOutboxEvent } from '../sync/outbox.helper';
 
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(pharmacyId: string, userId: string, dto: CreateSaleDto) {
+  async create(pharmacyId: string, userId: string, dto: CreateSaleDto, tx?: Prisma.TransactionClient) {
     if (!dto.lines || dto.lines.length === 0) {
       throw new BadRequestException('A venda deve ter pelo menos uma linha.');
     }
@@ -17,7 +19,7 @@ export class SalesService {
       where: { id: { in: productIds }, pharmacyId, status: 'ACTIVE' },
     });
     if (products.length !== productIds.length) {
-      throw new BadRequestException('Um ou mais produtos sÃ£o invÃ¡lidos ou inativos.');
+      throw new BadRequestException('Um ou mais produtos sao invalidos ou inativos.');
     }
 
     let subtotal = new Decimal(0);
@@ -27,7 +29,7 @@ export class SalesService {
       const unitPrice = product.salePrice;
       const discount = new Decimal(line.discount || 0);
       const lineSubtotal = unitPrice.mul(line.quantity).minus(discount);
-      
+
       if (lineSubtotal.isNegative()) throw new BadRequestException('Desconto superior ao valor da linha.');
 
       subtotal = subtotal.add(lineSubtotal);
@@ -43,12 +45,11 @@ export class SalesService {
     });
 
     const total = subtotal;
-
     const count = await this.prisma.sale.count({ where: { pharmacyId } });
     const saleNumber = `VND-${String(count + 1).padStart(6, '0')}`;
 
-    return this.prisma.$transaction(async (tx) => {
-      const sale = await tx.sale.create({
+    const run = async (txc: Prisma.TransactionClient) => {
+      const sale = await txc.sale.create({
         data: {
           pharmacyId,
           userId,
@@ -63,14 +64,17 @@ export class SalesService {
         include: { lines: true },
       });
 
-      await tx.auditLog.create({
+      await txc.auditLog.create({
         data: { pharmacyId, userId, action: 'sale.create', entity: 'Sale', entityId: sale.id },
       });
+      await emitOutboxEvent(txc, pharmacyId, 'SALE', sale.id, 'CREATED', sale as any);
 
       return sale;
-    });
-  }
+    };
 
+    if (tx) return run(tx);
+    return this.prisma.$transaction((txc) => run(txc));
+  }
   async findAll(pharmacyId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
@@ -94,7 +98,7 @@ export class SalesService {
       where: { id, pharmacyId },
       include: { lines: { include: { product: true, lots: true } }, user: true, returns: true },
     });
-    if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
+    if (!sale) throw new NotFoundException('Venda nao encontrada.');
     return sale;
   }
 
@@ -102,7 +106,7 @@ export class SalesService {
     const sale = await this.prisma.sale.findFirst({
       where: { id: saleId, pharmacyId },
     });
-    if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
+    if (!sale) throw new NotFoundException('Venda nao encontrada.');
 
     return this.prisma.salePayment.findMany({
       where: { saleId },
@@ -119,27 +123,28 @@ export class SalesService {
       await tx.auditLog.create({
         data: { pharmacyId, userId, action: 'sale.update', entity: 'Sale', entityId: id },
       });
+      await emitOutboxEvent(tx, pharmacyId, 'SALE', updated.id, 'UPDATED', updated as any);
       return updated;
     });
   }
 
-  async confirm(pharmacyId: string, userId: string, id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const sales = await tx.$queryRaw`
+  async confirm(pharmacyId: string, userId: string, id: string, tx?: Prisma.TransactionClient) {
+    const run = async (txc: Prisma.TransactionClient) => {
+      const sales = await txc.$queryRaw`
         SELECT id, status FROM "sales" 
         WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
         FOR UPDATE
       ` as Array<{ id: string; status: string }>;
       const sale = sales[0];
-      if (!sale) throw new NotFoundException('Venda nÃ£o encontrada.');
+      if (!sale) throw new NotFoundException('Venda nao encontrada.');
       if (sale.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
 
-      const saleLines = await tx.saleLine.findMany({ where: { saleId: id } });
+      const saleLines = await txc.saleLine.findMany({ where: { saleId: id } });
 
       for (const line of saleLines) {
         let remainingQty = line.quantity;
 
-        const lots = await tx.$queryRaw`
+        const lots = await txc.$queryRaw`
           SELECT id, "quantityAvailable", "expiryDate" 
           FROM "stock_lots" 
           WHERE "productId" = ${line.productId}::uuid 
@@ -151,18 +156,18 @@ export class SalesService {
           FOR UPDATE
         ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date }>;
 
-        if (lots.length === 0) throw new BadRequestException(`Sem stock vÃ¡lido para o produto ${line.productId}.`);
+        if (lots.length === 0) throw new BadRequestException(`Sem stock valido para o produto ${line.productId}.`);
 
         for (const lot of lots) {
           if (remainingQty <= 0) break;
           const consume = Math.min(remainingQty, lot.quantityAvailable);
-          
-          await tx.stockLot.update({
+
+          await txc.stockLot.update({
             where: { id: lot.id },
             data: { quantityAvailable: { decrement: consume } },
           });
 
-          await tx.stockMovement.create({
+          await txc.stockMovement.create({
             data: {
               pharmacyId,
               productId: line.productId,
@@ -175,7 +180,7 @@ export class SalesService {
             },
           });
 
-          await tx.saleLineLot.create({
+          await txc.saleLineLot.create({
             data: { saleLineId: line.id, lotId: lot.id, quantity: consume },
           });
 
@@ -187,16 +192,20 @@ export class SalesService {
         }
       }
 
-      const updated = await tx.sale.update({
+      const updated = await txc.sale.update({
         where: { id },
         data: { status: 'CONFIRMED' },
       });
 
-      await tx.auditLog.create({
+      await txc.auditLog.create({
         data: { pharmacyId, userId, action: 'sale.confirm', entity: 'Sale', entityId: id },
       });
+      await emitOutboxEvent(txc, pharmacyId, 'SALE', updated.id, 'CONFIRMED', updated as any);
 
       return updated;
-    });
+    };
+
+    if (tx) return run(tx);
+    return this.prisma.$transaction((txc) => run(txc));
   }
 }

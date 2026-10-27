@@ -1,4 +1,4 @@
-Ôªøimport { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { OpenCashDto } from './dto/open-cash.dto';
 import { CloseCashDto } from './dto/close-cash.dto';
@@ -6,6 +6,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCashMovementDto } from './dto/create-cash-movement.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
+import { emitOutboxEvent } from '../sync/outbox.helper';
 
 @Injectable()
 export class CashService {
@@ -16,7 +17,7 @@ export class CashService {
       const existing = await tx.cashSession.findFirst({
         where: { pharmacyId, userId, status: 'OPEN' },
       });
-      if (existing) throw new ConflictException('J√° existe uma sess√£o de caixa aberta.');
+      if (existing) throw new ConflictException('J· existe uma sess„o de caixa aberta.');
 
       const session = await tx.cashSession.create({
         data: { pharmacyId, userId, openingBalance: dto.openingBalance, status: 'OPEN' },
@@ -37,8 +38,8 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string; openingBalance: Decimal; status: string }>;
       const session = sessions[0];
-      if (!session) throw new NotFoundException('Sess√£o de caixa n√£o encontrada.');
-      if (session.status !== 'OPEN') throw new BadRequestException('Sess√£o j√° fechada.');
+      if (!session) throw new NotFoundException('Sess„o de caixa n„o encontrada.');
+      if (session.status !== 'OPEN') throw new BadRequestException('Sess„o j· fechada.');
 
       const cashPayments = await tx.salePayment.aggregate({
         where: { cashSessionId: sessionId, method: 'CASH' },
@@ -87,7 +88,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' },
     });
-    if (!session) throw new NotFoundException('N√£o tem sess√£o de caixa aberta.');
+    if (!session) throw new NotFoundException('N„o tem sess„o de caixa aberta.');
 
     const payments = await this.prisma.salePayment.findMany({
       where: { cashSessionId: session.id },
@@ -116,7 +117,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' },
     });
-    if (!session) throw new NotFoundException('N√£o tem sess√£o de caixa aberta.');
+    if (!session) throw new NotFoundException('N„o tem sess„o de caixa aberta.');
 
     return this.prisma.cashMovement.findMany({
       where: { cashSessionId: session.id },
@@ -124,54 +125,59 @@ export class CashService {
     });
   }
 
-  async createPayment(pharmacyId: string, userId: string, dto: CreatePaymentDto) {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const sessions = await tx.$queryRaw`
-          SELECT * FROM "cash_sessions" 
-          WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
-          FOR UPDATE
-        ` as Array<{ id: string }>;
-        const session = sessions[0];
-        if (!session) throw new BadRequestException('N√£o tem sess√£o de caixa aberta.');
+  async createPayment(pharmacyId: string, userId: string, dto: CreatePaymentDto, tx?: Prisma.TransactionClient) {
+    const run = async (txc: Prisma.TransactionClient) => {
+      const sessions = await txc.$queryRaw`
+        SELECT * FROM "cash_sessions" 
+        WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
+        FOR UPDATE
+      ` as Array<{ id: string }>;
+      const session = sessions[0];
+      if (!session) throw new BadRequestException('Nao tem sessao de caixa aberta.');
 
-        if (dto.idempotencyKey) {
-          const existing = await tx.salePayment.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
-          if (existing) return existing;
-        }
+      const existing = await txc.salePayment.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
+      if (existing) return existing;
 
-        const sale = await tx.sale.findFirst({
-          where: { id: dto.saleId, pharmacyId },
-          include: { payments: true },
-        });
-        if (!sale) throw new NotFoundException('Venda n√£o encontrada.');
-        if (sale.status !== 'CONFIRMED') throw new BadRequestException('Apenas vendas confirmadas podem ser pagas.');
-
-        const totalPaid = sale.payments.reduce((acc, p) => acc.add(p.amount), new Decimal(0));
-        const pending = sale.total.sub(totalPaid);
-        if (new Decimal(dto.amount).gt(pending)) {
-          throw new BadRequestException(`Valor excede o saldo pendente (${pending.toFixed(2)}).`);
-        }
-
-        await tx.$queryRaw`SELECT id FROM "sales" WHERE id = ${sale.id}::uuid FOR UPDATE`;
-
-        const payment = await tx.salePayment.create({
-          data: {
-            saleId: sale.id,
-            cashSessionId: session.id,
-            method: dto.method,
-            amount: dto.amount,
-            userId,
-            idempotencyKey: dto.idempotencyKey,
-          },
-        });
-
-        await tx.auditLog.create({
-          data: { pharmacyId, userId, action: 'payment.create', entity: 'SalePayment', entityId: payment.id },
-        });
-
-        return payment;
+      const sale = await txc.sale.findFirst({
+        where: { id: dto.saleId, pharmacyId },
+        include: { payments: true },
       });
+      if (!sale) throw new NotFoundException('Venda nao encontrada.');
+      if (sale.status !== 'CONFIRMED') throw new BadRequestException('Apenas vendas confirmadas podem ser pagas.');
+
+      const totalPaid = sale.payments.reduce((acc, p) => acc.add(p.amount), new Decimal(0));
+      const pending = sale.total.sub(totalPaid);
+      if (new Decimal(dto.amount).gt(pending)) {
+        throw new BadRequestException(`Valor excede o saldo pendente (${pending.toFixed(2)}).`);
+      }
+
+      await txc.$queryRaw`SELECT id FROM "sales" WHERE id = ${sale.id}::uuid FOR UPDATE`;
+
+      const payment = await txc.salePayment.create({
+        data: {
+          saleId: sale.id,
+          cashSessionId: session.id,
+          method: dto.method,
+          amount: dto.amount,
+          userId,
+          idempotencyKey: dto.idempotencyKey,
+        },
+      });
+
+      await txc.auditLog.create({
+        data: { pharmacyId, userId, action: 'payment.create', entity: 'SalePayment', entityId: payment.id },
+      });
+      await emitOutboxEvent(txc, pharmacyId, 'SALE_PAYMENT', payment.id, 'CREATED', payment as any);
+
+      return payment;
+    };
+
+    if (tx) {
+      return run(tx);
+    }
+
+    try {
+      return await this.prisma.$transaction((txc) => run(txc));
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const existing = await this.prisma.salePayment.findUnique({
@@ -182,7 +188,6 @@ export class CashService {
       throw error;
     }
   }
-
   async createMovement(pharmacyId: string, userId: string, dto: CreateCashMovementDto) {
     return this.prisma.$transaction(async (tx) => {
       const sessions = await tx.$queryRaw`
@@ -191,7 +196,7 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string }>;
       const session = sessions[0];
-      if (!session) throw new BadRequestException('N√£o tem sess√£o de caixa aberta.');
+      if (!session) throw new BadRequestException('N„o tem sess„o de caixa aberta.');
 
       const movement = await tx.cashMovement.create({
         data: { cashSessionId: session.id, type: dto.type, amount: dto.amount, reason: dto.reason, userId },

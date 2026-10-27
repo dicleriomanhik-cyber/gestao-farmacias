@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import configuration from './config/configuration';
@@ -19,6 +19,7 @@ import { ReturnsModule } from './modules/returns/returns.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SyncModule } from './modules/sync/sync.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -50,6 +51,7 @@ import { AppLogger } from './common/logger/logger.service';
     ExpensesModule,
     ReportsModule,
     AdminModule,
+    SyncModule,
   ],
   providers: [
     AppLogger,

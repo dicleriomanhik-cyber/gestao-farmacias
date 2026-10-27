@@ -86,7 +86,7 @@ describe('Concorrência de Caixa (e2e)', () => {
       request(app.getHttpServer())
         .post('/api/v1/cash/payments')
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ saleId: newSaleId, method: 'CASH', amount: 100 }),
+        .send({ saleId: newSaleId, method: 'CASH', amount: 100, idempotencyKey: '11111111-1111-4111-8111-000000001001' }),
       request(app.getHttpServer())
         .patch(`/api/v1/cash/${newSessionId}/close`)
         .set('Authorization', `Bearer ${adminToken}`)
@@ -164,7 +164,7 @@ describe('Concorrência de Caixa (e2e)', () => {
       .patch(`/api/v1/sales/${newSaleId}/confirm`)
       .set('Authorization', `Bearer ${adminToken}`);
 
-    const payload = { saleId: newSaleId, method: 'MPESA', amount: 100, idempotencyKey: 'conc-key-01' };
+    const payload = { saleId: newSaleId, method: 'MPESA', amount: 100, idempotencyKey: '11111111-1111-4111-8111-000000001007' };
 
     const [res1, res2] = await Promise.all([
       request(app.getHttpServer()).post('/api/v1/cash/payments').set('Authorization', `Bearer ${adminToken}`).send(payload),
@@ -175,7 +175,7 @@ describe('Concorrência de Caixa (e2e)', () => {
     expect(res2.status).toBe(201);
     expect(res1.body.data.id).toBe(res2.body.data.id);
 
-    const payments = await prisma.salePayment.findMany({ where: { idempotencyKey: 'conc-key-01' } });
+    const payments = await prisma.salePayment.findMany({ where: { idempotencyKey: '11111111-1111-4111-8111-000000001007' } });
     expect(payments.length).toBe(1);
   });
 });

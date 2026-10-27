@@ -1,6 +1,7 @@
 ﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
+import { emitOutboxEvent } from '../sync/outbox.helper';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { CreateLotDto } from './dto/create-lot.dto';
@@ -85,6 +86,7 @@ export class StockService {
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.receive', entity: 'StockLot', entityId: lot.id },
       });
+      await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', updatedLot.id, 'UPDATED', updatedLot as any);
 
       return updatedLot;
     });
@@ -157,6 +159,7 @@ export class StockService {
             entityId: lot.id,
           },
         });
+        await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
 
         return lot;
       });
@@ -206,6 +209,7 @@ export class StockService {
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.adjust', entity: 'StockLot', entityId: lot.id },
       });
+      await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', updatedLot.id, 'UPDATED', updatedLot as any);
 
       return updatedLot;
     });

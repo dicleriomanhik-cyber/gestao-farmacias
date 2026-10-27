@@ -102,7 +102,7 @@ describe('Caixa e Pagamentos (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId, method: 'CASH', amount: 100 })
+      .send({ saleId, method: 'CASH', amount: 100, idempotencyKey: '11111111-1111-4111-8111-000000000001' })
       .expect(201);
     expect(res.body.data.method).toBe('CASH');
   });
@@ -126,7 +126,7 @@ describe('Caixa e Pagamentos (e2e)', () => {
       .patch(`/api/v1/sales/${newSaleId}/confirm`)
       .set('Authorization', `Bearer ${adminToken}`);
 
-    const payload = { saleId: newSaleId, method: 'MPESA', amount: 50, idempotencyKey: 'pay-001' };
+    const payload = { saleId: newSaleId, method: 'MPESA', amount: 50, idempotencyKey: '11111111-1111-4111-8111-000000000999' };
     
     const res1 = await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
@@ -173,7 +173,7 @@ describe('Caixa e Pagamentos (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId: sale1.body.data.id, method: 'CASH', amount: 200 });
+      .send({ saleId: sale1.body.data.id, method: 'CASH', amount: 200, idempotencyKey: '11111111-1111-4111-8111-000000000002' });
 
     // Criar venda 2 (para receber 300 MPESA)
     const sale2 = await request(app.getHttpServer())
@@ -187,7 +187,7 @@ describe('Caixa e Pagamentos (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId: sale2.body.data.id, method: 'MPESA', amount: 300 });
+      .send({ saleId: sale2.body.data.id, method: 'MPESA', amount: 300, idempotencyKey: '11111111-1111-4111-8111-000000000003' });
 
     // Saída física de 100
     await request(app.getHttpServer())
@@ -204,5 +204,20 @@ describe('Caixa e Pagamentos (e2e)', () => {
 
     expect(parseFloat(closeRes.body.data.expectedBalance)).toBe(1100);
     expect(parseFloat(closeRes.body.data.difference)).toBe(0);
+  });
+  it('deve rejeitar pagamento sem idempotencyKey (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/cash/payments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ saleId, method: 'CASH', amount: 10 })
+      .expect(400);
+  });
+
+  it('deve rejeitar idempotencyKey que nao seja UUID v4 (400)', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/cash/payments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ saleId, method: 'CASH', amount: 10, idempotencyKey: 'not-a-uuid' })
+      .expect(400);
   });
 });

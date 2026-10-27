@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
+import { emitOutboxEvent } from '../sync/outbox.helper';
 
 @Injectable()
 export class ProductsService {
@@ -22,6 +23,7 @@ export class ProductsService {
         await tx.auditLog.create({
           data: { pharmacyId, userId: actorId, action: 'product.create', entity: 'Product', entityId: product.id }
         });
+        await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', product.id, 'CREATED', product as any);
         return product;
       });
     } catch (e) {
@@ -108,6 +110,7 @@ export class ProductsService {
         await tx.auditLog.create({
           data: { pharmacyId, userId: actorId, action: 'product.update', entity: 'Product', entityId: id }
         });
+        await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', updated.id, 'UPDATED', updated as any);
         return updated;
       });
     } catch (e) {

@@ -121,6 +121,10 @@ enum ExpenseCategory {
 }
 
 model Pharmacy {
+  syncOperations   SyncOperation[]
+  syncClients      SyncClient[]
+  syncCheckpoint  SyncCheckpoint?
+  outboxEvents     OutboxEvent[]
   id            String         @id @default(uuid()) @db.Uuid
   name          String
   tradeName     String?
@@ -406,7 +410,7 @@ model SalePayment {
   cashSessionId  String        @db.Uuid
   method         PaymentMethod
   amount         Decimal       @db.Decimal(12, 2)
-  idempotencyKey String?       @unique
+  idempotencyKey String        @unique
   createdAt      DateTime      @default(now())
   userId         String        @db.Uuid
 
@@ -722,4 +726,88 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+// ------------------------------------------------------
+// OFFLINE-FIRST SYNC FOUNDATION (OFF-01)
+// ------------------------------------------------------
+
+enum SyncStatus {
+  PENDING
+  PROCESSED
+  REJECTED
+  CONFLICT
+}
+
+enum SyncClientStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model SyncClient {
+  id            String   @id @default(uuid()) @db.Uuid
+  pharmacyId    String   @db.Uuid
+  clientId      String   @unique // Identificador estÃ¡vel da instalaÃ§Ã£o (ex: UUID gerado no dispositivo)
+  appVersion    String   // VersÃ£o do executÃ¡vel/PWA
+  status        SyncClientStatus @default(ACTIVE)
+  lastSyncAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pharmacy      Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  operations    SyncOperation[]
+
+  @@unique([pharmacyId, clientId]) // Garante que o mesmo clientId nÃ£o Ã© usado em farmÃ¡cias diferentes
+  @@index([pharmacyId])
+  @@index([lastSyncAt])
+  @@map("sync_clients")
+}
+
+model SyncOperation {
+  id              String     @id @default(uuid()) @db.Uuid
+  pharmacyId      String     @db.Uuid
+  syncClientId    String     @db.Uuid
+  appVersion      String     // VersÃ£o do cliente que originou a operaÃ§Ã£o
+  operationType   String     // Ex: "SALE", "PAYMENT", "STOCK_ADJUST"
+  idempotencyKey  String     @db.Uuid // Chave Ãºnica gerada pelo cliente
+  payload         Json       // Dados da operaÃ§Ã£o (sem tokens/segredos)
+  status          SyncStatus @default(PENDING)
+  result          Json?      // Resposta persistida para reenvios
+  rejectionReason String?    // Motivo em caso de REJECTED
+  rejectionCode   String?    // CÃ³digo (ex: "STOCK_INSUFFICIENT")
+  attemptId       String?    // Fencing: tentativa que possui a operacao
+  createdAt       DateTime   @default(now())
+  processedAt     DateTime?
+
+  pharmacy        Pharmacy   @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  syncClient      SyncClient @relation(fields: [syncClientId], references: [id], onDelete: Cascade)
+
+  @@unique([pharmacyId, idempotencyKey]) // Impede duplicaÃ§Ã£o da mesma operaÃ§Ã£o na mesma farmÃ¡cia
+  @@index([pharmacyId])
+  @@index([syncClientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sync_operations")
+}
+model OutboxEvent {
+  sequence     BigInt   @id @default(autoincrement())
+  pharmacyId   String   @db.Uuid
+  entityType   String
+  entityId     String   @db.Uuid
+  action       String
+  payload      Json
+  createdAt    DateTime @default(now())
+
+  pharmacy     Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@index([pharmacyId, sequence])
+  @@map("outbox_events")
+}
+model SyncCheckpoint {
+  pharmacyId             String   @id @db.Uuid
+  lastCommittedSequence  BigInt   @default(0)
+  updatedAt              DateTime @updatedAt
+
+  pharmacy               Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@map("sync_checkpoints")
 }

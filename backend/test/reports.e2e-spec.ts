@@ -173,7 +173,7 @@ describe('Reports (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId: sale1.body.data.id, method: 'CASH', amount: 100 });
+      .send({ saleId: sale1.body.data.id, method: 'CASH', amount: 100, idempotencyKey: '11111111-1111-4111-8111-000000001004' });
 
     // Criar Venda MPESA (100)
     const sale2 = await request(app.getHttpServer())
@@ -188,7 +188,7 @@ describe('Reports (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/cash/payments')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ saleId: sale2.body.data.id, method: 'MPESA', amount: 100 });
+      .send({ saleId: sale2.body.data.id, method: 'MPESA', amount: 100, idempotencyKey: '11111111-1111-4111-8111-000000001005' });
 
     // Criar Despesa CASH confirmada (500)
     const exp1 = await request(app.getHttpServer())
