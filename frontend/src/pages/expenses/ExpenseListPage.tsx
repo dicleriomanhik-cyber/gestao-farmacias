@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { getExpenses, confirmExpense, cancelExpense } from "../../services/expenseService";
 import type { Expense, ExpenseCategory, ExpenseMethod } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
-
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import { useToast } from "../../contexts/ToastContext";
@@ -41,8 +40,8 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
-  // Filtro de data
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -50,7 +49,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   function load() {
     setLoading(true);
     setError(false);
-    getExpenses({ limit: 1000 }) // Buscar o máximo para filtrar no frontend
+    getExpenses({ limit: 1000 })
       .then((res) => setExpenses(res.data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -99,7 +98,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate).toLocaleDateString("pt-PT") === todayStr);
   } else if (dateFilter === "WEEKLY") {
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Segunda-feira
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
     startOfWeek.setHours(0, 0, 0, 0);
     filteredExpenses = filteredExpenses.filter(e => new Date(e.expenseDate) >= startOfWeek);
   } else if (dateFilter === "MONTHLY") {
@@ -121,7 +120,6 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     }
   }
 
-  // Total do período filtrado
   const totalPeriod = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
   const totalCount = filteredExpenses.length;
 
@@ -139,19 +137,28 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     );
   }
 
+  function getOrigin(e: Expense) {
+    return e.cashSessionId ? (
+      <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: "500" }}>
+        Colaborador
+      </span>
+    ) : (
+      <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", backgroundColor: "#f3e8ff", color: "#6b21a8", fontWeight: "500" }}>
+        Administrador
+      </span>
+    );
+  }
+
   const canWrite = hasPermission(user?.permissions, "expenses:create");
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <PageHeader
-          title="Despesas"
-          actions={canWrite ? <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link> : null}
-        />
+      <PageHeader
+        title="Despesas"
+        actions={canWrite ? <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link> : null}
+      />
 
-        {/* BARRA DE FILTROS */}
-        <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
-        
+      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
           <select
@@ -182,11 +189,10 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
           </>
         )}
 
-          <div style={{ marginLeft: "auto", textAlign: "right" }}>
-            <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
-            <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
-            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} despesas</div>
-          </div>
+        <div style={{ marginLeft: "auto", textAlign: "right" }}>
+          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total no Período</div>
+          <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#b91c1c" }}>{totalPeriod.toFixed(2)} MT</div>
+          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{totalCount} despesas</div>
         </div>
       </div>
 
@@ -204,6 +210,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                 <th>Categoria</th>
                 <th>Método</th>
                 <th>Valor</th>
+                <th>Origem</th>
                 <th>Estado</th>
                 <th>Ações</th>
               </tr>
@@ -212,12 +219,21 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
               {filteredExpenses.map((e) => (
                 <tr key={e.id}>
                   <td>{new Date(e.expenseDate).toLocaleDateString("pt-PT")}</td>
-                  <td>{e.description}</td>
+                  <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "200px" }} title={e.description}>
+                    {e.description.length > 30 ? e.description.substring(0, 30) + "…" : e.description}
+                  </td>
                   <td>{CATEGORY_LABELS[e.category] ?? e.category}</td>
                   <td>{METHOD_LABELS[e.method] ?? e.method}</td>
                   <td>{parseFloat(e.amount).toFixed(2)} MT</td>
+                  <td>{getOrigin(e)}</td>
                   <td>{statusBadge(e.status)}</td>
                   <td style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => setSelectedExpense(e)}
+                      style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Ver Detalhe
+                    </button>
                     {e.status === "DRAFT" && canWrite && (
                       <>
                         <button
@@ -245,13 +261,55 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
           </table>
         </div>
       )}
+
+      {/* MODAL DE DETALHES */}
+      {selectedExpense && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => setSelectedExpense(null)}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: "white", borderRadius: "12px", padding: "1.5rem",
+              maxWidth: "550px", width: "90%", maxHeight: "80vh",
+              overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem", color: "#1e293b" }}>
+              Detalhe da Despesa
+            </h2>
+            <p><strong>Data:</strong> {new Date(selectedExpense.expenseDate).toLocaleString("pt-PT")}</p>
+            <p><strong>Origem:</strong> {getOrigin(selectedExpense)}</p>
+            <p><strong>Categoria:</strong> {CATEGORY_LABELS[selectedExpense.category] ?? selectedExpense.category}</p>
+            <p><strong>Método:</strong> {METHOD_LABELS[selectedExpense.method] ?? selectedExpense.method}</p>
+            <p><strong>Valor:</strong> <span style={{ color: "#b91c1c", fontWeight: "bold" }}>{parseFloat(selectedExpense.amount).toFixed(2)} MT</span></p>
+            <p><strong>Estado:</strong> {statusBadge(selectedExpense.status)}</p>
+            <p style={{ marginTop: "1rem" }}><strong>Descrição completa:</strong></p>
+            <p style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {selectedExpense.description}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+              <button
+                onClick={() => setSelectedExpense(null)}
+                style={{
+                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
+                  color: "#1e293b", border: "none", borderRadius: "6px",
+                  fontWeight: "500", cursor: "pointer",
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-
-
-
 
