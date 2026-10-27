@@ -16,7 +16,8 @@ import type {
 import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from "../../components/ui/PageHeader";
+import PageHeader from '../../components/ui/PageHeader';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
 import { formatDate } from '../../utils/formatDate';
@@ -171,21 +172,20 @@ export default function ReportsPage() {
         />
 
         <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
-          <div>
+          <div style={{ minWidth: "200px" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
-            <select
+            <CustomSelect
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-              className="input"
-              style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="DAILY">Hoje</option>
-              <option value="WEEKLY">Esta Semana</option>
-              <option value="MONTHLY">Este Mês</option>
-              <option value="YEARLY">Este Ano</option>
-              <option value="CUSTOM">Personalizado</option>
-              <option value="ALL">Ver Tudo</option>
-            </select>
+              onChange={(val) => setDateFilter(val as DateFilter)}
+              options={[
+                { value: "DAILY", label: "Hoje" },
+                { value: "WEEKLY", label: "Esta Semana" },
+                { value: "MONTHLY", label: "Este Mês" },
+                { value: "YEARLY", label: "Este Ano" },
+                { value: "CUSTOM", label: "Personalizado" },
+                { value: "ALL", label: "Ver Tudo" },
+              ]}
+            />
           </div>
 
           {dateFilter === "CUSTOM" && (
@@ -365,6 +365,7 @@ export default function ReportsPage() {
     </div>
   );
 }
+
 
 
 
