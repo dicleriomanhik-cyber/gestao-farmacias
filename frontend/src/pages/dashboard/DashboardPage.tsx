@@ -1,15 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-import { formatDateTime } from "../../utils/formatDate";
 import { getSales } from "../../services/saleService";
 import { getExpenses } from "../../services/expenseService";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
 import { apiClient } from "../../services/api";
-
 import type { Sale, CashSession, PaymentMethod } from "../../types/sales";
 import type { Expense } from "../../types/expenses";
-import EmptyState from "../../components/ui/EmptyState";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -24,7 +21,7 @@ interface CashMovement {
   createdAt: string;
 }
 
-type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -32,35 +29,26 @@ export default function DashboardPage() {
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-
-
-  const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
 
     Promise.allSettled([
-      
-      
-      
       getSales({ limit: 1000 }),
       getExpenses({ limit: 1000 }),
       getActiveCashSession(),
     ]).then(async ([salesRes, expRes, cashRes]) => {
       if (!mounted) return;
 
-      
-      
-      if (salesRes.status === "fulfilled") {
-        setSales(salesRes.value.data);
-        setRecentSales(salesRes.value.data.slice(0, 5));
-      }
+      if (salesRes.status === "fulfilled") setSales(salesRes.value.data);
       if (expRes.status === "fulfilled") setExpenses(expRes.value.data);
 
       if (cashRes.status === "fulfilled" && cashRes.value) {
@@ -93,6 +81,20 @@ export default function DashboardPage() {
     }
     if (dateFilter === "MONTHLY") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     if (dateFilter === "YEARLY") return d.getFullYear() === now.getFullYear();
+    if (dateFilter === "CUSTOM") {
+      let ok = true;
+      if (customStart) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        if (d < start) ok = false;
+      }
+      if (customEnd) {
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) ok = false;
+      }
+      return ok;
+    }
     return true;
   }
 
@@ -139,7 +141,7 @@ export default function DashboardPage() {
       </div>
 
       {/* FILTRO DE PERÍODO */}
-      <div className="card" style={{ padding: "1rem", display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+      <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
           <select
@@ -152,13 +154,27 @@ export default function DashboardPage() {
             <option value="WEEKLY">Esta Semana</option>
             <option value="MONTHLY">Este Mês</option>
             <option value="YEARLY">Este Ano</option>
+            <option value="CUSTOM">Personalizado</option>
           </select>
         </div>
+
+        {dateFilter === "CUSTOM" && (
+          <>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Início</label>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Fim</label>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="input" style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* CARTÕES DE RESUMO */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #2563eb" }}>
+        <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Saldo Total (Caixa)</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: totalAllMethods < 0 ? "#b91c1c" : "#2563eb" }}>
             {loading ? "…" : `${money(totalAllMethods)} MT`}
@@ -166,7 +182,7 @@ export default function DashboardPage() {
           <small style={{ color: "#6b7280" }}>{cashSession ? "Caixa aberta" : "Caixa fechada"}</small>
         </div>
 
-        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #166534" }}>
+        <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas no Período</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
             {loading ? "…" : `${money(totalSales)} MT`}
@@ -174,7 +190,7 @@ export default function DashboardPage() {
           <small style={{ color: "#6b7280" }}>{filteredSales.length} vendas</small>
         </div>
 
-        <div className="card" style={{ padding: "1rem", borderLeft: "4px solid #b91c1c" }}>
+        <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Despesas no Período</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>
             {loading ? "…" : `${money(totalExpenses)} MT`}
@@ -182,7 +198,7 @@ export default function DashboardPage() {
           <small style={{ color: "#6b7280" }}>{filteredExpenses.length} despesas</small>
         </div>
 
-        <div className="card" style={{ padding: "1rem", borderLeft: profit >= 0 ? "4px solid #15803d" : "4px solid #b91c1c" }}>
+        <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lucro / Prejuízo</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: profit >= 0 ? "#15803d" : "#b91c1c" }}>
             {loading ? "…" : `${money(profit)} MT`}
@@ -243,35 +259,6 @@ export default function DashboardPage() {
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
           </div>
         </div>
-      </div>
-
-      {/* VENDAS RECENTES */}
-      <div className="card" style={{ padding: "1rem" }}>
-        <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas Recentes</h2>
-        {recentSales.length === 0 ? (
-          <EmptyState message="Nenhuma venda registada." />
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nº</th>
-                <th>Total</th>
-                <th>Operador</th>
-                <th>Data/Hora</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentSales.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.saleNumber}</td>
-                  <td>{money(s.total)} MT</td>
-                  <td>{s.userId ? s.userId.substring(0, 8) + "..." : "—"}</td>
-                  <td>{formatDateTime(s.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </div>
     </div>
   );
