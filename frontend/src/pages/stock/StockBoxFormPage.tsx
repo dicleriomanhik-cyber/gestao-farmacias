@@ -118,13 +118,19 @@ export default function StockBoxFormPage() {
     try {
       let productId = chosen?.id ?? "";
       if (!productId) {
+        // Junta o nome com a dosagem para o nome final do produto
+        const finalName = dosage.trim() ? `${term} ${dosage.trim()}` : term;
+        
         const body = {
-          name: term,
+          name: finalName,
           type: tipo,
           salePrice: price,
           hasExpiry: !noExpiry,
           status: "ACTIVE",
+          strength: dosage.trim() || "N/A",          // Campo exigido pelo backend
+          activeIngredient: term || "Desconhecido",  // Campo exigido pelo backend
         } as unknown as ProductRequest;
+        
         const created = await createProduct(body);
         productId = created.id;
         setProducts((prev) => [...prev, created]);
