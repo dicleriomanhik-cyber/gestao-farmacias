@@ -49,27 +49,46 @@ export default function StockBoxListPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", padding: "1.5rem", width: "100%" }}>
       
-      {/* BARRA DE PESQUISA E FILTRO DE ESTADO */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", flexShrink: 0, alignItems: "center" }}>
-        <input
-          type="search"
-          placeholder="Pesquisar produto ou QR Code..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 220, padding: "8px 12px", border: "1px solid #d9dee9", borderRadius: 8 }}
-        />
-        
-        <select 
-          value={state} 
-          onChange={(e) => setState(e.target.value as StockBoxState | "")} 
-          style={{ padding: "8px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", minWidth: 180 }}
-        >
-          <option value="">Todos os estados</option>
-          <option value="NEW">Nova</option>
-          <option value="ACTIVE">Em uso</option>
-          <option value="DEPLETED">Esgotada</option>
-          <option value="EXPIRED">Expirada</option>
-        </select>
+      {/* CARTÃO DE FILTROS (ESTILO GESTÃO DE CAIXA) */}
+      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #d9dee9", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+          
+          {/* Campo de Pesquisa */}
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Pesquisar</label>
+            <input
+              type="search"
+              placeholder="Pesquisar produto ou QR Code..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#f8fafc" }}
+            />
+          </div>
+
+          {/* Seletor de Estado */}
+          <div style={{ width: 220 }}>
+            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Estado</label>
+            <select 
+              value={state} 
+              onChange={(e) => setState(e.target.value as StockBoxState | "")} 
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#f8fafc", color: "#1d2433" }}
+            >
+              <option value="">Todos os estados</option>
+              <option value="NEW">Nova</option>
+              <option value="ACTIVE">Em uso</option>
+              <option value="DEPLETED">Esgotada</option>
+              <option value="EXPIRED">Expirada</option>
+            </select>
+          </div>
+
+          {/* Botão Registar Caixa */}
+          <div>
+            <Link to="/stock/caixas/nova" style={{ display: "inline-block", background: "#2f5bd3", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 500 }}>
+              Registar caixa
+            </Link>
+          </div>
+
+        </div>
       </div>
 
       {/* TABELA */}
