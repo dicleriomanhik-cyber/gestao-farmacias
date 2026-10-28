@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
 import { emitOutboxEvent } from '../sync/outbox.helper';
@@ -15,7 +15,7 @@ export class StockService {
 
   async receiveStock(pharmacyId: string, actorId: string, dto: ReceiveStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock na purchase line para evitar recepções concorrentes
+      // Lock na purchase line para evitar recepÃ§Ãµes concorrentes
       const lines = await tx.$queryRaw`
         SELECT id, "purchaseId", "productId", quantity 
         FROM "purchase_lines" 
@@ -23,10 +23,10 @@ export class StockService {
         FOR UPDATE
       ` as Array<{ id: string; purchaseId: string; productId: string; quantity: number }>;
       const line = lines[0];
-      if (!line) throw new NotFoundException('Linha de compra não encontrada.');
+      if (!line) throw new NotFoundException('Linha de compra nÃ£o encontrada.');
 
       const purchase = await tx.purchase.findUnique({ where: { id: line.purchaseId } });
-      if (purchase?.pharmacyId !== pharmacyId) throw new NotFoundException('Compra não encontrada.');
+      if (purchase?.pharmacyId !== pharmacyId) throw new NotFoundException('Compra nÃ£o encontrada.');
       if (purchase.status !== 'CONFIRMED') throw new BadRequestException('A compra precisa estar CONFIRMADA.');
 
       const totalReceived = await tx.stockLot.aggregate({
@@ -36,7 +36,7 @@ export class StockService {
       const alreadyReceived = totalReceived._sum.quantityReceivedFromLine || 0;
       if (alreadyReceived + dto.quantity > line.quantity) {
         throw new BadRequestException(
-          `Quantidade excede o total comprado. Comprado: ${line.quantity}, Já recebido: ${alreadyReceived}, Tentativa: ${dto.quantity}`,
+          `Quantidade excede o total comprado. Comprado: ${line.quantity}, JÃ¡ recebido: ${alreadyReceived}, Tentativa: ${dto.quantity}`,
         );
       }
 
@@ -102,11 +102,11 @@ export class StockService {
           where: { id: dto.productId, pharmacyId },
           select: { id: true },
         });
-        if (!product) throw new NotFoundException('Produto não encontrado.');
+        if (!product) throw new NotFoundException('Produto nÃ£o encontrado.');
 
         const expiryDate = new Date(dto.expiryDate);
         if (isNaN(expiryDate.getTime())) {
-          throw new BadRequestException('Data de validade inválida.');
+          throw new BadRequestException('Data de validade invÃ¡lida.');
         }
 
         const existing = await tx.stockLot.findUnique({
@@ -120,7 +120,7 @@ export class StockService {
         });
         if (existing) {
           throw new BadRequestException(
-            `Já existe um lote com o número "${dto.lotNumber}" para este produto.`,
+            `JÃ¡ existe um lote com o nÃºmero "${dto.lotNumber}" para este produto.`,
           );
         }
 
@@ -172,7 +172,7 @@ export class StockService {
         error.code === 'P2002'
       ) {
         throw new BadRequestException(
-          `Já existe um lote com o número "${dto.lotNumber}" para este produto.`,
+          `JÃ¡ existe um lote com o nÃºmero "${dto.lotNumber}" para este produto.`,
         );
       }
       throw error;
@@ -181,14 +181,14 @@ export class StockService {
 
   async adjustStock(pharmacyId: string, actorId: string, dto: AdjustStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock explícito do lote para evitar concorrência
+      // Lock explÃ­cito do lote para evitar concorrÃªncia
       const lots = await tx.$queryRaw`
         SELECT * FROM "stock_lots" 
         WHERE id = ${dto.lotId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid
         FOR UPDATE
       ` as Array<{ id: string; productId: string; quantityAvailable: number }>;
       const lot = lots[0];
-      if (!lot) throw new NotFoundException('Lote não encontrado.');
+      if (!lot) throw new NotFoundException('Lote nÃ£o encontrado.');
 
       if (dto.quantity === 0 && !dto.expiryDate) { throw new BadRequestException('Ajuste com quantidade zero requer nova validade.'); }
       if (lot.quantityAvailable + dto.quantity < 0) {
@@ -236,10 +236,21 @@ export class StockService {
   async createBox(pharmacyId: string, actorId: string, dto: CreateBoxDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-      const product = await tx.product.findFirst({
-        where: { id: dto.productId, pharmacyId },
-        select: { id: true, type: true, hasExpiry: true },
-      });
+      let product: { id: string; type: string; hasExpiry: boolean } | null = null;
+      if (dto.productId) {
+        product = await tx.product.findFirst({
+          where: { id: dto.productId, pharmacyId },
+          select: { id: true, type: true, hasExpiry: true },
+        });
+      } else if (dto.productName) {
+        const matches = await tx.product.findMany({
+          where: { pharmacyId, name: { equals: dto.productName.trim(), mode: 'insensitive' }, status: 'ACTIVE' },
+          select: { id: true, type: true, hasExpiry: true },
+          take: 2,
+        });
+        if (matches.length > 1) throw new BadRequestException('Existe mais de um produto com este nome. Use o produto correto.');
+        product = matches[0] ?? null;
+      }
       if (!product) throw new NotFoundException('Produto nao encontrado.');
       if (dto.expiryDate && product.hasExpiry === false) {
         throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
@@ -345,7 +356,7 @@ export class StockService {
         skip,
         take: limit,
         include: { product: { select: { name: true, type: true, hasExpiry: true } } },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        orderBy: [{ expiryDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
       }),
       this.prisma.stockLot.count({ where }),
     ]);
@@ -510,3 +521,4 @@ export class StockService {
     return result;
   }
 }
+
