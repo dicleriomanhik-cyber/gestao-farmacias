@@ -5,6 +5,7 @@ import type { StockBox, StockBoxState } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
+import { useToast } from "../../contexts/ToastContext";
 
 const STATE_LABEL: Record<StockBoxState, string> = {
   NEW: "Nova",
@@ -20,6 +21,7 @@ function formatDate(dateStr: string | null) {
 }
 
 export default function StockBoxListPage() {
+  const toast = useToast();
   const [boxes, setBoxes] = useState<StockBox[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -43,49 +45,64 @@ export default function StockBoxListPage() {
     `${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("QR Code copiado!");
+    }).catch(() => {
+      toast.error("Erro ao copiar.");
+    });
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", padding: "1.5rem", width: "100%" }}>
       
-      {/* CARTÃO DE FILTROS IDÊNTICO AO DA GESTÃO DE CAIXA */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-        <div style={{ display: "flex", gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
-          
-          <div style={{ flex: 1, minWidth: 250 }}>
-            <label style={{ display: "block", fontSize: "0.9rem", color: "#1d2433", marginBottom: "8px", fontWeight: 400 }}>Pesquisar</label>
+      {/* CABEÇALHO DA PÁGINA (Título + Botão) */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <h2 style={{ fontSize: "1.4rem", fontWeight: 600, color: "#1d2433", margin: 0 }}>Caixas em stock</h2>
+        <Link to="/stock/caixas/nova" style={{ background: "#2f5bd3", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 500, fontSize: "0.9rem" }}>
+          + Registar caixa
+        </Link>
+      </div>
+
+      {/* CARTÃO DE FILTROS (ESTILO DESPESAS) */}
+      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+        
+        <div style={{ display: "flex", gap: 24, alignItems: "end", flex: 1 }}>
+          <div style={{ flex: 1, maxWidth: 400 }}>
+            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Pesquisar</label>
             <input
               type="search"
               placeholder="Pesquisar produto ou QR Code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#f8fafc", color: "#1d2433", fontSize: "0.95rem", outline: "none" }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", color: "#1d2433", fontSize: "0.95rem" }}
             />
           </div>
 
-          <div style={{ width: 240 }}>
-            <label style={{ display: "block", fontSize: "0.9rem", color: "#1d2433", marginBottom: "8px", fontWeight: 400 }}>Estado</label>
+          <div style={{ width: 200 }}>
+            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Estado</label>
             <select 
               value={state} 
               onChange={(e) => setState(e.target.value as StockBoxState | "")} 
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#f8fafc", color: "#1d2433", fontSize: "0.95rem", outline: "none", appearance: "auto" }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", color: "#1d2433", fontSize: "0.95rem" }}
             >
-              <option value="">Todos os estados</option>
+              <option value="">Todos</option>
               <option value="NEW">Nova</option>
               <option value="ACTIVE">Em uso</option>
               <option value="DEPLETED">Esgotada</option>
               <option value="EXPIRED">Expirada</option>
             </select>
           </div>
-
-          <div>
-            <Link to="/stock/caixas/nova" style={{ display: "inline-block", background: "#2f5bd3", color: "#fff", padding: "10px 24px", borderRadius: 8, textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", height: "42px", lineHeight: "22px", boxSizing: "border-box" }}>
-              Registar caixa
-            </Link>
-          </div>
-
         </div>
+
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "0.85rem", color: "#5b6478", marginBottom: "4px" }}>Total de caixas</div>
+          <div style={{ fontSize: "1.2rem", fontWeight: 600, color: "#2f5bd3" }}>{filtered.length}</div>
+        </div>
+
       </div>
 
       {/* TABELA */}
@@ -108,7 +125,18 @@ export default function StockBoxListPage() {
             <tbody>
               {filtered.map((b) => (
                 <tr key={b.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={{ padding: "12px 16px" }}><Link to={`/stock/caixas/${b.id}`}><code style={{ color: "#2f5bd3" }}>{b.qrCode}</code></Link></td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Link to={`/stock/caixas/${b.id}`}><code style={{ color: "#2f5bd3" }}>{b.qrCode}</code></Link>
+                      <button 
+                        onClick={() => copyToClipboard(b.qrCode)}
+                        title="Copiar QR Code"
+                        style={{ background: "transparent", border: 0, cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: "#5b6478" }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                      </button>
+                    </div>
+                  </td>
                   <td style={{ padding: "12px 16px", fontWeight: 500 }}>{b.productName}</td>
                   <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
                   <td style={{ padding: "12px 16px" }}>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
