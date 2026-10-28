@@ -20,6 +20,9 @@ function formatDate(dateStr: string | null) {
   return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
 }
 
+const cellStyle = { padding: "10px 16px", borderRight: "1px solid #e5e7eb" };
+const lastCellStyle = { padding: "10px 16px" };
+
 export default function StockBoxListPage() {
   const toast = useToast();
   const [boxes, setBoxes] = useState<StockBox[]>([]);
@@ -73,7 +76,9 @@ export default function StockBoxListPage() {
               style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, background: "#fff", color: "#1d2433", fontSize: "0.9rem" }}
             />
           </div>
+        </div>
 
+        <div style={{ display: "flex", gap: 24, alignItems: "end" }}>
           <div style={{ width: 180 }}>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#5b6478", marginBottom: "4px", fontWeight: 500 }}>Estado</label>
             <select 
@@ -88,16 +93,16 @@ export default function StockBoxListPage() {
               <option value="EXPIRED">Expirada</option>
             </select>
           </div>
-        </div>
 
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "0.75rem", color: "#5b6478", marginBottom: "2px" }}>Total de caixas</div>
-          <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#2f5bd3" }}>{filtered.length}</div>
+          <div style={{ textAlign: "right", minWidth: 100 }}>
+            <div style={{ fontSize: "0.75rem", color: "#5b6478", marginBottom: "2px" }}>Total de caixas</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#2f5bd3" }}>{filtered.length}</div>
+          </div>
         </div>
 
       </div>
 
-      {/* TABELA */}
+      {/* TABELA COM LINHAS VERTICAIS */}
       <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <div style={{ padding: 20 }}><EmptyState message="Nenhuma caixa encontrada." /></div>
@@ -105,19 +110,19 @@ export default function StockBoxListPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
               <tr>
-                <th align="left" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>QR Code</th>
-                <th align="left" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Produto</th>
-                <th align="left" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</th>
-                <th align="left" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Validade</th>
-                <th align="right" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Caixinhas</th>
-                <th align="right" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Restante</th>
-                <th align="left" style={{ padding: "10px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estado</th>
+                <th align="left" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>QR Code</th>
+                <th align="left" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Produto</th>
+                <th align="left" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</th>
+                <th align="left" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Validade</th>
+                <th align="right" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Caixinhas</th>
+                <th align="right" style={{ ...cellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Restante</th>
+                <th align="left" style={{ ...lastCellStyle, color: "#5b6478", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estado</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((b) => (
                 <tr key={b.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={{ padding: "10px 16px" }}>
+                  <td style={cellStyle}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <Link to={`/stock/caixas/${b.id}`}><code style={{ color: "#2f5bd3" }}>{b.qrCode}</code></Link>
                       <button 
@@ -129,17 +134,17 @@ export default function StockBoxListPage() {
                       </button>
                     </div>
                   </td>
-                  <td style={{ padding: "10px 16px", fontWeight: 500 }}>{b.productName}</td>
-                  <td style={{ padding: "10px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
-                  <td style={{ padding: "10px 16px" }}>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
-                  <td align="right" style={{ padding: "10px 16px", color: "#5b6478" }}>
+                  <td style={{ ...cellStyle, fontWeight: 500 }}>{b.productName}</td>
+                  <td style={cellStyle}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
+                  <td style={cellStyle}>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
+                  <td align="right" style={{ ...cellStyle, color: "#5b6478" }}>
                     {b.innerCount !== null && b.unitsPerInner ? `${Math.ceil(b.quantityAvailable / b.unitsPerInner)} de ${b.innerCount}` : "—"}
                   </td>
-                  <td align="right" style={{ padding: "10px 16px" }}>
+                  <td align="right" style={cellStyle}>
                     <b>{b.quantityAvailable}</b> de {b.totalUnits} {b.saleUnitLabel}
                     {b.quantityAvailable === 1 ? "" : "s"}
                   </td>
-                  <td style={{ padding: "10px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.state === "NEW" ? "#e3f6ec" : b.state === "ACTIVE" ? "#fff4e0" : b.state === "DEPLETED" ? "#e5e7eb" : "#fde8e8", color: b.state === "NEW" ? "#0f7a4a" : b.state === "ACTIVE" ? "#b45309" : b.state === "DEPLETED" ? "#6b7280" : "#b91c1c" }}>{STATE_LABEL[b.state] || b.state}</span></td>
+                  <td style={lastCellStyle}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.state === "NEW" ? "#e3f6ec" : b.state === "ACTIVE" ? "#fff4e0" : b.state === "DEPLETED" ? "#e5e7eb" : "#fde8e8", color: b.state === "NEW" ? "#0f7a4a" : b.state === "ACTIVE" ? "#b45309" : b.state === "DEPLETED" ? "#6b7280" : "#b91c1c" }}>{STATE_LABEL[b.state] || b.state}</span></td>
                 </tr>
               ))}
             </tbody>
