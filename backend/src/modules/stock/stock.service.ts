@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
@@ -10,7 +10,7 @@ export class StockService {
 
   async receiveStock(pharmacyId: string, actorId: string, dto: ReceiveStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Bloquear a PurchaseLine para evitar concorrência na receção
+      // 1. Bloquear a PurchaseLine para evitar concorrÃªncia na receÃ§Ã£o
       const lines = await tx.$queryRaw`
         SELECT id, "purchaseId", "productId", quantity 
         FROM "purchase_lines" 
@@ -18,14 +18,14 @@ export class StockService {
         FOR UPDATE
       `;
       const line = lines[0];
-      if (!line) throw new NotFoundException('Linha de compra não encontrada.');
+      if (!line) throw new NotFoundException('Linha de compra nÃ£o encontrada.');
 
-      // Validar se a compra está confirmada
+      // Validar se a compra estÃ¡ confirmada
       const purchase = await tx.purchase.findUnique({ where: { id: line.purchaseId } });
-      if (purchase?.pharmacyId !== pharmacyId) throw new NotFoundException('Compra não encontrada.');
+      if (purchase?.pharmacyId !== pharmacyId) throw new NotFoundException('Compra nÃ£o encontrada.');
       if (purchase.status !== 'CONFIRMED') throw new BadRequestException('A compra precisa estar CONFIRMADA.');
 
-      // 2. Validar quantidade máxima recebida
+      // 2. Validar quantidade mÃ¡xima recebida
       const totalReceived = await tx.stockLot.aggregate({
         where: { purchaseLineId: line.id },
         _sum: { quantityReceivedFromLine: true },
@@ -56,7 +56,7 @@ export class StockService {
           },
         });
       } else {
-        // Bloquear o lote existente para a atualização
+        // Bloquear o lote existente para a atualizaÃ§Ã£o
         await tx.$queryRaw`SELECT id FROM "stock_lots" WHERE id = ${lot.id}::uuid FOR UPDATE`;
         await tx.stockLot.update({
           where: { id: lot.id },
@@ -81,7 +81,7 @@ export class StockService {
         },
       });
 
-      // 5. Atualizar quantidade disponível
+      // 5. Atualizar quantidade disponÃ­vel
       const updatedLot = await tx.stockLot.update({
         where: { id: lot.id },
         data: { quantityAvailable: { increment: dto.quantity } },
@@ -98,16 +98,16 @@ export class StockService {
 
   async adjustStock(pharmacyId: string, actorId: string, dto: AdjustStockDto) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Lock explícito do lote (FOR UPDATE)
+      // 1. Lock explÃ­cito do lote (FOR UPDATE)
       const lots = await tx.$queryRaw`
         SELECT * FROM "stock_lots" 
         WHERE id = ${dto.lotId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid
         FOR UPDATE
       `;
       const lot = lots[0];
-      if (!lot) throw new NotFoundException('Lote não encontrado.');
+      if (!lot) throw new NotFoundException('Lote nÃ£o encontrado.');
 
-      if (dto.quantity === 0) throw new BadRequestException('Ajuste com quantidade zero não é permitido.');
+      if (dto.quantity === 0) throw new BadRequestException('Ajuste com quantidade zero nÃ£o Ã© permitido.');
       if (lot.quantityAvailable + dto.quantity < 0) {
         throw new BadRequestException('Ajuste resultaria em stock negativo.');
       }
@@ -125,7 +125,7 @@ export class StockService {
         },
       });
 
-      // 3. Atualizar quantidade disponível
+      // 3. Atualizar quantidade disponÃ­vel
       const updatedLot = await tx.stockLot.update({
         where: { id: lot.id },
         data: { quantityAvailable: { increment: dto.quantity } },
@@ -143,7 +143,7 @@ export class StockService {
   async getLots(pharmacyId: string, productId?: string) {
     return this.prisma.stockLot.findMany({
       where: { pharmacyId, ...(productId && { productId }) },
-      include: { product: { select: { name: true, sku: true } } },
+      include: { product: { select: { name: true, sku: true, type: true, dosageForm: true } } },
       orderBy: { expiryDate: 'asc' },
     });
   }
