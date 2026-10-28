@@ -18,6 +18,7 @@ import PurchaseFormPage from "../pages/purchases/PurchaseFormPage";
 import ProductListPage from "../pages/products/ProductListPage";
 import ProductFormPage from "../pages/products/ProductFormPage";
 import StockLotListPage from "../pages/stock/StockLotListPage";
+import StockBoxListPage from "../pages/stock/StockBoxListPage";
 import StockMovementListPage from "../pages/stock/StockMovementListPage";
 import StockReceiveFormPage from "../pages/stock/StockReceiveFormPage";
 import StockAdjustFormPage from "../pages/stock/StockAdjustFormPage";
@@ -76,6 +77,7 @@ export default function AppRouter() {
           <Route path="produtos/novo" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
           <Route path="produtos/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
 
+          <Route path="stock/caixas" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxListPage /></ProtectedRoute>} />
           <Route path="stock/lotes" element={<ProtectedRoute requiredPermission="stock:read"><StockLotListPage /></ProtectedRoute>} />
           <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
           <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
@@ -109,6 +111,8 @@ export default function AppRouter() {
     </BrowserRouter>
   );
 }
+
+
 
 
 

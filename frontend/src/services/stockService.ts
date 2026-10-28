@@ -4,6 +4,10 @@ import type {
   StockMovement,
   StockReceiveRequest,
   StockAdjustRequest,
+  StockBox,
+  StockBoxDetail,
+  StockBoxListParams,
+  StockBoxCreateRequest,
 } from "../types/stock";
 
 interface Envelope<T> {
@@ -42,3 +46,20 @@ export async function createLot(data: {
   const resp = await apiClient.post<Envelope<StockLot>>("/stock/lots", data);
   return resp.data.data;
 }
+
+// ---- Caixas físicas (back-end: /stock/boxes) ----
+export async function getStockBoxes(params?: StockBoxListParams): Promise<{ data: StockBox[]; meta: any }> {
+  const resp = await apiClient.get<any>("/stock/boxes", { params });
+  return resp.data.data;
+}
+
+export async function getStockBox(id: string): Promise<StockBoxDetail> {
+  const resp = await apiClient.get<any>(`/stock/boxes/${id}`);
+  return resp.data.data;
+}
+
+export async function createStockBox(data: StockBoxCreateRequest): Promise<StockBox> {
+  const resp = await apiClient.post<any>("/stock/boxes", data);
+  return resp.data.data;
+}
+
