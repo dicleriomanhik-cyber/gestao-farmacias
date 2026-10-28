@@ -9,6 +9,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import CustomSelect from '../../components/ui/CustomSelect';
 import { formatDateTime } from "../../utils/formatDate";
+import { useToast } from "../../contexts/ToastContext";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -26,6 +27,7 @@ interface CashMovement {
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
 export default function AdminCashPage() {
+  const toast = useToast();
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -34,6 +36,9 @@ export default function AdminCashPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showSales, setShowSales] = useState(true);
+
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
@@ -77,10 +82,23 @@ export default function AdminCashPage() {
     load();
   }, []);
 
+  async function handleResetTestData() {
+    setShowResetConfirm(false);
+    setResetting(true);
+    try {
+      await apiClient.post('/admin/reset-test-data');
+      toast.success('Dados de teste reiniciados com sucesso.');
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? 'Erro ao resetar dados.');
+    } finally {
+      setResetting(false);
+    }
+  }
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Erro ao carregar a caixa." onRetry={load} />;
 
-  // --- FILTRAGEM POR DATA ---
   const now = new Date();
   function isWithinPeriod(dateStr: string) {
     const d = new Date(dateStr);
@@ -212,6 +230,15 @@ export default function AdminCashPage() {
             <p style={{ marginBottom: 0, fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
           </div>
 
+          {/* ZONA DE PERIGO */}
+          <div className="card" style={{ padding: "0.75rem", border: "1px solid #fecaca", backgroundColor: "#fef2f2" }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>⚠️ Zona de Perigo</h3>
+            <p style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "1rem" }}>Esta ação irá cancelar todas as vendas, despesas e devoluções, e fechar todas as sessões de caixa abertas. Use apenas para limpar dados de teste.</p>
+            <button onClick={() => setShowResetConfirm(true)} disabled={resetting} className="btn btn-danger" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.6 : 1 }}>
+              {resetting ? "A resetar…" : "Reset de Dados de Teste"}
+            </button>
+          </div>
+
           {/* VENDAS DO PERÍODO */}
           <div className="card" style={{ padding: "1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showSales ? "1rem" : 0 }}>
@@ -269,6 +296,20 @@ export default function AdminCashPage() {
                 </table>
               )
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RESET */}
+      {showResetConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowResetConfirm(false)}>
+          <div className="card" style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", maxWidth: "450px", width: "90%", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#b91c1c" }}>Reset de Dados de Teste</h2>
+            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>Tens a certeza? Esta ação irá cancelar TODAS as vendas, despesas e devoluções, e fechar TODAS as sessões de caixa. O sistema voltará a 0 (zero). Esta ação não pode ser desfeita.</p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowResetConfirm(false)} disabled={resetting} style={{ padding: "0.5rem 1rem", backgroundColor: "#e2e8f0", color: "#1e293b", border: "none", borderRadius: "6px", fontWeight: "500", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleResetTestData} disabled={resetting} style={{ padding: "0.5rem 1rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "6px", fontWeight: "500", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.7 : 1 }}>{resetting ? "A resetar…" : "Sim, Resetar"}</button>
+            </div>
           </div>
         </div>
       )}
