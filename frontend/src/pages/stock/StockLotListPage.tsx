@@ -1,11 +1,9 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getStockLots } from "../../services/stockService";
 import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from "../../components/ui/PageHeader";
-import { useEffect } from "react";
 
 interface Props {
   hideAdminActions?: boolean;
@@ -29,6 +27,19 @@ interface Group {
 const DIVIDER = "1px solid #e2e8f0";
 const cell = { padding: "0.8rem 1rem", verticalAlign: "middle" } as const;
 const divided = { ...cell, borderLeft: DIVIDER } as const;
+const headCell = {
+  ...cell,
+  position: "sticky" as const,
+  top: 0,
+  zIndex: 1,
+  background: "#f8fafc",
+  fontSize: "0.75rem",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.03em",
+  color: "#64748b",
+  fontWeight: 600,
+};
+const headDivided = { ...headCell, borderLeft: DIVIDER } as const;
 
 export default function StockLotListPage(_props: Props) {
   const [lots, setLots] = useState<StockLot[]>([]);
@@ -106,25 +117,32 @@ export default function StockLotListPage(_props: Props) {
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <PageHeader title="Stock" actions={null} />
+      <div style={{ paddingBottom: "0.5rem" }}>
         <input
           type="search"
           placeholder="Pesquisar produto..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, font: "inherit", background: "#fff", marginTop: "0.5rem" }}
+          style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, font: "inherit", background: "#fff" }}
         />
       </div>
 
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+      <div
+        className="card"
+        style={{
+          padding: 0,
+          overflowX: "auto",
+          overflowY: "auto",
+          maxHeight: "calc(100vh - 170px)",
+        }}
+      >
         <table className="table" style={{ margin: 0 }}>
           <thead>
             <tr>
-              <th style={{ ...cell, width: "44%" }}>Produto</th>
-              <th style={{ ...divided, width: "18%", textAlign: "left" }}>Carteiras disponíveis</th>
-              <th style={{ ...divided, width: "20%", textAlign: "center" }}>Próxima validade</th>
-              <th style={{ ...divided, width: "18%", textAlign: "center" }}>Estado</th>
+              <th style={{ ...headCell, width: "44%" }}>Produto</th>
+              <th style={{ ...headDivided, width: "18%", textAlign: "left" }}>Carteiras disponíveis</th>
+              <th style={{ ...headDivided, width: "20%", textAlign: "center" }}>Próxima validade</th>
+              <th style={{ ...headDivided, width: "18%", textAlign: "center" }}>Estado</th>
             </tr>
           </thead>
           <tbody>
