@@ -154,8 +154,15 @@ export default function StockBoxFormPage() {
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "1rem" }}>
-      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "850px", background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", padding: "1.5rem" }}>
+    <div style={{ 
+      display: "flex", 
+      justifyContent: "center", 
+      padding: "1rem", 
+      height: "calc(100vh - 180px)", // Ajusta este valor conforme a altura do teu header/menu
+      overflowY: "auto",
+      alignItems: "flex-start"
+    }}>
+      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "850px", background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", padding: "1.5rem", marginBottom: "2rem" }}>
         
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#1d2433", marginBottom: "1rem", marginTop: 0 }}>Registar caixa</h2>
 
