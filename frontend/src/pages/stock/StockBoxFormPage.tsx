@@ -1,9 +1,9 @@
 ﻿import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { getProducts } from "../../services/productService";
+import { createProduct, getProducts } from "../../services/productService";
 import { createStockBox } from "../../services/stockService";
-import type { Product, ProductType } from "../../types/products";
+import type { Product, ProductRequest, ProductType } from "../../types/products";
 import type { StockBoxCreateRequest } from "../../types/stock";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
@@ -20,6 +20,14 @@ const C = {
 
 const labelStyle: CSSProperties = { display: "block", fontSize: "0.8rem", color: C.muted, marginBottom: "4px" };
 const hintStyle: CSSProperties = { fontSize: "0.8rem", color: C.muted, marginTop: "4px" };
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "8px 10px",
+  border: `1px solid ${C.border}`,
+  borderRadius: 8,
+  font: "inherit",
+  background: "#fff",
+};
 
 export default function StockBoxFormPage() {
   const navigate = useNavigate();
@@ -27,7 +35,8 @@ export default function StockBoxFormPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [tipo, setTipo] = useState<ProductType>("MEDICINE");
-  const [productId, setProductId] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [noExpiry, setNoExpiry] = useState(false);
   const [expiryDate, setExpiryDate] = useState("");
@@ -35,6 +44,7 @@ export default function StockBoxFormPage() {
   const [unitsPerInner, setUnitsPerInner] = useState("");
   const [totalUnits, setTotalUnits] = useState("");
   const [unitCost, setUnitCost] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -54,9 +64,16 @@ export default function StockBoxFormPage() {
 
   const isMedicine = tipo === "MEDICINE";
   const filtered = products.filter((p) => p.type === tipo);
-  const product = filtered.find((p) => p.id === productId);
-  const semValidade = noExpiry || (!!product && !product.hasExpiry);
+  const term = search.trim();
+  const termLower = term.toLowerCase();
+  const exact = term ? filtered.find((p) => p.name.toLowerCase() === termLower) : undefined;
+  const selected = filtered.find((p) => p.id === selectedId);
+  const chosen = selected ?? exact;
+  const creatingNew = !chosen && term.length > 0;
+  const suggestions = filtered.filter((p) => p.name.toLowerCase().includes(termLower)).slice(0, 8);
+
   const unidade = isMedicine ? "carteira" : "unidade";
+  const semValidadeForced = !!chosen && !chosen.hasExpiry;
   const inner = parseInt(innerCount, 10);
   const perInner = parseInt(unitsPerInner, 10);
   const total = parseInt(totalUnits, 10);
@@ -67,46 +84,85 @@ export default function StockBoxFormPage() {
 
   function changeTipo(t: ProductType) {
     setTipo(t);
-    setProductId("");
+    setSearch("");
+    setSelectedId("");
     setNoExpiry(false);
     setExpiryDate("");
+    setSalePrice("");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function pick(p: Product) {
+    setSelectedId(p.id);
+    setSearch(p.name);
+  }
+
+  function editSearch(v: string) {
+    setSearch(v);
+    setSelectedId("");
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!product) return toast.error("Seleciona um produto.");
+    if (!term) return toast.error("Seleciona um produto ou escreve o nome de um novo.");
     if (!qrCode.trim()) return toast.error("O QR Code é obrigatório.");
 
-    const payload: StockBoxCreateRequest = {
-      productId: product.id,
-      qrCode: qrCode.trim(),
-      expiryDate: null,
-    };
-
-    if (!semValidade) {
+    const usaValidade = !semValidadeForced && !noExpiry;
+    let expiryIso: string | null = null;
+    if (usaValidade) {
       if (!expiryDate) return toast.error("Indica a validade ou marca que não tem validade.");
       if (new Date(expiryDate) <= new Date()) return toast.error("A validade deve ser no futuro.");
-      payload.expiryDate = new Date(expiryDate).toISOString();
+      expiryIso = new Date(expiryDate).toISOString();
     }
 
     if (isMedicine) {
       if (isNaN(inner) || inner <= 0) return toast.error("Indica o número de caixinhas.");
       if (isNaN(perInner) || perInner <= 0) return toast.error("Indica as carteiras por caixinha.");
-      payload.innerCount = inner;
-      payload.unitsPerInner = perInner;
-    } else {
-      if (isNaN(total) || total <= 0) return toast.error("Indica o total de unidades.");
-      payload.totalUnits = total;
+    } else if (isNaN(total) || total <= 0) {
+      return toast.error("Indica o total de unidades.");
     }
 
+    let cost: number | undefined;
     if (unitCost.trim() !== "") {
-      const cost = parseFloat(unitCost);
-      if (isNaN(cost) || cost < 0) return toast.error("Custo unitário inválido.");
-      payload.unitCost = cost;
+      const c = parseFloat(unitCost);
+      if (isNaN(c) || c < 0) return toast.error("Custo unitário inválido.");
+      cost = c;
+    }
+
+    let price = 0;
+    if (creatingNew) {
+      price = parseFloat(salePrice);
+      if (isNaN(price) || price < 0) return toast.error("Indica o preço de venda do produto novo.");
     }
 
     setSubmitting(true);
     try {
+      let productId = chosen?.id ?? "";
+      if (!productId) {
+        const body = {
+          name: term,
+          type: tipo,
+          salePrice: price,
+          hasExpiry: !noExpiry,
+          status: "ACTIVE",
+        } as unknown as ProductRequest;
+        const created = await createProduct(body);
+        productId = created.id;
+        setProducts((prev) => [...prev, created]);
+      }
+
+      const payload: StockBoxCreateRequest = {
+        productId,
+        qrCode: qrCode.trim(),
+        expiryDate: expiryIso,
+      };
+      if (isMedicine) {
+        payload.innerCount = inner;
+        payload.unitsPerInner = perInner;
+      } else {
+        payload.totalUnits = total;
+      }
+      if (cost !== undefined) payload.unitCost = cost;
+
       await createStockBox(payload);
       toast.success("Caixa registada com sucesso.");
       navigate("/stock/caixas");
@@ -121,107 +177,175 @@ export default function StockBoxFormPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
-  const segBtn = (on: boolean): CSSProperties => ({
-    border: 0,
-    padding: "8px 14px",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-    background: on ? C.accent : "#fff",
-    color: on ? "#fff" : "#1d2433",
-  });
-
   return (
-    <div className="card" style={{ padding: "1.5rem", maxWidth: "1000px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Registar caixa</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          <div>
-            <label style={labelStyle}>Tipo do produto</label>
-            <div style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: "8px", overflow: "hidden" }}>
-              <button type="button" style={segBtn(isMedicine)} onClick={() => changeTipo("MEDICINE")}>Medicamento</button>
-              <button type="button" style={segBtn(!isMedicine)} onClick={() => changeTipo("PRODUCT")}>Produto</button>
-            </div>
-            <div style={hintStyle}>O tipo fica guardado no produto e aparece em todas as caixas dele.</div>
+    <form onSubmit={handleSubmit} className="card" style={{ padding: "1rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Tipo do produto</label>
+          <div style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+            {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => changeTipo(t)}
+                style={{
+                  border: 0,
+                  padding: "8px 14px",
+                  cursor: "pointer",
+                  font: "inherit",
+                  fontSize: "0.9rem",
+                  background: tipo === t ? C.accent : "#fff",
+                  color: tipo === t ? "#fff" : "#1d2433",
+                }}
+              >
+                {t === "MEDICINE" ? "Medicamento" : "Produto"}
+              </button>
+            ))}
           </div>
-          <div>
-            <label style={labelStyle}>QR Code da caixa grande *</label>
-            <input type="text" value={qrCode} onChange={(e) => setQrCode(e.target.value)} className="input" placeholder="Lê ou escreve o código da caixa" />
-            <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
-          </div>
-          <div>
-            <label style={labelStyle}>Produto *</label>
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} className="input">
-              <option value="">Seleciona um produto</option>
-              {filtered.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+          <div style={hintStyle}>O tipo define a unidade de venda: medicamentos vendem carteiras, produtos vendem unidades.</div>
+        </div>
+
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Produto *</label>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => editSearch(e.target.value)}
+            placeholder="Escreve ou seleciona um produto"
+            style={inputStyle}
+          />
+          {!chosen && suggestions.length > 0 && (
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 6, maxHeight: 220, overflowY: "auto", background: "#fff" }}>
+              {suggestions.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => pick(p)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    border: 0,
+                    borderBottom: `1px solid ${C.border}`,
+                    background: "#fff",
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    font: "inherit",
+                  }}
+                >
+                  {p.name}
+                </button>
               ))}
-            </select>
-            {filtered.length === 0 && <div style={hintStyle}>Não há produtos ativos deste tipo.</div>}
-          </div>
-          <div>
-            <label style={labelStyle}>Validade (vale para toda a caixa)</label>
-            <input
-              type="date"
-              value={semValidade ? "" : expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              disabled={semValidade}
-              className="input"
-            />
-            {!isMedicine && (
-              <label style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "8px", fontSize: "0.9rem", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={semValidade}
-                  disabled={!!product && !product.hasExpiry}
-                  onChange={(e) => setNoExpiry(e.target.checked)}
-                />
-                Este produto não tem validade
-              </label>
-            )}
-          </div>
-          {isMedicine ? (
-            <>
-              <div>
-                <label style={labelStyle}>Número de caixinhas dentro da caixa *</label>
-                <input type="number" min={1} value={innerCount} onChange={(e) => setInnerCount(e.target.value)} className="input" />
-              </div>
-              <div>
-                <label style={labelStyle}>Carteiras por caixinha *</label>
-                <input type="number" min={1} value={unitsPerInner} onChange={(e) => setUnitsPerInner(e.target.value)} className="input" />
-              </div>
-            </>
-          ) : (
-            <div>
-              <label style={labelStyle}>Quantas unidades tem a caixa *</label>
-              <input type="number" min={1} value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} className="input" />
             </div>
           )}
+          {!chosen && suggestions.length === 0 && (
+            <div style={hintStyle}>
+              {filtered.length === 0 ? "Ainda não há produtos deste tipo." : "Nenhum produto com este nome."}
+            </div>
+          )}
+          {creatingNew && (
+            <div style={{ ...hintStyle, color: C.ok }}>
+              Produto novo: será criado e aparecerá na lista nas próximas vezes.
+            </div>
+          )}
+        </div>
+
+        {creatingNew && (
           <div>
-            <label style={labelStyle}>Custo por {unidade} (opcional)</label>
-            <input type="number" min={0} step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="input" />
+            <label style={labelStyle}>Preço de venda (MT) *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value)}
+              style={inputStyle}
+            />
           </div>
+        )}
+
+        <div>
+          <label style={labelStyle}>QR Code da caixa grande *</label>
+          <input
+            type="text"
+            value={qrCode}
+            onChange={(e) => setQrCode(e.target.value)}
+            placeholder="Lê ou escreve o código da caixa"
+            style={inputStyle}
+          />
+          <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
         </div>
 
-        <div style={{ background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: "8px", padding: "10px 12px", marginTop: "12px", fontSize: "0.9rem" }}>
-          Unidade de venda definida automaticamente: <b style={{ color: C.ok }}>{unidade}</b>
-          <div style={hintStyle}>
-            Medicamento vende <b>carteira</b>. Produto vende <b>unidade</b>. Este nome aparece no painel do colaborador.
+        <div>
+          <label style={labelStyle}>Validade (vale para toda a caixa)</label>
+          <input
+            type="date"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+            disabled={semValidadeForced || noExpiry}
+            style={{ ...inputStyle, opacity: semValidadeForced || noExpiry ? 0.6 : 1 }}
+          />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: "0.9rem", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={semValidadeForced || noExpiry}
+              disabled={semValidadeForced}
+              onChange={(e) => {
+                setNoExpiry(e.target.checked);
+                if (e.target.checked) setExpiryDate("");
+              }}
+            />
+            Este produto não tem validade
+          </label>
+        </div>
+
+        {isMedicine ? (
+          <>
+            <div>
+              <label style={labelStyle}>Número de caixinhas dentro da caixa *</label>
+              <input type="number" min="1" value={innerCount} onChange={(e) => setInnerCount(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Carteiras por caixinha *</label>
+              <input type="number" min="1" value={unitsPerInner} onChange={(e) => setUnitsPerInner(e.target.value)} style={inputStyle} />
+            </div>
+          </>
+        ) : (
+          <div>
+            <label style={labelStyle}>Quantas unidades tem a caixa *</label>
+            <input type="number" min="1" value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} style={inputStyle} />
           </div>
-        </div>
+        )}
 
-        <div style={{ background: C.accentSoft, borderRadius: "8px", padding: "10px 12px", marginTop: "12px", fontSize: "0.9rem" }}>
-          Total a registar: <b>{preview}</b>
+        <div>
+          <label style={labelStyle}>Custo por {unidade} (opcional)</label>
+          <input type="number" min="0" step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} style={inputStyle} />
         </div>
+      </div>
 
-        <div style={{ marginTop: "14px", display: "flex", gap: "8px" }}>
-          <button type="submit" disabled={submitting} className="btn btn-primary">
-            {submitting ? "A guardar..." : "Guardar caixa"}
-          </button>
-          <button type="button" onClick={() => navigate("/stock/caixas")} className="btn">
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+      <div style={{ marginTop: 14, padding: "10px 12px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 8, fontSize: "0.9rem" }}>
+        Unidade de venda definida automaticamente: <b>{unidade}</b>
+      </div>
+      <div style={{ marginTop: 10, padding: "10px 12px", background: C.accentSoft, borderRadius: 8, fontSize: "0.9rem" }}>
+        Total a registar: <b>{preview}</b>
+      </div>
+
+      <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 8, padding: "9px 16px", font: "inherit", cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+        >
+          {submitting ? "A guardar..." : "Guardar caixa"}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/stock/caixas")}
+          style={{ background: "transparent", color: C.accent, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 16px", font: "inherit", cursor: "pointer" }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }
