@@ -29,6 +29,7 @@ export default function StockBoxFormPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [tipo, setTipo] = useState<ProductType>("MEDICINE");
   const [productName, setProductName] = useState("");
+  const [dosage, setDosage] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [noExpiry, setNoExpiry] = useState(false);
   const [expiryDate, setExpiryDate] = useState("");
@@ -157,8 +158,8 @@ export default function StockBoxFormPage() {
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "2rem 1rem" }}>
-      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "900px", background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", padding: "2rem" }}>
+    <div style={{ display: "flex", justifyContent: "center", padding: "1rem 1rem 80px" }}>
+      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "900px", background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", padding: "2rem 2rem 6rem", position: "relative" }}>
         
         <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#1d2433", marginBottom: "1.5rem", marginTop: 0 }}>Registar caixa</h2>
 
@@ -193,27 +194,39 @@ export default function StockBoxFormPage() {
               <div style={hintStyle}>O tipo fica guardado no produto e aparece em todas as caixas dele.</div>
             </div>
 
-            <div>
-              <label style={labelStyle}>Nome do produto (editável pelo dono)</label>
-              <input
-                type="text"
-                list="produtos-existentes"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Pesquisa ou escreve o nome"
-                style={inputStyle}
-              />
-              <datalist id="produtos-existentes">
-                {filtered.map((p) => (
-                  <option key={p.id} value={p.name} />
-                ))}
-              </datalist>
-              <div style={{ ...hintStyle, color: creatingNew ? C.ok : C.muted }}>
-                {creatingNew
-                  ? "Produto novo: será criado e aparecerá na lista da próxima vez."
-                  : filtered.length === 0
-                    ? "Ainda não há produtos deste tipo. Escreve o nome para criar."
-                    : ""}
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <div style={{ flex: 3 }}>
+                <label style={labelStyle}>Nome do produto (editável pelo dono)</label>
+                <input
+                  type="text"
+                  list="produtos-existentes"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="Pesquisa ou escreve o nome"
+                  style={inputStyle}
+                />
+                <datalist id="produtos-existentes">
+                  {filtered.map((p) => (
+                    <option key={p.id} value={p.name} />
+                  ))}
+                </datalist>
+                <div style={{ ...hintStyle, color: creatingNew ? C.ok : C.muted }}>
+                  {creatingNew
+                    ? "Produto novo: será criado e aparecerá na lista da próxima vez."
+                    : filtered.length === 0
+                      ? "Ainda não há produtos deste tipo. Escreve o nome para criar."
+                      : ""}
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Dosagem (mg)</label>
+                <input
+                  type="text"
+                  value={dosage}
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="Ex: 500mg"
+                  style={inputStyle}
+                />
               </div>
             </div>
 
@@ -307,8 +320,8 @@ export default function StockBoxFormPage() {
           </div>
         </div>
 
-        {/* BOTÕES */}
-        <div style={{ marginTop: "1.5rem", display: "flex", gap: "1rem" }}>
+        {/* BOTÕES FIXOS (STICKY) */}
+        <div style={{ position: "sticky", bottom: 0, left: 0, right: 0, marginTop: "1.5rem", padding: "1rem 2rem", background: "#fff", borderTop: `1px solid ${C.border}`, display: "flex", gap: "1rem", zIndex: 10, marginLeft: "-2rem", marginRight: "-2rem", marginBottom: "-6rem", borderRadius: "0 0 12px 12px" }}>
           <button
             type="submit"
             disabled={submitting}
