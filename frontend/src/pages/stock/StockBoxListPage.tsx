@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getStockBoxes } from "../../services/stockService";
 import type { StockBox, StockBoxState } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
@@ -47,7 +48,7 @@ export default function StockBoxListPage() {
 
   return (
     <div>
-      <PageHeader title="Caixas em stock" />
+      <PageHeader title="Caixas em stock" actions={<Link to="/stock/caixas/nova" className="btn btn-primary">Registar caixa</Link>} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <input

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import OperationalLayout from "../layouts/OperationalLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
@@ -17,7 +17,6 @@ import PurchaseDetailPage from "../pages/purchases/PurchaseDetailPage";
 import PurchaseFormPage from "../pages/purchases/PurchaseFormPage";
 import ProductListPage from "../pages/products/ProductListPage";
 import ProductFormPage from "../pages/products/ProductFormPage";
-import StockLotListPage from "../pages/stock/StockLotListPage";
 import StockBoxListPage from "../pages/stock/StockBoxListPage";
 import StockBoxFormPage from "../pages/stock/StockBoxFormPage";
 import StockMovementListPage from "../pages/stock/StockMovementListPage";
@@ -80,7 +79,7 @@ export default function AppRouter() {
 
           <Route path="stock/caixas" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxListPage /></ProtectedRoute>} />
           <Route path="stock/caixas/nova" element={<ProtectedRoute requiredPermission="stock:write"><StockBoxFormPage /></ProtectedRoute>} />
-          <Route path="stock/lotes" element={<ProtectedRoute requiredPermission="stock:read"><StockLotListPage /></ProtectedRoute>} />
+          <Route path="stock/lotes" element={<ProtectedRoute requiredPermission="stock:write"><StockBoxFormPage /></ProtectedRoute>} />
           <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
           <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
           <Route path="stock/novo" element={<ProtectedRoute requiredPermission="stock:write"><StockCreateFormPage /></ProtectedRoute>} />
