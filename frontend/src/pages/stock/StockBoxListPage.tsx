@@ -46,16 +46,10 @@ export default function StockBoxListPage() {
   if (error) return <ErrorState onRetry={load} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 180px)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 170px)" }}>
       
-      {/* BARRA DE AÇÕES FIXA NO TOPO DESTA PÁGINA */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <Link to="/stock/caixas/nova" className="btn btn-primary" style={{ background: "#2f5bd3", color: "#fff", padding: "8px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 500 }}>
-          Registar caixa
-        </Link>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", flexShrink: 0 }}>
+      {/* BARRA DE PESQUISA E FILTROS */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap", flexShrink: 0 }}>
         <input
           type="search"
           placeholder="Pesquisar produto ou QR Code..."
@@ -76,30 +70,30 @@ export default function StockBoxListPage() {
       </div>
 
       {/* ÁREA DA TABELA COM SCROLL */}
-      <div style={{ flex: 1, overflowY: "auto", background: "#fff", borderRadius: 8, border: "1px solid #d9dee9" }}>
+      <div style={{ flex: 1, overflowY: "auto", background: "#fff", borderRadius: 8, border: "1px solid #d9dee9", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
         {filtered.length === 0 ? (
           <div style={{ padding: 20 }}><EmptyState message="Nenhuma caixa encontrada." /></div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ position: "sticky", top: 0, background: "#f8fafc", zIndex: 1, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
               <tr>
-                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>QR Code</th>
-                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Produto</th>
-                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Tipo</th>
-                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Validade</th>
-                <th align="right" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Caixinhas</th>
-                <th align="right" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Restante</th>
-                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600 }}>Estado</th>
+                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>QR Code</th>
+                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Produto</th>
+                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</th>
+                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Validade</th>
+                <th align="right" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Caixinhas</th>
+                <th align="right" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Restante</th>
+                <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estado</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((b) => (
                 <tr key={b.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={{ padding: "12px 16px" }}><Link to={`/stock/caixas/${b.id}`}><code>{b.qrCode}</code></Link></td>
-                  <td style={{ padding: "12px 16px" }}>{b.productName}</td>
+                  <td style={{ padding: "12px 16px" }}><Link to={`/stock/caixas/${b.id}`}><code style={{ color: "#2f5bd3" }}>{b.qrCode}</code></Link></td>
+                  <td style={{ padding: "12px 16px", fontWeight: 500 }}>{b.productName}</td>
                   <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
                   <td style={{ padding: "12px 16px" }}>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
-                  <td align="right" style={{ padding: "12px 16px" }}>
+                  <td align="right" style={{ padding: "12px 16px", color: "#5b6478" }}>
                     {b.innerCount !== null && b.unitsPerInner ? `${Math.ceil(b.quantityAvailable / b.unitsPerInner)} de ${b.innerCount}` : "—"}
                   </td>
                   <td align="right" style={{ padding: "12px 16px" }}>
