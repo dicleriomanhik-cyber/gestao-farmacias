@@ -49,27 +49,27 @@ export default function StockBoxListPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", padding: "1.5rem", width: "100%" }}>
       
-      {/* CARTÃO DE FILTROS */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #d9dee9", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+      {/* CARTÃO DE FILTROS IDÊNTICO AO DA GESTÃO DE CAIXA */}
+      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div style={{ display: "flex", gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
           
           <div style={{ flex: 1, minWidth: 250 }}>
-            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Pesquisar</label>
+            <label style={{ display: "block", fontSize: "0.9rem", color: "#1d2433", marginBottom: "8px", fontWeight: 400 }}>Pesquisar</label>
             <input
               type="search"
               placeholder="Pesquisar produto ou QR Code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", color: "#1d2433" }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#f8fafc", color: "#1d2433", fontSize: "0.95rem", outline: "none" }}
             />
           </div>
 
-          <div style={{ width: 220 }}>
-            <label style={{ display: "block", fontSize: "0.85rem", color: "#5b6478", marginBottom: "6px", fontWeight: 500 }}>Estado</label>
+          <div style={{ width: 240 }}>
+            <label style={{ display: "block", fontSize: "0.9rem", color: "#1d2433", marginBottom: "8px", fontWeight: 400 }}>Estado</label>
             <select 
               value={state} 
               onChange={(e) => setState(e.target.value as StockBoxState | "")} 
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", color: "#1d2433" }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8, background: "#f8fafc", color: "#1d2433", fontSize: "0.95rem", outline: "none", appearance: "auto" }}
             >
               <option value="">Todos os estados</option>
               <option value="NEW">Nova</option>
@@ -80,7 +80,7 @@ export default function StockBoxListPage() {
           </div>
 
           <div>
-            <Link to="/stock/caixas/nova" style={{ display: "inline-block", background: "#2f5bd3", color: "#fff", padding: "10px 24px", borderRadius: 8, textDecoration: "none", fontWeight: 500, height: "42px", lineHeight: "22px" }}>
+            <Link to="/stock/caixas/nova" style={{ display: "inline-block", background: "#2f5bd3", color: "#fff", padding: "10px 24px", borderRadius: 8, textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", height: "42px", lineHeight: "22px", boxSizing: "border-box" }}>
               Registar caixa
             </Link>
           </div>
@@ -89,12 +89,12 @@ export default function StockBoxListPage() {
       </div>
 
       {/* TABELA */}
-      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #d9dee9", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", overflow: "hidden" }}>
+      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <div style={{ padding: 20 }}><EmptyState message="Nenhuma caixa encontrada." /></div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#f8fafc", borderBottom: "1px solid #d9dee9" }}>
+            <thead style={{ background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
               <tr>
                 <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>QR Code</th>
                 <th align="left" style={{ padding: "12px 16px", color: "#5b6478", fontWeight: 600, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Produto</th>
