@@ -65,7 +65,7 @@ export interface StockAdjustRequest {
 
 // ===== Modelo novo: Caixas físicas (Back-end 7475c73) =====
 
-export type StockBoxState = "ACTIVE" | "DEPLETED" | "EXPIRED";
+export type StockBoxState = "NEW" | "ACTIVE" | "DEPLETED" | "EXPIRED";
 
 export interface StockBox {
   id: string;
