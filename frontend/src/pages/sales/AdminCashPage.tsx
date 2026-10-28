@@ -232,7 +232,7 @@ export default function AdminCashPage() {
 
           {/* ZONA DE PERIGO */}
           <div className="card" style={{ padding: "0.75rem", border: "1px solid #fecaca", backgroundColor: "#fef2f2" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>⚠️ Zona de Perigo</h3>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>Zona de Perigo</h3>
             <p style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "1rem" }}>Esta ação irá cancelar todas as vendas, despesas e devoluções, e fechar todas as sessões de caixa abertas. Use apenas para limpar dados de teste.</p>
             <button onClick={() => setShowResetConfirm(true)} disabled={resetting} className="btn btn-danger" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.6 : 1 }}>
               {resetting ? "A resetar…" : "Reset de Dados de Teste"}
@@ -316,3 +316,4 @@ export default function AdminCashPage() {
     </div>
   );
 }
+
