@@ -18,9 +18,9 @@ const C = {
   okSoft: "#e3f6ec",
 };
 
-const labelStyle: CSSProperties = { display: "block", fontSize: "0.8rem", color: C.muted, marginBottom: "4px" };
-const hintStyle: CSSProperties = { fontSize: "0.8rem", color: C.muted, marginTop: "4px" };
-const inputStyle: CSSProperties = { width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 8, font: "inherit", background: "#fff" };
+const labelStyle: CSSProperties = { display: "block", fontSize: "0.85rem", color: C.muted, marginBottom: "6px", fontWeight: 500 };
+const hintStyle: CSSProperties = { fontSize: "0.8rem", color: C.muted, marginTop: "6px", lineHeight: 1.4 };
+const inputStyle: CSSProperties = { width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, font: "inherit", background: "#fff", boxSizing: "border-box", fontSize: "0.95rem" };
 
 export default function StockBoxFormPage() {
   const navigate = useNavigate();
@@ -157,125 +157,103 @@ export default function StockBoxFormPage() {
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
   return (
-    <form onSubmit={handleSubmit} className="card" style={{ padding: "1rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={labelStyle}>Tipo do produto</label>
-            <div style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => changeTipo(t)}
-                  style={{
-                    border: 0,
-                    padding: "8px 14px",
-                    cursor: "pointer",
-                    font: "inherit",
-                    fontSize: "0.9rem",
-                    background: tipo === t ? C.accent : "#fff",
-                    color: tipo === t ? "#fff" : "#1d2433",
-                  }}
-                >
-                  {t === "MEDICINE" ? "Medicamento" : "Produto"}
-                </button>
-              ))}
-            </div>
-            <div style={hintStyle}>Medicamento vende carteiras. Produto vende unidades.</div>
-          </div>
+    <div style={{ display: "flex", justifyContent: "center", padding: "2rem 1rem" }}>
+      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "900px", background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", padding: "2rem" }}>
+        
+        <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#1d2433", marginBottom: "1.5rem", marginTop: 0 }}>Registar caixa</h2>
 
-          <div>
-            <label style={labelStyle}>Nome do produto</label>
-            <input
-              type="text"
-              list="produtos-existentes"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              placeholder="Pesquisa ou escreve o nome"
-              style={inputStyle}
-            />
-            <datalist id="produtos-existentes">
-              {filtered.map((p) => (
-                <option key={p.id} value={p.name} />
-              ))}
-            </datalist>
-            <div style={{ ...hintStyle, color: creatingNew ? C.ok : C.muted }}>
-              {creatingNew
-                ? "Produto novo: será criado e aparecerá na lista da próxima vez."
-                : filtered.length === 0
-                  ? "Ainda não há produtos deste tipo. Escreve o nome para criar."
-                  : "Escolhe da lista ou escreve um nome novo."}
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>{isMedicine ? "Número de caixinhas dentro da caixa" : "Quantas unidades tem a caixa"}</label>
-            <input
-              type="number"
-              min="1"
-              value={isMedicine ? innerCount : totalUnits}
-              onChange={(e) => (isMedicine ? setInnerCount(e.target.value) : setTotalUnits(e.target.value))}
-              style={inputStyle}
-            />
-          </div>
-
-          {creatingNew && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+          
+          {/* COLUNA ESQUERDA */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             <div>
-              <label style={labelStyle}>Preço de venda (MT) *</label>
+              <label style={labelStyle}>Tipo do produto</label>
+              <div style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden", width: "100%" }}>
+                {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => changeTipo(t)}
+                    style={{
+                      flex: 1,
+                      border: 0,
+                      padding: "10px 14px",
+                      cursor: "pointer",
+                      font: "inherit",
+                      fontSize: "0.95rem",
+                      background: tipo === t ? C.accent : "#fff",
+                      color: tipo === t ? "#fff" : "#1d2433",
+                      transition: "background 0.2s"
+                    }}
+                  >
+                    {t === "MEDICINE" ? "Medicamento" : "Produto"}
+                  </button>
+                ))}
+              </div>
+              <div style={hintStyle}>O tipo fica guardado no produto e aparece em todas as caixas dele.</div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Nome do produto (editável pelo dono)</label>
+              <input
+                type="text"
+                list="produtos-existentes"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Pesquisa ou escreve o nome"
+                style={inputStyle}
+              />
+              <datalist id="produtos-existentes">
+                {filtered.map((p) => (
+                  <option key={p.id} value={p.name} />
+                ))}
+              </datalist>
+              <div style={{ ...hintStyle, color: creatingNew ? C.ok : C.muted }}>
+                {creatingNew
+                  ? "Produto novo: será criado e aparecerá na lista da próxima vez."
+                  : filtered.length === 0
+                    ? "Ainda não há produtos deste tipo. Escreve o nome para criar."
+                    : ""}
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Número de caixinhas dentro da caixa</label>
               <input
                 type="number"
-                min="0"
-                step="0.01"
-                value={salePrice}
-                onChange={(e) => setSalePrice(e.target.value)}
+                min="1"
+                value={isMedicine ? innerCount : totalUnits}
+                onChange={(e) => (isMedicine ? setInnerCount(e.target.value) : setTotalUnits(e.target.value))}
                 style={inputStyle}
               />
             </div>
-          )}
-
-          <div style={{ marginTop: "auto", padding: "10px 12px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 8, fontSize: "0.9rem" }}>
-            Unidade de venda definida automaticamente: <b>{unidade}</b>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={labelStyle}>QR Code da caixa grande</label>
-            <input
-              type="text"
-              value={qrCode}
-              onChange={(e) => setQrCode(e.target.value)}
-              placeholder="Lê ou escreve o código da caixa"
-              style={inputStyle}
-            />
-            <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
           </div>
 
-          <div>
-            <label style={labelStyle}>Validade (vale para toda a caixa)</label>
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              disabled={semValidadeForced || noExpiry}
-              style={{ ...inputStyle, opacity: semValidadeForced || noExpiry ? 0.6 : 1 }}
-            />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: "0.9rem", cursor: "pointer" }}>
+          {/* COLUNA DIREITA */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <div>
+              <label style={labelStyle}>QR Code da caixa grande</label>
               <input
-                type="checkbox"
-                checked={semValidadeForced || noExpiry}
-                disabled={semValidadeForced}
-                onChange={(e) => {
-                  setNoExpiry(e.target.checked);
-                  if (e.target.checked) setExpiryDate("");
-                }}
+                type="text"
+                value={qrCode}
+                onChange={(e) => setQrCode(e.target.value)}
+                placeholder="Lê ou escreve o código da caixa"
+                style={inputStyle}
               />
-              Este produto não tem validade
-            </label>
-          </div>
+              <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
+            </div>
 
-          {isMedicine && (
+            <div>
+              <label style={labelStyle}>Validade (vale para toda a caixa)</label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                disabled={semValidadeForced || noExpiry}
+                style={{ ...inputStyle, opacity: semValidadeForced || noExpiry ? 0.6 : 1 }}
+              />
+            </div>
+
             <div>
               <label style={labelStyle}>Carteiras por caixinha</label>
               <input
@@ -286,42 +264,39 @@ export default function StockBoxFormPage() {
                 style={inputStyle}
               />
             </div>
-          )}
-
-          <div>
-            <label style={labelStyle}>Custo por {unidade} (opcional)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              style={inputStyle}
-            />
           </div>
+        </div>
 
-          <div style={{ marginTop: "auto", padding: "10px 12px", background: C.accentSoft, borderRadius: 8, fontSize: "0.9rem" }}>
+        {/* CAIXAS DE RESUMO (LARGURA TOTAL) */}
+        <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div style={{ padding: "12px 16px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 8, fontSize: "0.95rem", color: "#1d2433" }}>
+            Unidade de venda definida automaticamente: <b>{unidade}</b>
+            <div style={{ fontSize: "0.85rem", color: C.ok, marginTop: "2px" }}>Medicamento vende <b>carteira</b>. Produto vende <b>unidade</b>. Este nome aparece no painel do colaborador.</div>
+          </div>
+          
+          <div style={{ padding: "12px 16px", background: C.accentSoft, borderRadius: 8, fontSize: "0.95rem", color: "#1d2433" }}>
             Total a registar: <b>{preview}</b>
           </div>
         </div>
-      </div>
 
-      <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 8, padding: "10px 20px", font: "inherit", cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
-        >
-          {submitting ? "A guardar..." : "Guardar caixa"}
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/stock/caixas")}
-          style={{ background: "transparent", color: C.accent, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 20px", font: "inherit", cursor: "pointer" }}
-        >
-          Cancelar
-        </button>
-      </div>
-    </form>
+        {/* BOTÕES */}
+        <div style={{ marginTop: "1.5rem", display: "flex", gap: "1rem" }}>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 8, padding: "10px 24px", font: "inherit", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+          >
+            {submitting ? "A guardar..." : "Guardar caixa"}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/stock/caixas")}
+            style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 24px", font: "inherit", fontWeight: 500, cursor: "pointer" }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
