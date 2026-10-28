@@ -218,7 +218,7 @@ export default function StockBoxFormPage() {
             </div>
 
             <div>
-              <label style={labelStyle}>Número de caixinhas dentro da caixa</label>
+              <label style={labelStyle}>{isMedicine ? "Número de caixinhas dentro da caixa" : "Quantas unidades tem a caixa"}</label>
               <input
                 type="number"
                 min="1"
@@ -227,6 +227,20 @@ export default function StockBoxFormPage() {
                 style={inputStyle}
               />
             </div>
+
+            {creatingNew && (
+              <div>
+                <label style={labelStyle}>Preço de venda (MT) *</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            )}
           </div>
 
           {/* COLUNA DIREITA */}
@@ -254,20 +268,34 @@ export default function StockBoxFormPage() {
               />
             </div>
 
+            {isMedicine && (
+              <div>
+                <label style={labelStyle}>Carteiras por caixinha</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={unitsPerInner}
+                  onChange={(e) => setUnitsPerInner(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
             <div>
-              <label style={labelStyle}>Carteiras por caixinha</label>
+              <label style={labelStyle}>Custo por {unidade} (opcional)</label>
               <input
                 type="number"
-                min="1"
-                value={unitsPerInner}
-                onChange={(e) => setUnitsPerInner(e.target.value)}
+                min="0"
+                step="0.01"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
                 style={inputStyle}
               />
             </div>
           </div>
         </div>
 
-        {/* CAIXAS DE RESUMO (LARGURA TOTAL) */}
+        {/* CAIXAS DE RESUMO */}
         <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <div style={{ padding: "12px 16px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 8, fontSize: "0.95rem", color: "#1d2433" }}>
             Unidade de venda definida automaticamente: <b>{unidade}</b>
