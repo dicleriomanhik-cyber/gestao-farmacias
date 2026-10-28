@@ -20,14 +20,7 @@ const C = {
 
 const labelStyle: CSSProperties = { display: "block", fontSize: "0.8rem", color: C.muted, marginBottom: "4px" };
 const hintStyle: CSSProperties = { fontSize: "0.8rem", color: C.muted, marginTop: "4px" };
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: `1px solid ${C.border}`,
-  borderRadius: 8,
-  font: "inherit",
-  background: "#fff",
-};
+const inputStyle: CSSProperties = { width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 8, font: "inherit", background: "#fff" };
 
 export default function StockBoxFormPage() {
   const navigate = useNavigate();
@@ -35,8 +28,7 @@ export default function StockBoxFormPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [tipo, setTipo] = useState<ProductType>("MEDICINE");
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState("");
+  const [productName, setProductName] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [noExpiry, setNoExpiry] = useState(false);
   const [expiryDate, setExpiryDate] = useState("");
@@ -64,16 +56,14 @@ export default function StockBoxFormPage() {
 
   const isMedicine = tipo === "MEDICINE";
   const filtered = products.filter((p) => p.type === tipo);
-  const term = search.trim();
-  const termLower = term.toLowerCase();
-  const exact = term ? filtered.find((p) => p.name.toLowerCase() === termLower) : undefined;
-  const selected = filtered.find((p) => p.id === selectedId);
-  const chosen = selected ?? exact;
-  const creatingNew = !chosen && term.length > 0;
-  const suggestions = filtered.filter((p) => p.name.toLowerCase().includes(termLower)).slice(0, 8);
+  const term = productName.trim();
+  const chosen = term
+    ? filtered.find((p) => p.name.toLowerCase() === term.toLowerCase())
+    : undefined;
+  const creatingNew = term.length > 0 && !chosen;
+  const semValidadeForced = !!chosen && !chosen.hasExpiry;
 
   const unidade = isMedicine ? "carteira" : "unidade";
-  const semValidadeForced = !!chosen && !chosen.hasExpiry;
   const inner = parseInt(innerCount, 10);
   const perInner = parseInt(unitsPerInner, 10);
   const total = parseInt(totalUnits, 10);
@@ -84,21 +74,10 @@ export default function StockBoxFormPage() {
 
   function changeTipo(t: ProductType) {
     setTipo(t);
-    setSearch("");
-    setSelectedId("");
+    setProductName("");
     setNoExpiry(false);
     setExpiryDate("");
     setSalePrice("");
-  }
-
-  function pick(p: Product) {
-    setSelectedId(p.id);
-    setSearch(p.name);
-  }
-
-  function editSearch(v: string) {
-    setSearch(v);
-    setSelectedId("");
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -174,13 +153,14 @@ export default function StockBoxFormPage() {
     }
   }
 
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
   return (
     <form onSubmit={handleSubmit} className="card" style={{ padding: "1rem" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div>
           <label style={labelStyle}>Tipo do produto</label>
           <div style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
             {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
@@ -202,52 +182,43 @@ export default function StockBoxFormPage() {
               </button>
             ))}
           </div>
-          <div style={hintStyle}>O tipo define a unidade de venda: medicamentos vendem carteiras, produtos vendem unidades.</div>
+          <div style={hintStyle}>Medicamento vende carteiras. Produto vende unidades.</div>
         </div>
 
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div>
+          <label style={labelStyle}>QR Code da caixa grande *</label>
+          <input
+            type="text"
+            value={qrCode}
+            onChange={(e) => setQrCode(e.target.value)}
+            placeholder="Lê ou escreve o código da caixa"
+            style={inputStyle}
+          />
+          <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
+        </div>
+
+        <div>
           <label style={labelStyle}>Produto *</label>
           <input
             type="text"
-            value={search}
-            onChange={(e) => editSearch(e.target.value)}
-            placeholder="Escreve ou seleciona um produto"
+            list="produtos-existentes"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="Pesquisa ou escreve o nome"
             style={inputStyle}
           />
-          {!chosen && suggestions.length > 0 && (
-            <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 6, maxHeight: 220, overflowY: "auto", background: "#fff" }}>
-              {suggestions.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => pick(p)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    border: 0,
-                    borderBottom: `1px solid ${C.border}`,
-                    background: "#fff",
-                    padding: "8px 10px",
-                    cursor: "pointer",
-                    font: "inherit",
-                  }}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {!chosen && suggestions.length === 0 && (
-            <div style={hintStyle}>
-              {filtered.length === 0 ? "Ainda não há produtos deste tipo." : "Nenhum produto com este nome."}
-            </div>
-          )}
-          {creatingNew && (
-            <div style={{ ...hintStyle, color: C.ok }}>
-              Produto novo: será criado e aparecerá na lista nas próximas vezes.
-            </div>
-          )}
+          <datalist id="produtos-existentes">
+            {filtered.map((p) => (
+              <option key={p.id} value={p.name} />
+            ))}
+          </datalist>
+          <div style={{ ...hintStyle, color: creatingNew ? C.ok : C.muted }}>
+            {creatingNew
+              ? "Produto novo: será criado e aparecerá na lista da próxima vez."
+              : filtered.length === 0
+                ? "Ainda não há produtos deste tipo. Escreve o nome para criar."
+                : "Escolhe da lista ou escreve um nome novo."}
+          </div>
         </div>
 
         {creatingNew && (
@@ -263,18 +234,6 @@ export default function StockBoxFormPage() {
             />
           </div>
         )}
-
-        <div>
-          <label style={labelStyle}>QR Code da caixa grande *</label>
-          <input
-            type="text"
-            value={qrCode}
-            onChange={(e) => setQrCode(e.target.value)}
-            placeholder="Lê ou escreve o código da caixa"
-            style={inputStyle}
-          />
-          <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a das outras.</div>
-        </div>
 
         <div>
           <label style={labelStyle}>Validade (vale para toda a caixa)</label>
