@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { getActiveCashSession, closeCash, getPayments } from "../../services/cashService";
+import { getActiveCashSession, getPayments } from "../../services/cashService";
 import { getExpenses } from "../../services/expenseService";
 import { getSales } from "../../services/saleService";
 import { apiClient } from "../../services/api";
@@ -7,9 +7,7 @@ import type { CashSession, PaymentMethod, Sale } from "../../types/sales";
 import type { Expense } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from '../../components/ui/PageHeader';
 import CustomSelect from '../../components/ui/CustomSelect';
-import { useToast } from "../../contexts/ToastContext";
 import { formatDateTime } from "../../utils/formatDate";
 
 function money(v: string | number | undefined | null): string {
@@ -28,7 +26,6 @@ interface CashMovement {
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
 export default function AdminCashPage() {
-  const toast = useToast();
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -36,10 +33,6 @@ export default function AdminCashPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [forcing, setForcing] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [showSales, setShowSales] = useState(true);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
@@ -83,35 +76,6 @@ export default function AdminCashPage() {
   useEffect(() => {
     load();
   }, []);
-
-  async function handleResetTestData() {
-    setShowResetConfirm(false);
-    setResetting(true);
-    try {
-      await apiClient.post('/admin/reset-test-data');
-      toast.success('Dados de teste reiniciados com sucesso.');
-      load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? 'Erro ao resetar dados.');
-    } finally {
-      setResetting(false);
-    }
-  }
-
-  async function confirmForceClose() {
-    if (!session) return;
-    setShowConfirm(false);
-    setForcing(true);
-    try {
-      await closeCash(session.id, { countedBalance: 0 });
-      toast.success("Caixa forçado a fechar com sucesso.");
-      load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? "Erro ao forçar fecho.");
-    } finally {
-      setForcing(false);
-    }
-  }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Erro ao carregar a caixa." onRetry={load} />;
@@ -161,11 +125,10 @@ export default function AdminCashPage() {
   const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
 
   return (
-    <div>
-      <PageHeader title="Gestão de Caixa (Administrador)" />
-
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      
       {/* FILTRO DE PERÍODO */}
-      <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+      <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ width: "220px" }}>
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
           <CustomSelect
@@ -246,27 +209,11 @@ export default function AdminCashPage() {
             <p style={{ color: cashInDrawer < 0 ? "#b91c1c" : "#166534", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>
               {cashInDrawer < 0 ? "⚠️ Caixa em saldo negativo — é necessário forçar o fecho." : "Caixa aberta normalmente."}
             </p>
-            <p style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
-            <button
-              onClick={() => setShowConfirm(true)}
-              disabled={forcing}
-              className="btn btn-danger"
-              style={{ width: "100%", padding: "1rem", marginTop: "1rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: forcing ? "not-allowed" : "pointer", opacity: forcing ? 0.6 : 1 }}
-            >
-              {forcing ? "A forçar fecho…" : "Forçar Fecho de Caixa"}
-            </button>
-          </div>
-
-          <div className="card" style={{ padding: "0.75rem", marginTop: "1rem", border: "1px solid #fecaca", backgroundColor: "#fef2f2" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>⚠️ Zona de Perigo</h3>
-            <p style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "1rem" }}>Esta ação irá cancelar todas as vendas, despesas e devoluções, e fechar todas as sessões de caixa abertas. Use apenas para limpar dados de teste.</p>
-            <button onClick={() => setShowResetConfirm(true)} disabled={resetting} className="btn btn-danger" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.6 : 1 }}>
-              {resetting ? "A resetar…" : "Reset de Dados de Teste"}
-            </button>
+            <p style={{ marginBottom: 0, fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
           </div>
 
           {/* VENDAS DO PERÍODO */}
-          <div className="card" style={{ padding: "1rem", marginTop: "1rem" }}>
+          <div className="card" style={{ padding: "1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showSales ? "1rem" : 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>Vendas do Período</h2>
@@ -325,79 +272,6 @@ export default function AdminCashPage() {
           </div>
         </div>
       )}
-
-      {/* MODAL DE RESET */}
-      {showResetConfirm && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowResetConfirm(false)}>
-          <div className="card" style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", maxWidth: "450px", width: "90%", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#b91c1c" }}>Reset de Dados de Teste</h2>
-            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>Tens a certeza? Esta ação irá cancelar TODAS as vendas, despesas e devoluções, e fechar TODAS as sessões de caixa. O sistema voltará a 0 (zero). Esta ação não pode ser desfeita.</p>
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-              <button onClick={() => setShowResetConfirm(false)} disabled={resetting} style={{ padding: "0.5rem 1rem", backgroundColor: "#e2e8f0", color: "#1e293b", border: "none", borderRadius: "6px", fontWeight: "500", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={handleResetTestData} disabled={resetting} style={{ padding: "0.5rem 1rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "6px", fontWeight: "500", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.7 : 1 }}>{resetting ? "A resetar…" : "Sim, Resetar"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE CONFIRMAÇÃO */}
-      {showConfirm && (
-        <div
-          style={{
-            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
-            alignItems: "center", justifyContent: "center", zIndex: 9999,
-          }}
-          onClick={() => setShowConfirm(false)}
-        >
-          <div
-            className="card"
-            style={{
-              backgroundColor: "white", borderRadius: "12px", padding: "1.5rem",
-              maxWidth: "450px", width: "90%",
-              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#1e293b" }}>
-              Forçar Fecho de Caixa
-            </h2>
-            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>
-              Tens a certeza que queres forçar o fecho da caixa? O saldo ficará a <strong>zero (0.00 MT)</strong> para o colaborador e todos os movimentos serão registados no histórico.
-            </p>
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setShowConfirm(false)}
-                disabled={forcing}
-                style={{
-                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
-                  color: "#1e293b", border: "none", borderRadius: "6px",
-                  fontWeight: "500", cursor: "pointer",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmForceClose}
-                disabled={forcing}
-                style={{
-                  padding: "0.5rem 1rem", backgroundColor: "#dc2626",
-                  color: "white", border: "none", borderRadius: "6px",
-                  fontWeight: "500", cursor: forcing ? "not-allowed" : "pointer",
-                  opacity: forcing ? 0.7 : 1,
-                }}
-              >
-                {forcing ? "A forçar…" : "Forçar Fecho"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-
-
-
-
