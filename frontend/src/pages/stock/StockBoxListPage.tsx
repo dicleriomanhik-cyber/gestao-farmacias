@@ -8,6 +8,7 @@ import ErrorState from "../../components/ui/ErrorState";
 
 const STATE_LABEL: Record<StockBoxState, string> = {
   ACTIVE: "Em uso",
+  NEW: "Nova",
   DEPLETED: "Esgotada",
   EXPIRED: "Expirada",
 };
@@ -63,6 +64,7 @@ export default function StockBoxListPage() {
           style={{ padding: "8px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff" }}
         >
           <option value="">Todos os estados</option>
+          <option value="NEW">Nova</option>
           <option value="ACTIVE">Em uso</option>
           <option value="DEPLETED">Esgotada</option>
           <option value="EXPIRED">Expirada</option>
@@ -100,7 +102,7 @@ export default function StockBoxListPage() {
                     <b>{b.quantityAvailable}</b> de {b.totalUnits} {b.saleUnitLabel}
                     {b.quantityAvailable === 1 ? "" : "s"}
                   </td>
-                  <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.state === "ACTIVE" ? "#fff4e0" : b.state === "DEPLETED" ? "#e5e7eb" : "#fde8e8", color: b.state === "ACTIVE" ? "#b45309" : b.state === "DEPLETED" ? "#6b7280" : "#b91c1c" }}>{STATE_LABEL[b.state]}</span></td>
+                  <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.state === "NEW" ? "#e3f6ec" : b.state === "ACTIVE" ? "#fff4e0" : b.state === "DEPLETED" ? "#e5e7eb" : "#fde8e8", color: b.state === "NEW" ? "#0f7a4a" : b.state === "ACTIVE" ? "#b45309" : b.state === "DEPLETED" ? "#6b7280" : "#b91c1c" }}>{STATE_LABEL[b.state]}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -110,3 +112,4 @@ export default function StockBoxListPage() {
     </div>
   );
 }
+
