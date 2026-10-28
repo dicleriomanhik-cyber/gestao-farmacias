@@ -1,11 +1,17 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsISO8601, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateBoxDto {
-  @ApiProperty({ example: 'uuid-do-produto' })
+  @ApiPropertyOptional({ example: 'uuid-do-produto' })
   @IsUUID()
-  productId!: string;
+  @IsOptional()
+  productId?: string;
+
+  @ApiPropertyOptional({ example: 'Paracetamol 500mg' })
+  @IsString()
+  @IsOptional()
+  productName?: string;
 
   @ApiProperty({ example: 'QR-ABC-001' })
   @IsString()
