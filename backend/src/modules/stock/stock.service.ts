@@ -364,7 +364,7 @@ export class StockService {
     return {
       data: data.map((lot) => {
         const expired = lot.expiryDate && lot.expiryDate < now;
-        const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : 'ACTIVE';
+        const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : lot.quantityAvailable === lot.totalUnits ? 'NEW' : 'ACTIVE';
         return {
           id: lot.id,
           qrCode: lot.qrCode,
@@ -425,7 +425,7 @@ export class StockService {
 
     const now = new Date();
     const expired = lot.expiryDate && lot.expiryDate < now;
-    const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : 'ACTIVE';
+    const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : lot.quantityAvailable === lot.totalUnits ? 'NEW' : 'ACTIVE';
 
     return {
       id: lot.id,
@@ -521,6 +521,8 @@ export class StockService {
     return result;
   }
 }
+
+
 
 
 
