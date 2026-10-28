@@ -24,12 +24,12 @@ export default function StockBoxListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState("today");
+  const [state, setState] = useState<StockBoxState | "">("");
 
   function load() {
     setLoading(true);
     setError(false);
-    getStockBoxes({ limit: 100 })
+    getStockBoxes({ limit: 100, state: state || undefined })
       .then((res) => setBoxes(Array.isArray(res?.data) ? res.data : []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -37,16 +37,11 @@ export default function StockBoxListPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [state]);
 
-  const filtered = boxes.filter((b) => {
-    if (!`${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())) return false;
-    
-    // Filtro de Período simples (baseado na data de validade ou criação se existisse)
-    // Como não temos data de criação na listagem, vamos apenas simular o filtro visualmente
-    // A implementação real do filtro de período requer dados de data no backend.
-    return true; 
-  });
+  const filtered = boxes.filter((b) =>
+    `${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
@@ -54,7 +49,7 @@ export default function StockBoxListPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", padding: "1.5rem", width: "100%" }}>
       
-      {/* BARRA DE PESQUISA E FILTRO */}
+      {/* BARRA DE PESQUISA E FILTRO DE ESTADO */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", flexShrink: 0, alignItems: "center" }}>
         <input
           type="search"
@@ -65,16 +60,15 @@ export default function StockBoxListPage() {
         />
         
         <select 
-          value={period} 
-          onChange={(e) => setPeriod(e.target.value)} 
+          value={state} 
+          onChange={(e) => setState(e.target.value as StockBoxState | "")} 
           style={{ padding: "8px 12px", border: "1px solid #d9dee9", borderRadius: 8, background: "#fff", minWidth: 180 }}
         >
-          <option value="today">Hoje</option>
-          <option value="week">Esta Semana</option>
-          <option value="month">Este Mês</option>
-          <option value="year">Este Ano</option>
-          <option value="custom">Personalizado</option>
-          <option value="all">Ver Tudo</option>
+          <option value="">Todos os estados</option>
+          <option value="NEW">Nova</option>
+          <option value="ACTIVE">Em uso</option>
+          <option value="DEPLETED">Esgotada</option>
+          <option value="EXPIRED">Expirada</option>
         </select>
       </div>
 
