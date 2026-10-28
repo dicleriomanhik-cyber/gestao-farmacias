@@ -36,7 +36,6 @@ export default function StockBoxFormPage() {
   const [innerCount, setInnerCount] = useState("");
   const [unitsPerInner, setUnitsPerInner] = useState("");
   const [totalUnits, setTotalUnits] = useState("");
-  const [unitCost, setUnitCost] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -101,13 +100,6 @@ export default function StockBoxFormPage() {
       return toast.error("Indica o total de unidades.");
     }
 
-    let cost: number | undefined;
-    if (unitCost.trim() !== "") {
-      const c = parseFloat(unitCost);
-      if (isNaN(c) || c < 0) return toast.error("Custo unitário inválido.");
-      cost = c;
-    }
-
     let price = 0;
     if (creatingNew) {
       price = parseFloat(salePrice);
@@ -118,7 +110,6 @@ export default function StockBoxFormPage() {
     try {
       let productId = chosen?.id ?? "";
       if (!productId) {
-        // Junta o nome com a dosagem para o nome final do produto
         const finalName = dosage.trim() ? `${term} ${dosage.trim()}` : term;
         
         const body = {
@@ -127,8 +118,8 @@ export default function StockBoxFormPage() {
           salePrice: price,
           hasExpiry: !noExpiry,
           status: "ACTIVE",
-          strength: dosage.trim() || "N/A",          // Campo exigido pelo backend
-          activeIngredient: term || "Desconhecido",  // Campo exigido pelo backend
+          strength: dosage.trim() || "N/A",
+          activeIngredient: term || "Desconhecido",
         } as unknown as ProductRequest;
         
         const created = await createProduct(body);
@@ -147,7 +138,6 @@ export default function StockBoxFormPage() {
       } else {
         payload.totalUnits = total;
       }
-      if (cost !== undefined) payload.unitCost = cost;
 
       await createStockBox(payload);
       toast.success("Caixa registada com sucesso.");
@@ -164,8 +154,8 @@ export default function StockBoxFormPage() {
   if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "1rem 1rem 80px" }}>
-      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "900px", background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", padding: "2rem 2rem 6rem", position: "relative" }}>
+    <div style={{ display: "flex", justifyContent: "center", padding: "1rem 1rem 120px" }}>
+      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "900px", background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", padding: "2rem", position: "relative" }}>
         
         <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#1d2433", marginBottom: "1.5rem", marginTop: 0 }}>Registar caixa</h2>
 
@@ -299,18 +289,6 @@ export default function StockBoxFormPage() {
                 />
               </div>
             )}
-
-            <div>
-              <label style={labelStyle}>Custo por {unidade} (opcional)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={unitCost}
-                onChange={(e) => setUnitCost(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
           </div>
         </div>
 
@@ -325,25 +303,27 @@ export default function StockBoxFormPage() {
             Total a registar: <b>{preview}</b>
           </div>
         </div>
-
-        {/* BOTÕES FIXOS (STICKY) */}
-        <div style={{ position: "sticky", bottom: 0, left: 0, right: 0, marginTop: "1.5rem", padding: "1rem 2rem", background: "#fff", borderTop: `1px solid ${C.border}`, display: "flex", gap: "1rem", zIndex: 10, marginLeft: "-2rem", marginRight: "-2rem", marginBottom: "-6rem", borderRadius: "0 0 12px 12px" }}>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 8, padding: "10px 24px", font: "inherit", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
-          >
-            {submitting ? "A guardar..." : "Guardar caixa"}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/stock/caixas")}
-            style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 24px", font: "inherit", fontWeight: 500, cursor: "pointer" }}
-          >
-            Cancelar
-          </button>
-        </div>
       </form>
+
+      {/* BARRA DE BOTÕES FIXA NO FUNDO */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", padding: "1rem", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center", gap: "1rem", zIndex: 100, boxShadow: "0 -4px 12px rgba(0,0,0,0.05)" }}>
+        <button
+          type="submit"
+          form="stock-box-form"
+          onClick={handleSubmit}
+          disabled={submitting}
+          style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 8, padding: "10px 32px", font: "inherit", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+        >
+          {submitting ? "A guardar..." : "Guardar caixa"}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/stock/caixas")}
+          style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 32px", font: "inherit", fontWeight: 500, cursor: "pointer" }}
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }
