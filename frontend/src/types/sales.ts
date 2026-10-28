@@ -90,6 +90,7 @@ export interface PaymentRequest {
   saleId: string;
   amount: number;
   method: PaymentMethod;
+  idempotencyKey: string;
 }
 
 export interface SaleUserRef {
@@ -98,3 +99,4 @@ export interface SaleUserRef {
   fullName: string;
   status?: string;
 }
+

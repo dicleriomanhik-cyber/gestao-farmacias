@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { getSaleById, confirmSale, getSalePayments } from "../../services/saleService";
 import { getReturns } from "../../services/returnService";
 import { formatDateTime } from "../../utils/formatDate";
+import { newIdempotencyKey } from "../../utils/idempotencyKey";
 import { registerPayment } from "../../services/cashService";
 import type { Sale, SaleStatus, PaymentMethod, Payment } from "../../types/sales";
 import type { SaleReturn } from "../../types/returns";
@@ -115,7 +116,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     setActionLoading(true);
     try {
       const amount = parseFloat(sale.total);
-      await registerPayment({ saleId: sale.id, amount, method: paymentMethod });
+      await registerPayment({ saleId: sale.id, amount, method: paymentMethod, idempotencyKey: newIdempotencyKey() });
       toast.success("Pagamento registado.");
       markAsPaid(sale.id);
       setIsPaid(true);
@@ -271,3 +272,4 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     </div>
   );
 }
+

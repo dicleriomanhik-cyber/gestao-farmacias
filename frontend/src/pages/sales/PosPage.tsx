@@ -5,6 +5,7 @@ import { registerPayment, getActiveCashSession, openCash } from "../../services/
 import type { Product } from "../../types/products";
 import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
+import { newIdempotencyKey } from "../../utils/idempotencyKey";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 
@@ -138,7 +139,7 @@ export default function PosPage() {
 
       const draft = await createSale({ lines });
       const confirmed = await confirmSale(draft.id);
-      await registerPayment({ saleId: confirmed.id, amount: parseFloat(confirmed.total) || total, method: paymentMethod });
+      await registerPayment({ saleId: confirmed.id, amount: parseFloat(confirmed.total) || total, method: paymentMethod, idempotencyKey: newIdempotencyKey() });
 
       toast.success("Venda confirmada!");
       setCompletedSale({ id: confirmed.id, saleNumber: confirmed.saleNumber, total: confirmed.total, change: paymentMethod === "CASH" ? change : null });
@@ -383,6 +384,9 @@ export default function PosPage() {
     </div>
   );
 }
+
+
+
 
 
 
