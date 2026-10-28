@@ -19,6 +19,7 @@ import ProductListPage from "../pages/products/ProductListPage";
 import ProductFormPage from "../pages/products/ProductFormPage";
 import StockBoxListPage from "../pages/stock/StockBoxListPage";
 import StockBoxDetailPage from "../pages/stock/StockBoxDetailPage";
+import StockLayout from "../layouts/StockLayout";
 import StockBoxFormPage from "../pages/stock/StockBoxFormPage";
 import StockMovementListPage from "../pages/stock/StockMovementListPage";
 import StockReceiveFormPage from "../pages/stock/StockReceiveFormPage";
@@ -78,9 +79,11 @@ export default function AppRouter() {
           <Route path="produtos/novo" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
           <Route path="produtos/:id/editar" element={<ProtectedRoute requiredPermission="products:write"><ProductFormPage /></ProtectedRoute>} />
 
+          <Route element={<StockLayout />}>
           <Route path="stock/caixas" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxListPage /></ProtectedRoute>} />
           <Route path="stock/caixas/nova" element={<ProtectedRoute requiredPermission="stock:write"><StockBoxFormPage /></ProtectedRoute>} />
           <Route path="stock/caixas/:id" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxDetailPage /></ProtectedRoute>} />
+          </Route>
           <Route path="stock/lotes" element={<Navigate to="/stock/caixas/nova" replace />} />
           <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
           <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
