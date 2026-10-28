@@ -61,7 +61,7 @@ export default function StockBoxListPage() {
 
   return (
     // O padding é 0 para o container, e cada bloco tem a sua margem/align
-    <div style={{ display: "flex", flexDirection: "column", width: "100%", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", padding: "0" }}>
       
       {/* CARTÃO DE FILTROS */}
       <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", padding: "1rem 1.5rem", marginBottom: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.03)", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
@@ -155,3 +155,4 @@ export default function StockBoxListPage() {
     </div>
   );
 }
+
