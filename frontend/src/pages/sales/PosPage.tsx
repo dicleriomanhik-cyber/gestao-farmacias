@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createSale, confirmSale, createSaleOffline } from '../../services/saleService';
 import { getProducts } from "../../services/productService";
 import { registerPayment, getActiveCashSession, openCash } from "../../services/cashService";
@@ -34,9 +34,26 @@ export default function PosPage() {
   const [error, setError] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [completedSale, setCompletedSale] = useState<{ id: string; saleNumber: string; total: string; change: number | null } | null>(null);
-
-  // Campo para o troco
   const [amountPaid, setAmountPaid] = useState("");
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth <= 768);
+  const [boxHeight, setBoxHeight] = useState<number | undefined>(undefined);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Desktop: o POS ocupa a área que sobra abaixo do cabeçalho e do menu.
+  // Assim a página não faz scroll e só as listas têm scroll próprio.
+  useLayoutEffect(() => {
+    function measure() {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile && rootRef.current) {
+        const top = rootRef.current.getBoundingClientRect().top;
+        setBoxHeight(Math.max(window.innerHeight - top - 16, 360));
+      }
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [loading, completedSale]);
 
   function load(query: string = "") {
     setLoading(true);
@@ -114,7 +131,7 @@ export default function PosPage() {
     }
 
     const lines: SaleLineRequest[] = cart.map((i) => ({ productId: i.productId, quantity: i.quantity }));
-    
+
     setSubmitting(true);
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -171,6 +188,7 @@ export default function PosPage() {
       setSubmitting(false);
     }
   }
+
   useEffect(() => {
     if (!completedSale) return;
     const timer = setTimeout(() => {
@@ -203,15 +221,11 @@ export default function PosPage() {
         style={{ backgroundColor: "white", padding: "3rem", textAlign: "center", maxWidth: "600px", margin: "0 auto", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", outline: "none" }}
       >
         <h2 style={{ color: "#15803d", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
           Venda Concluída
         </h2>
         <p style={{ fontSize: "1.1rem" }}><strong>Nº:</strong> {completedSale.saleNumber}</p>
         <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}><strong>Total:</strong> {parseFloat(completedSale.total).toFixed(2)} MT</p>
-        
+
         {completedSale.change !== null && completedSale.change >= 0 && (
           <div style={{ backgroundColor: "#fef3c7", padding: "1rem", borderRadius: "8px", marginTop: "1rem", border: "1px solid #fde68a" }}>
             <p style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#92400e", margin: 0 }}>
@@ -230,15 +244,37 @@ export default function PosPage() {
     );
   }
 
+  const cardStyle = {
+    backgroundColor: "white",
+    borderRadius: "12px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    display: "flex",
+    flexDirection: "column" as const,
+    height: isMobile ? "auto" : "100%",
+    minHeight: 0,
+    overflow: "hidden",
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", alignItems: "stretch", height: "100%", minHeight: 0 }}>
-      <div style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-        <div style={{ marginBottom: "1rem", flexShrink: 0 }}>
+    <div
+      ref={rootRef}
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+        gap: "1rem",
+        height: isMobile ? "auto" : boxHeight ?? "calc(100vh - 260px)",
+        minHeight: 0,
+        overflow: isMobile ? "visible" : "hidden",
+      }}
+    >
+      {/* Coluna da esquerda: produtos */}
+      <div style={{ ...cardStyle, padding: "1.25rem" }}>
+        <div style={{ marginBottom: "0.75rem", flexShrink: 0 }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Produtos</h1>
           <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>Pesquise e adicione produtos à venda</p>
         </div>
 
-        <div style={{ marginBottom: "1rem", flexShrink: 0 }}>
+        <div style={{ marginBottom: "0.75rem", flexShrink: 0 }}>
           <input
             type="text"
             placeholder="Pesquisar produto..."
@@ -248,7 +284,7 @@ export default function PosPage() {
           />
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem", paddingRight: "0.5rem" }}>
+        <div style={{ flex: isMobile ? "none" : 1, minHeight: 0, maxHeight: isMobile ? "50vh" : undefined, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem", paddingRight: "0.5rem" }}>
           {loading ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>A pesquisar…</p>
           ) : products.length === 0 ? (
@@ -269,19 +305,21 @@ export default function PosPage() {
         </div>
       </div>
 
-      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
-        <div style={{ backgroundColor: "#dbeafe", padding: "1rem 1.5rem", borderBottom: "1px solid #bfdbfe", flexShrink: 0 }}>
+      {/* Coluna da direita: carrinho e pagamento */}
+      <div style={cardStyle}>
+        <div style={{ backgroundColor: "#dbeafe", padding: "0.85rem 1.25rem", borderBottom: "1px solid #bfdbfe", flexShrink: 0 }}>
           <h2 style={{ fontSize: "1rem", fontWeight: "bold", margin: 0 }}>Itens selecionados</h2>
         </div>
 
-        <div style={{ padding: "1.5rem", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ flex: 1, overflowY: "auto", marginBottom: "1rem" }}>
+        <div style={{ padding: "1rem 1.25rem", flex: isMobile ? "none" : 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {/* Lista de itens: só esta parte tem scroll no desktop */}
+          <div style={{ flex: isMobile ? "none" : 1, minHeight: 0, maxHeight: isMobile ? "40vh" : undefined, overflowY: "auto", marginBottom: "0.75rem" }}>
             {cart.length === 0 ? (
               <p style={{ color: "#94a3b8", textAlign: "center", padding: "2rem 0" }}>Carrinho vazio.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {cart.map((item) => (
-                  <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0" }}>
+                  <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "0.75rem", borderBottom: "1px solid #e2e8f0" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: "bold", fontSize: "0.9rem" }}>{item.productName}</div>
                       <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{item.quantity} x {parseFloat(item.unitPrice).toFixed(2)} MT</div>
@@ -303,30 +341,28 @@ export default function PosPage() {
             )}
           </div>
 
+          {/* Rodapé fixo: total, pagamento, valor entregue e botão */}
           <div style={{ flexShrink: 0 }}>
-            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ fontSize: "1.1rem", margin: 0 }}>Total</h3>
               <span style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#2563eb" }}>{total.toFixed(2)} MT</span>
             </div>
 
-            <div style={{ marginTop: "1.5rem" }}>
-              <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: "bold", fontSize: "0.9rem" }}>Método de Pagamento</label>
+            <div style={{ marginTop: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: "bold", fontSize: "0.9rem" }}>Método de Pagamento</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
                 {PAYMENT_METHODS.map((m) => (
                   <button
                     key={m.value}
                     onClick={() => setPaymentMethod(m.value)}
                     style={{
-                      padding: "0.75rem",
+                      padding: "0.5rem",
                       borderRadius: "8px",
                       border: paymentMethod === m.value ? "2px solid #2563eb" : "1px solid #e2e8f0",
                       backgroundColor: paymentMethod === m.value ? "#eff6ff" : "white",
                       color: paymentMethod === m.value ? "#2563eb" : "#64748b",
                       fontWeight: paymentMethod === m.value ? "bold" : "normal",
                       cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
                     }}
                   >
                     {m.label}
@@ -335,10 +371,9 @@ export default function PosPage() {
               </div>
             </div>
 
-            {/* Campo de Troco apenas para Dinheiro */}
             {paymentMethod === "CASH" && (
-              <div style={{ marginTop: "1rem", backgroundColor: "#fefce8", padding: "1rem", borderRadius: "8px", border: "1px solid #fde047" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold", fontSize: "0.9rem", color: "#854d0e" }}>Valor Entregue (MT)</label>
+              <div style={{ marginTop: "0.6rem", backgroundColor: "#fefce8", padding: "0.6rem 0.75rem", borderRadius: "8px", border: "1px solid #fde047" }}>
+                <label style={{ display: "block", marginBottom: "0.3rem", fontWeight: "bold", fontSize: "0.85rem", color: "#854d0e" }}>Valor Entregue (MT)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -352,12 +387,12 @@ export default function PosPage() {
                     }
                   }}
                   placeholder="0.00"
-                  style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "1rem", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "1rem", boxSizing: "border-box" }}
                 />
                 {paid > 0 && (
-                  <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#854d0e" }}>Troco a devolver:</span>
-                    <span style={{ fontWeight: "bold", fontSize: "1.2rem", color: paid < total ? "#b91c1c" : "#166534" }}>
+                  <div style={{ marginTop: "0.4rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: "bold", fontSize: "0.9rem", color: "#854d0e" }}>Troco a devolver:</span>
+                    <span style={{ fontWeight: "bold", fontSize: "1.1rem", color: paid < total ? "#b91c1c" : "#166534" }}>
                       {paid < total ? "Valor insuficiente" : `${change.toFixed(2)} MT`}
                     </span>
                   </div>
@@ -369,7 +404,7 @@ export default function PosPage() {
               onClick={handleCheckout}
               disabled={submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total)}
               style={{
-                marginTop: "1.5rem", width: "100%", padding: "1rem",
+                marginTop: "0.75rem", width: "100%", padding: "0.85rem",
                 backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px",
                 fontSize: "1rem", fontWeight: "bold",
                 cursor: submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total) ? "not-allowed" : "pointer",
@@ -384,18 +419,3 @@ export default function PosPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
