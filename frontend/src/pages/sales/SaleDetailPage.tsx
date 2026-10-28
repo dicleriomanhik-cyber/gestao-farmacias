@@ -157,7 +157,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   const canPay = hasPermission(user?.permissions, "cash:open");
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
+    <div className="card" style={{ padding: "1.5rem", maxWidth: "1000px", margin: "0 auto" }}>
       <div style={{ marginBottom: "1rem" }}>
         <Link to={backLink} style={{ color: "#2563eb", textDecoration: "none", fontWeight: 500 }}>
           {backLabel}
@@ -165,7 +165,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Venda {sale.saleNumber}</h1>
+        <h1 style={{ fontSize: "1.3rem", fontWeight: "bold", margin: 0 }}>Venda {sale.saleNumber}</h1>
         
         {/* Mostrar badge de Reembolsada se aplicável */}
         {saleReturn ? (
@@ -197,7 +197,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
       )}
 
       <h3 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Linhas</h3>
-      <table className="table">
+      <div style={{ maxHeight: "200px", overflowY: "auto", borderRadius: "8px", border: "1px solid #e2e8f0" }}><table className="table" style={{ margin: 0 }}>
         <thead>
           <tr>
             <th>Produto</th>
@@ -216,7 +216,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       {!isOperational && sale.status === "DRAFT" && canConfirm && (
         <button
@@ -272,4 +272,5 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     </div>
   );
 }
+
 
