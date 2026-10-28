@@ -84,18 +84,18 @@ export default function StockBoxListPage() {
           <tbody>
             {filtered.map((b) => (
               <tr key={b.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <td><code>{b.qrCode}</code></td>
+                <td><Link to={`/stock/caixas/${b.id}`}><code>{b.qrCode}</code></Link></td>
                 <td>{b.productName}</td>
-                <td>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</td>
-                <td>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : "Sem validade"}</td>
+                <td><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
+                <td>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
                 <td align="right">
-                  {b.innerCount !== null ? `${b.innerCount}` : "—"}
+                  {b.innerCount !== null && b.unitsPerInner ? `${Math.ceil(b.quantityAvailable / b.unitsPerInner)} de ${b.innerCount}` : "—"}
                 </td>
                 <td align="right">
                   <b>{b.quantityAvailable}</b> de {b.totalUnits} {b.saleUnitLabel}
                   {b.quantityAvailable === 1 ? "" : "s"}
                 </td>
-                <td>{STATE_LABEL[b.state]}</td>
+                <td><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.state === "ACTIVE" ? "#fff4e0" : b.state === "DEPLETED" ? "#e5e7eb" : "#fde8e8", color: b.state === "ACTIVE" ? "#b45309" : b.state === "DEPLETED" ? "#6b7280" : "#b91c1c" }}>{STATE_LABEL[b.state]}</span></td>
               </tr>
             ))}
           </tbody>
