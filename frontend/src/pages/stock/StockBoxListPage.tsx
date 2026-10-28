@@ -60,24 +60,25 @@ export default function StockBoxListPage() {
   if (error) return <ErrorState onRetry={load} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", padding: "1rem", width: "100%" }}>
+    // O padding é 0 para o container, e cada bloco tem a sua margem/align
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", padding: "0 1.5rem 1.5rem 1.5rem" }}>
       
-      {/* CARTÃO DE FILTROS COMPACTO */}
-      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", padding: "1rem 1.5rem", marginBottom: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.03)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+      {/* CARTÃO DE FILTROS */}
+      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", padding: "1rem 1.5rem", marginBottom: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.03)", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
         
-        <div style={{ display: "flex", gap: 20, alignItems: "end", flex: 1 }}>
-          <div style={{ flex: 1, maxWidth: 350 }}>
-            <label style={{ display: "block", fontSize: "0.8rem", color: "#5b6478", marginBottom: "4px", fontWeight: 500 }}>Pesquisar</label>
-            <input
-              type="search"
-              placeholder="Pesquisar produto ou QR Code..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, background: "#fff", color: "#1d2433", fontSize: "0.9rem" }}
-            />
-          </div>
+        {/* Esquerda: Pesquisa (larga) */}
+        <div style={{ flex: 1, minWidth: 300 }}>
+          <label style={{ display: "block", fontSize: "0.8rem", color: "#5b6478", marginBottom: "4px", fontWeight: 500 }}>Pesquisar</label>
+          <input
+            type="search"
+            placeholder="Pesquisar produto ou QR Code..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, background: "#fff", color: "#1d2433", fontSize: "0.9rem" }}
+          />
         </div>
 
+        {/* Direita: Estado e Total */}
         <div style={{ display: "flex", gap: 24, alignItems: "end" }}>
           <div style={{ width: 180 }}>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#5b6478", marginBottom: "4px", fontWeight: 500 }}>Estado</label>
