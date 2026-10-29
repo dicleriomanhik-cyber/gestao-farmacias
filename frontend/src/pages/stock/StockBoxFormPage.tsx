@@ -20,10 +20,22 @@ const C = {
 };
 
 const HIDDEN_KEY = "stockBoxFormHiddenSuggestions";
+const MOBILE_QUERY = "(max-width: 768px)";
 
 const labelStyle: CSSProperties = { display: "block", fontSize: "0.85rem", color: C.muted, marginBottom: "4px", fontWeight: 500 };
 const hintStyle: CSSProperties = { fontSize: "0.75rem", color: C.muted, marginTop: "4px", lineHeight: 1.3 };
 const inputStyle: CSSProperties = { width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 6, font: "inherit", background: "#fff", boxSizing: "border-box", fontSize: "0.9rem", minWidth: 0 };
+
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const onChange = () => setMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return mobile;
+}
 
 function monthEnd(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
@@ -47,6 +59,7 @@ function loadHidden(): string[] {
 export default function StockBoxFormPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const isMobile = useIsMobile();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [tipo, setTipo] = useState<ProductType>("MEDICINE");
@@ -210,185 +223,306 @@ export default function StockBoxFormPage() {
     }
   }
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
+  // ----- Blocos de campos (partilhados entre desktop e mobile) -----
 
-  return (
-    <div className="sbf-wrap">
-      <form autoComplete="off" onSubmit={handleSubmit} className="sbf-form">
-        <h2 className="sbf-title">Registar caixa</h2>
-
-        <section className="sbf-section">
-          <div>
-            <span style={labelStyle}>Tipo do produto</span>
-            <div className="sbf-toggle">
-              {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => changeTipo(t)}
-                  style={{ background: tipo === t ? C.accent : "#fff", color: tipo === t ? "#fff" : C.text }}
-                >
-                  {t === "MEDICINE" ? "Medicamento" : "Produto"}
-                </button>
-              ))}
-            </div>
-            <div style={hintStyle}>O tipo fica guardado no produto e aparece em todas as caixas dele.</div>
-          </div>
-        </section>
-
-        <section className="sbf-section">
-          <h3 className="sbf-subtitle">{isMedicine ? "Medicamento" : "Produto"}</h3>
-          <div className="sbf-grid">
-            <div className="sbf-field" ref={sugRef}>
-              <label style={labelStyle}>{isMedicine ? "Nome do medicamento" : "Nome do produto"}</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  value={productName}
-                  onFocus={() => setSugAberto(true)}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                    setSugAberto(true);
-                  }}
-                  placeholder="Pesquisa ou escreve o nome"
-                  style={inputStyle}
-                />
-                {sugAberto && sugestoes.length > 0 && (
-                  <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", maxHeight: 240, overflowY: "auto" }}>
-                    {sugestoes.map((p) => (
-                      <div key={p.id} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #f0f2f7" }}>
-                        <button
-                          type="button"
-                          onClick={() => escolherSugestao(p)}
-                          style={{ flex: 1, textAlign: "left", background: "none", border: 0, padding: "10px", cursor: "pointer", font: "inherit", fontSize: "0.9rem", color: C.text }}
-                        >
-                          {p.name}
-                        </button>
-                        <button
-                          type="button"
-                          title="Remover da sugestão"
-                          aria-label={`Remover ${p.name} da sugestão`}
-                          onClick={() => ocultarSugestao(p.name)}
-                          style={{ background: "none", border: 0, cursor: "pointer", padding: "0 12px", color: C.muted, fontSize: "1.1rem", lineHeight: 1 }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {isMedicine && (
-              <div className="sbf-field">
-                <label style={labelStyle}>Dosagem</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={dosage}
-                    onChange={(e) => setDosage(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 500"
-                    style={{ ...inputStyle, paddingRight: "3rem" }}
-                  />
-                  <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }}>mg</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="sbf-grid">
-            {isMedicine ? (
-              <>
-                <div className="sbf-field">
-                  <label style={labelStyle}>Número de caixinhas</label>
-                  <input autoComplete="off" type="number" min="1" value={innerCount} onChange={(e) => setInnerCount(e.target.value)} style={inputStyle} />
-                </div>
-                <div className="sbf-field">
-                  <label style={labelStyle}>Carteiras por caixinha</label>
-                  <input autoComplete="off" type="number" min="1" value={unitsPerInner} onChange={(e) => setUnitsPerInner(e.target.value)} style={inputStyle} />
-                </div>
-              </>
-            ) : (
-              <div className="sbf-field">
-                <label style={labelStyle}>Total de unidades</label>
-                <input autoComplete="off" type="number" min="1" value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="sbf-section">
-          <h3 className="sbf-subtitle">Caixa grande</h3>
-          <div className="sbf-grid">
-            <div className="sbf-field">
-              <label style={labelStyle}>QR Code da caixa grande</label>
-              <input type="text" value={qrCode} onChange={(e) => setQrCode(e.target.value)} placeholder="Lê ou escreve o código" style={inputStyle} />
-              <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a.</div>
-            </div>
-            <div className="sbf-field">
-              <label style={labelStyle}>Data de fabrico</label>
-              <MonthField value={manufactureDate} onChange={setManufactureDate} style={inputStyle} />
-            </div>
-          </div>
-        </section>
-
-        <section className="sbf-section">
-          <h3 className="sbf-subtitle">Validade e preço</h3>
-          <div className="sbf-grid">
-            <div className="sbf-field">
-              <div className="sbf-field-head">
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Validade</label>
-                <label className="sbf-check">
-                  <input type="checkbox" checked={noExpiry || semValidadeForced} disabled={semValidadeForced} onChange={(e) => setNoExpiry(e.target.checked)} />
-                  Sem validade
-                </label>
-              </div>
-              <MonthField value={expiryDate} onChange={setExpiryDate} disabled={semValidadeForced || noExpiry} style={{ ...inputStyle, opacity: semValidadeForced || noExpiry ? 0.6 : 1 }} />
-            </div>
-            <div className="sbf-field">
-              <label style={labelStyle}>{isMedicine ? "Preço por carteira (MT)" : "Preço por unidade (MT)"}</label>
-              <input autoComplete="off" type="number" min="0" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} style={inputStyle} />
-            </div>
-          </div>
-        </section>
-
-        <section className="sbf-summary">
-          <div style={{ padding: "8px 12px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 6, fontSize: "0.85rem", color: C.text }}>
-            Unidade de venda automática: <b>{unidade}</b>
-            <div style={{ fontSize: "0.75rem", color: C.ok, marginTop: "2px" }}>Medicamento vende carteira. Produto vende unidade.</div>
-          </div>
-          <div style={{ padding: "8px 12px", background: C.accentSoft, borderRadius: 6, fontSize: "0.85rem", color: C.text }}>
-            Total a registar: <b>{preview}</b>
-          </div>
-        </section>
-
-        <div className="sbf-actions">
+  const tipoBlock = (
+    <div>
+      <label style={labelStyle}>Tipo do produto</label>
+      <div
+        className={isMobile ? "sbf-toggle" : undefined}
+        style={isMobile ? undefined : { display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden", width: "100%" }}
+      >
+        {(["MEDICINE", "PRODUCT"] as ProductType[]).map((t) => (
           <button
-            type="submit"
-            disabled={submitting}
-            style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+            key={t}
+            type="button"
+            onClick={() => changeTipo(t)}
+            style={
+              isMobile
+                ? { background: tipo === t ? C.accent : "#fff", color: tipo === t ? "#fff" : C.text }
+                : {
+                    flex: 1,
+                    border: 0,
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    font: "inherit",
+                    fontSize: "0.9rem",
+                    background: tipo === t ? C.accent : "#fff",
+                    color: tipo === t ? "#fff" : C.text,
+                    transition: "background 0.2s",
+                  }
+            }
           >
-            {submitting ? "A guardar..." : "Guardar caixa"}
+            {t === "MEDICINE" ? "Medicamento" : "Produto"}
+          </button>
+        ))}
+      </div>
+      <div style={hintStyle}>O tipo fica guardado no produto e aparece em todas as caixas dele.</div>
+    </div>
+  );
+
+  const sugestoesLista = sugAberto && sugestoes.length > 0 ? (
+    <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", maxHeight: 240, overflowY: "auto" }}>
+      {sugestoes.map((p) => (
+        <div key={p.id} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #f0f2f7" }}>
+          <button
+            type="button"
+            onClick={() => escolherSugestao(p)}
+            style={{ flex: 1, textAlign: "left", background: "none", border: 0, padding: isMobile ? "10px" : "8px 10px", cursor: "pointer", font: "inherit", fontSize: "0.9rem", color: C.text }}
+          >
+            {p.name}
           </button>
           <button
             type="button"
-            onClick={() => navigate("/stock/caixas")}
-            style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer" }}
+            title="Remover da sugestão"
+            aria-label={`Remover ${p.name} da sugestão`}
+            onClick={() => ocultarSugestao(p.name)}
+            style={{ background: "none", border: 0, cursor: "pointer", padding: isMobile ? "0 12px" : "0 10px", color: C.muted, fontSize: "1.1rem", lineHeight: 1 }}
           >
-            Cancelar
+            ×
           </button>
         </div>
+      ))}
+    </div>
+  ) : null;
+
+  const nomeField = (
+    <div ref={sugRef} className={isMobile ? "sbf-field" : undefined} style={isMobile ? undefined : { flex: 3 }}>
+      <label style={labelStyle}>{isMedicine ? "Nome do medicamento" : "Nome do produto"}</label>
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          autoComplete="off"
+          value={productName}
+          onFocus={() => setSugAberto(true)}
+          onChange={(e) => {
+            setProductName(e.target.value);
+            setSugAberto(true);
+          }}
+          placeholder="Pesquisa ou escreve o nome"
+          style={inputStyle}
+        />
+        {sugestoesLista}
+      </div>
+    </div>
+  );
+
+  const dosagemField = (
+    <div className={isMobile ? "sbf-field" : undefined} style={isMobile ? undefined : { flex: 1 }}>
+      <label style={labelStyle}>Dosagem</label>
+      <div style={isMobile ? { position: "relative" } : { position: "relative", minWidth: 120 }}>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={dosage}
+          onChange={(e) => setDosage(e.target.value.replace(/\D/g, ""))}
+          placeholder="Ex: 500"
+          style={isMobile ? { ...inputStyle, paddingRight: "3rem" } : { ...inputStyle, paddingRight: "3rem", minWidth: 110, fontSize: "1rem" }}
+        />
+        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }}>mg</span>
+      </div>
+    </div>
+  );
+
+  const caixinhasField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Número de caixinhas</label>
+      <input autoComplete="off" type="number" min="1" value={innerCount} onChange={(e) => setInnerCount(e.target.value)} style={inputStyle} />
+    </div>
+  );
+
+  const carteirasField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Carteiras por caixinha</label>
+      <input autoComplete="off" type="number" min="1" value={unitsPerInner} onChange={(e) => setUnitsPerInner(e.target.value)} style={inputStyle} />
+    </div>
+  );
+
+  const totalField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Total de unidades</label>
+      <input autoComplete="off" type="number" min="1" value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} style={inputStyle} />
+    </div>
+  );
+
+  const qrField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>QR Code da caixa grande</label>
+      <input type="text" value={qrCode} onChange={(e) => setQrCode(e.target.value)} placeholder="Lê ou escreve o código" style={inputStyle} />
+      <div style={hintStyle}>Caixa registada uma vez. O QR Code distingue-a.</div>
+    </div>
+  );
+
+  const fabricoField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Data de fabrico</label>
+      <MonthField value={manufactureDate} onChange={setManufactureDate} style={inputStyle} />
+    </div>
+  );
+
+  const validadeField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <div
+        className={isMobile ? "sbf-field-head" : undefined}
+        style={isMobile ? undefined : { display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <label style={isMobile ? { ...labelStyle, marginBottom: 0 } : labelStyle}>Validade</label>
+        <label
+          className={isMobile ? "sbf-check" : undefined}
+          style={isMobile ? undefined : { display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", color: C.muted, cursor: "pointer" }}
+        >
+          <input type="checkbox" checked={noExpiry || semValidadeForced} disabled={semValidadeForced} onChange={(e) => setNoExpiry(e.target.checked)} />
+          Sem validade
+        </label>
+      </div>
+      <MonthField value={expiryDate} onChange={setExpiryDate} disabled={semValidadeForced || noExpiry} style={{ ...inputStyle, opacity: semValidadeForced || noExpiry ? 0.6 : 1 }} />
+    </div>
+  );
+
+  const precoField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>{isMedicine ? "Preço por carteira (MT)" : "Preço por unidade (MT)"}</label>
+      <input autoComplete="off" type="number" min="0" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} style={inputStyle} />
+    </div>
+  );
+
+  const resumoBoxes = (
+    <>
+      <div style={{ padding: "8px 12px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 6, fontSize: "0.85rem", color: C.text }}>
+        Unidade de venda automática: <b>{unidade}</b>
+        <div style={{ fontSize: "0.75rem", color: C.ok, marginTop: "2px" }}>Medicamento vende carteira. Produto vende unidade.</div>
+      </div>
+      <div style={{ padding: "8px 12px", background: C.accentSoft, borderRadius: 6, fontSize: "0.85rem", color: C.text }}>
+        Total a registar: <b>{preview}</b>
+      </div>
+    </>
+  );
+
+  const botoes = (
+    <>
+      <button
+        type="submit"
+        disabled={submitting}
+        style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+      >
+        {submitting ? "A guardar..." : "Guardar caixa"}
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate("/stock/caixas")}
+        style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer" }}
+      >
+        Cancelar
+      </button>
+    </>
+  );
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message="Não foi possível carregar os produtos." onRetry={load} />;
+
+  // ----- Telemóvel e tablet (até 768px): secções empilhadas -----
+  if (isMobile) {
+    return (
+      <div className="sbf-wrap">
+        <form autoComplete="off" onSubmit={handleSubmit} className="sbf-form">
+          <h2 className="sbf-title">Registar caixa</h2>
+
+          <section className="sbf-section">{tipoBlock}</section>
+
+          <section className="sbf-section">
+            <h3 className="sbf-subtitle">{isMedicine ? "Medicamento" : "Produto"}</h3>
+            <div className="sbf-grid">
+              {nomeField}
+              {isMedicine && dosagemField}
+            </div>
+            <div className="sbf-grid">
+              {isMedicine ? (
+                <>
+                  {caixinhasField}
+                  {carteirasField}
+                </>
+              ) : (
+                totalField
+              )}
+            </div>
+          </section>
+
+          <section className="sbf-section">
+            <h3 className="sbf-subtitle">Caixa grande</h3>
+            <div className="sbf-grid">
+              {qrField}
+              {fabricoField}
+            </div>
+          </section>
+
+          <section className="sbf-section">
+            <h3 className="sbf-subtitle">Validade e preço</h3>
+            <div className="sbf-grid">
+              {validadeField}
+              {precoField}
+            </div>
+          </section>
+
+          <section className="sbf-summary">{resumoBoxes}</section>
+
+          <div className="sbf-actions">{botoes}</div>
+        </form>
+      </div>
+    );
+  }
+
+  // ----- Desktop (acima de 768px): duas colunas, como aprovado -----
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "1rem", height: "calc(100vh - 180px)", overflowY: "auto", alignItems: "flex-start" }}>
+      <form
+        autoComplete="off"
+        onSubmit={handleSubmit}
+        style={{ width: "100%", maxWidth: "850px", background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", padding: "1.5rem", marginBottom: "2rem" }}
+      >
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, color: C.text, marginBottom: "1rem", marginTop: 0 }}>Registar caixa</h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            {tipoBlock}
+
+            <div style={{ display: "flex", gap: "0.8rem" }}>
+              {nomeField}
+              {isMedicine && dosagemField}
+            </div>
+
+            {isMedicine ? (
+              <>
+                {caixinhasField}
+                {carteirasField}
+              </>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem" }}>
+                {totalField}
+                {precoField}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            {qrField}
+            {fabricoField}
+            {validadeField}
+            {isMedicine && precoField}
+          </div>
+        </div>
+
+        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>{resumoBoxes}</div>
+
+        <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.8rem" }}>{botoes}</div>
       </form>
     </div>
   );
 }
 
-function MonthField({ value, onChange, disabled, style }: { value: string; onChange: (v: string) => void; disabled?: boolean; style?: CSSProperties }) {
-  const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+function MonthField({ value, onChange, disabled, style }: { value: string; onChange: (v: string) => void; disabled?: boolean; style: CSSProperties }) {
+  const isMobile = useIsMobile();
+  const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const MESES_LONGOS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
   const toText = (v: string) => {
@@ -398,6 +532,7 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
   const [text, setText] = useState(toText(value));
   const [aberto, setAberto] = useState(false);
   const [anoVista, setAnoVista] = useState(value ? Number(value.slice(0, 4)) : anoAtual);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setText(toText(value));
@@ -405,11 +540,18 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
 
   useEffect(() => {
     if (!aberto) return;
+    const fechar = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setAberto(false);
+    };
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setAberto(false);
     };
+    document.addEventListener("mousedown", fechar);
     document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fechar);
+      document.removeEventListener("keydown", esc);
+    };
   }, [aberto]);
 
   const handleText = (raw: string) => {
@@ -446,8 +588,10 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
     setAberto(false);
   };
 
+  const navBtn: CSSProperties = { background: "none", border: "1px solid #d9dee9", borderRadius: 6, width: 30, height: 28, cursor: "pointer", fontSize: 16, color: "#1d2433" };
+
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <input
         type="text"
         inputMode="numeric"
@@ -470,7 +614,32 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
         </svg>
       </button>
 
-      {aberto && (
+      {aberto && !isMobile && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 60, width: 240, background: "#fff", border: "1px solid #d9dee9", borderRadius: 8, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "0.6rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+            <button type="button" onClick={() => setAnoVista(anoVista - 1)} style={navBtn}>‹</button>
+            <span style={{ fontWeight: 600, color: "#1d2433" }}>{anoVista}</span>
+            <button type="button" onClick={() => setAnoVista(anoVista + 1)} style={navBtn}>›</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+            {MESES_CURTOS.map((nome, i) => {
+              const selecionado = value === `${anoVista}-${String(i + 1).padStart(2, "0")}`;
+              return (
+                <button
+                  key={nome}
+                  type="button"
+                  onClick={() => escolherMes(i + 1)}
+                  style={{ padding: "6px 0", borderRadius: 6, border: "1px solid #d9dee9", background: selecionado ? "#2f5bd3" : "#fff", color: selecionado ? "#fff" : "#1d2433", cursor: "pointer", fontSize: 13 }}
+                >
+                  {nome}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {aberto && isMobile && (
         <div
           className="cal-overlay"
           onMouseDown={(e) => {
@@ -484,7 +653,7 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
               <button type="button" className="cal-nav" onClick={() => setAnoVista(anoVista + 1)} aria-label="Ano seguinte">›</button>
             </div>
             <div className="cal-grid">
-              {MESES.map((nome, i) => {
+              {MESES_LONGOS.map((nome, i) => {
                 const iso = `${anoVista}-${String(i + 1).padStart(2, "0")}`;
                 const selecionado = value === iso;
                 const atual = hoje.getFullYear() === anoVista && hoje.getMonth() === i;
