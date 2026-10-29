@@ -1,7 +1,7 @@
-﻿import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
+import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { hasPermission } from '../utils/permissions';
-import SyncStatusBadge from '../components/offline/SyncStatusBadge';
+import { hasPermission } from "../utils/permissions";
+import SyncStatusBadge from "../components/offline/SyncStatusBadge";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
@@ -12,7 +12,6 @@ export default function MainLayout() {
 
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
-
     { path: "/caixa-admin", label: "Gestão de Caixa", show: hasPermission(permissions, "cash:open") },
     { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
     { path: "/stock/caixas", label: "Stock", show: hasPermission(permissions, "stock:read") },
@@ -30,52 +29,30 @@ export default function MainLayout() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "#f1f5f9" }}>
-      <header style={{ backgroundColor: "#1e293b", color: "white", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "bold" }}>Sistema de Gestão</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+    <div className="app-shell">
+      <header className="app-header">
+        <h2 className="app-brand">Sistema de Gestão</h2>
+        <div className="app-actions">
           <SyncStatusBadge />
-          <span style={{ fontSize: "0.875rem" }}>{displayName}</span>
-          <Link to="/pos" style={{ color: "#93c5fd", textDecoration: "none", fontSize: "0.875rem" }}>Abrir POS</Link>
-          <button onClick={onLogout} style={{ background: "none", border: "1px solid #475569", color: "white", padding: "0.4rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
-            Sair
-          </button>
+          <span className="app-user header-user-name">{displayName}</span>
+          <Link to="/pos" className="app-link-pos">Abrir POS</Link>
+          <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>
       </header>
 
-      <nav style={{ backgroundColor: "#334155", display: "flex", overflowX: "auto", padding: "0 1.5rem", flexShrink: 0 }}>
+      <nav className="app-nav">
         {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/"}
-            style={({ isActive }) => ({
-              padding: "0.75rem 1rem",
-              color: isActive ? "#fff" : "#94a3b8",
-              textDecoration: "none",
-              fontWeight: isActive ? "bold" : "normal",
-              borderBottom: isActive ? "2px solid #3b82f6" : "2px solid transparent",
-              whiteSpace: "nowrap",
-            })}
-          >
+          <NavLink key={item.path} to={item.path} end={item.path === "/"}>
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div style={{ flex: 1, minHeight: 0 }}>
+      <main className="app-content">
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <Outlet />
         </div>
-      </div>
+      </main>
     </div>
   );
 }
-
-
-
-
-
-
-
-

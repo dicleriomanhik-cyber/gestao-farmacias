@@ -1,4 +1,4 @@
-﻿import type { ProductType } from "./products";
+import type { ProductType } from "./products";
 
 export interface StockLotProductRef {
   name: string;
@@ -73,6 +73,8 @@ export interface StockBox {
   productName: string;
   type: ProductType;
   saleUnitLabel: string;
+  strength: string | null;
+  salePrice: string;
   hasExpiry: boolean;
   expiryDate: string | null;
   innerCount: number | null;
@@ -92,15 +94,15 @@ export interface StockBoxInner {
 export interface StockBoxSaleHistoryItem {
   saleId: string;
   saleNumber: string;
-  createdAt: string;
-  unitsDeducted: number;
+  soldAt: string;
+  units: number;
   balanceAfter: number;
 }
 
 export interface StockBoxDetail extends StockBox {
   productId: string;
   inners: StockBoxInner[];
-  saleHistory: StockBoxSaleHistoryItem[];
+  salesHistory: StockBoxSaleHistoryItem[];
 }
 
 export interface StockBoxListParams {

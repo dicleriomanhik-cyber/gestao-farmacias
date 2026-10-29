@@ -1,6 +1,6 @@
-﻿import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
-import { useAuth } from '../hooks/useAuth';
-import SyncStatusBadge from '../components/offline/SyncStatusBadge';
+import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import SyncStatusBadge from "../components/offline/SyncStatusBadge";
 
 export default function OperationalLayout() {
   const { user, logout } = useAuth();
@@ -23,15 +23,13 @@ export default function OperationalLayout() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "#f1f5f9" }}>
-      <header style={{ backgroundColor: "#1e293b", color: "white", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "bold" }}>Sistema de Gestão</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+      <header className="app-header">
+        <h2 className="app-brand">Sistema de Gestão</h2>
+        <div className="app-actions">
           <SyncStatusBadge />
-          <span style={{ fontSize: "0.875rem" }}>{user?.name || user?.email}</span>
-          <Link to="/" style={{ color: "#93c5fd", textDecoration: "none", fontSize: "0.875rem" }}>Sair do POS</Link>
-          <button onClick={onLogout} style={{ background: "none", border: "1px solid #475569", color: "white", padding: "0.4rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
-            Sair
-          </button>
+          <span className="app-user header-user-name">{user?.name || user?.email}</span>
+          <Link to="/" className="app-link-exit">Sair do POS</Link>
+          <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>
       </header>
 
@@ -63,7 +61,3 @@ export default function OperationalLayout() {
     </div>
   );
 }
-
-
-
-
