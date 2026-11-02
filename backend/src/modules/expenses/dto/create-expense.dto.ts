@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum ExpenseCategoryDto {
@@ -19,6 +19,15 @@ export enum ExpenseMethodDto {
   MPESA = 'MPESA',
   EMOLA = 'EMOLA',
   TRANSFER = 'TRANSFER',
+  OTHER = 'OTHER',
+}
+
+export enum ExpensePaidFromDto {
+  PHARMACY_CASH = 'PHARMACY_CASH',
+  OWNER_CASH = 'OWNER_CASH',
+  BANK = 'BANK',
+  MPESA = 'MPESA',
+  EMOLA = 'EMOLA',
   OTHER = 'OTHER',
 }
 
@@ -56,4 +65,14 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({ enum: ExpensePaidFromDto })
+  @IsEnum(ExpensePaidFromDto)
+  @IsOptional()
+  paidFrom?: ExpensePaidFromDto;
+
+  @ApiPropertyOptional({ enum: ['ADMIN', 'COLLABORATOR'] })
+  @IsIn(['ADMIN', 'COLLABORATOR'])
+  @IsOptional()
+  origin?: string;
 }

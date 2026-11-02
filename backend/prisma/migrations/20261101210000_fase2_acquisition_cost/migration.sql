@@ -1,0 +1,1 @@
+ALTER TABLE "stock_lots" ADD COLUMN "acquisitionCost" DECIMAL(12,2);

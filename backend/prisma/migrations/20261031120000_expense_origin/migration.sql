@@ -1,0 +1,2 @@
+ALTER TABLE "expenses" ADD COLUMN "origin" TEXT NOT NULL DEFAULT 'ADMIN';
+UPDATE "expenses" SET "origin" = 'COLLABORATOR' WHERE "cashSessionId" IS NOT NULL;

@@ -3,22 +3,33 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto } from './dto/update-purchase.dto';
 import { Prisma } from '@prisma/client';
+import { SupplierPaymentsService } from './supplier-payments.service';
+import { paidSum, purchaseDueMzn, round2, statusFor } from './purchase-math';
+import { recomputeLotCosts } from './purchase-costs';
 
 @Injectable()
 export class PurchasesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private payments: SupplierPaymentsService) {}
 
   async create(pharmacyId: string, actorId: string, dto: CreatePurchaseDto) {
     const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, pharmacyId } });
     if (!supplier) throw new BadRequestException('Fornecedor inválido ou não pertence a esta farmácia.');
     if (supplier.status === 'INACTIVE') throw new BadRequestException('Fornecedor inactivo não pode ser usado.');
 
-    const productIds = dto.lines.map(l => l.productId);
+    const st = await this.prisma.pharmacySettings.upsert({ where: { pharmacyId }, update: {}, create: { pharmacyId } });
+    const currency = st.multiCurrency ? (dto.currency ?? 'MZN') : 'MZN';
+    const exchangeRate = currency === 'MZN' ? 1 : (dto.exchangeRate ?? 0);
+    if (!(exchangeRate > 0)) throw new BadRequestException('Indica o câmbio para a moeda escolhida.');
+    const paymentStatus = st.usePayables ? (dto.paymentStatus ?? 'PAID') : 'PAID';
+    const dueDate = paymentStatus === 'CREDIT' && dto.dueDate ? new Date(dto.dueDate) : null;
+
+    const lineList = dto.lines ?? [];
+    const productIds = lineList.map(l => l.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: productIds }, pharmacyId } });
     if (products.length !== productIds.length) throw new BadRequestException('Um ou mais produtos são inválidos.');
 
     let totalAmount = 0;
-    const linesData = dto.lines.map(line => {
+    const linesData = lineList.map(line => {
       const subtotal = (line.quantity * line.unitCost) - (line.discount || 0);
       if (subtotal < 0) throw new BadRequestException('Desconto superior ao valor da linha.');
       totalAmount += subtotal;
@@ -39,6 +50,13 @@ export class PurchasesService {
           documentNumber: dto.documentNumber,
           notes: dto.notes,
           totalAmount,
+          transportCost: dto.transportCost ?? 0,
+          otherCosts: dto.otherCosts ?? 0,
+          invoiceTotal: dto.invoiceTotal ?? null,
+          currency,
+          exchangeRate,
+          paymentStatus: paymentStatus as any,
+          dueDate,
           status: 'DRAFT',
           lines: { create: linesData },
         },
@@ -53,24 +71,55 @@ export class PurchasesService {
     });
   }
 
-  async findAll(pharmacyId: string, page: number = 1, limit: number = 20) {
+  async findAll(pharmacyId: string, page: number = 1, limit: number = 20, status?: string, supplierId?: string) {
+    const where: Prisma.PurchaseWhereInput = {
+      pharmacyId,
+      ...(status && { status: status as any }),
+      ...(supplierId && { supplierId }),
+    };
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.purchase.findMany({
         where: { pharmacyId },
         skip, take: limit,
-        include: { supplier: { select: { name: true } } },
+        include: { supplier: { select: { name: true } }, supplierPayments: { select: { amount: true } } },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.purchase.count({ where: { pharmacyId } }),
+      this.prisma.purchase.count({ where }),
     ]);
-    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    const rows = data.map(({ supplierPayments, ...p }) => {
+      const dueMzn = purchaseDueMzn(p);
+      const paidTotal = paidSum(supplierPayments);
+      return { ...p, dueMzn, paidTotal, outstanding: p.paymentStatus === 'PAID' ? 0 : Math.max(0, round2(dueMzn - paidTotal)) };
+    });
+    return { data: rows, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
   async findOne(pharmacyId: string, id: string) {
+    const base = await this.findOneBase(pharmacyId, id);
+    const goods = Number(base.totalAmount);
+    const inv = base.invoiceTotal === null ? null : Number(base.invoiceTotal);
+    const conference = {
+      invoiceTotal: inv,
+      goodsTotal: goods,
+      diff: inv === null ? null : round2(goods - inv),
+      matches: inv === null ? null : Math.abs(goods - inv) < 0.005,
+      boxCount: base.stockLots.length,
+    };
+    return { ...base, boxes: base.stockLots, conference };
+  }
+
+  async findOneBase(pharmacyId: string, id: string) {
+    const p = await this.findOneRaw(pharmacyId, id);
+    const dueMzn = purchaseDueMzn(p);
+    const paidTotal = paidSum(p.supplierPayments);
+    return { ...p, dueMzn, paidTotal, outstanding: p.paymentStatus === 'PAID' ? 0 : Math.max(0, round2(dueMzn - paidTotal)) };
+  }
+
+  private async findOneRaw(pharmacyId: string, id: string) {
     const purchase = await this.prisma.purchase.findFirst({
       where: { id, pharmacyId },
-      include: { lines: { include: { product: true } }, supplier: true },
+      include: { lines: { include: { product: true } }, supplier: true, supplierPayments: { orderBy: { paidAt: 'desc' } }, stockLots: { select: { id: true, qrCode: true, totalUnits: true, acquisitionCost: true, product: { select: { name: true } } }, orderBy: { createdAt: 'asc' } } },
     });
     if (!purchase) throw new NotFoundException('Compra não encontrada.');
     return purchase;
@@ -78,10 +127,23 @@ export class PurchasesService {
 
   async update(pharmacyId: string, actorId: string, id: string, dto: UpdatePurchaseDto) {
     const purchase = await this.findOne(pharmacyId, id);
-    if (purchase.status !== 'DRAFT') throw new BadRequestException('Apenas compras em rascunho podem ser editadas.');
+    if (purchase.status === 'CANCELLED') throw new BadRequestException('Compra cancelada não pode ser editada.');
+    const draft = purchase.status === 'DRAFT';
+    const rest: any = { ...dto };
+    delete rest.paymentStatus;
+    const lockedKeys = ['supplierId', 'documentNumber', 'currency', 'exchangeRate'];
+    if (!draft && lockedKeys.some((k) => rest[k] !== undefined)) throw new BadRequestException('Fornecedor, documento e moeda só se alteram em rascunho.');
+    const data: any = {};
+    for (const k of ['transportCost', 'otherCosts', 'invoiceTotal', 'notes', ...lockedKeys]) if (rest[k] !== undefined) data[k] = rest[k];
+    if (rest.dueDate !== undefined) data.dueDate = rest.dueDate ? new Date(rest.dueDate) : null;
+    if (data.supplierId && !(await this.prisma.supplier.findFirst({ where: { id: data.supplierId, pharmacyId } }))) throw new BadRequestException('Fornecedor inválido.');
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.purchase.update({ where: { id }, data: dto });
+      let updated = await tx.purchase.update({ where: { id }, data });
+      await recomputeLotCosts(tx, id);
+      if (!draft && (purchase.paymentStatus !== 'PAID' || purchase.paidTotal > 0)) {
+        updated = await tx.purchase.update({ where: { id }, data: { paymentStatus: statusFor(purchaseDueMzn(updated), purchase.paidTotal) } });
+      }
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'purchase.update', entity: 'Purchase', entityId: id },
       });
@@ -89,12 +151,16 @@ export class PurchasesService {
     });
   }
 
-  async confirm(pharmacyId: string, actorId: string, id: string) {
+  async confirm(pharmacyId: string, actorId: string, id: string, pay?: { paidFrom: string; method: string }) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
+    if (Number(purchase.totalAmount) <= 0) throw new BadRequestException('Regista pelo menos uma caixa antes de confirmar a compra.');
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.purchase.update({ where: { id }, data: { status: 'CONFIRMED' } });
+      const updated: any = await tx.purchase.update({ where: { id }, data: { status: 'CONFIRMED' } }); updated.conference = purchase.conference;
+      if (pay && purchase.paymentStatus === 'PAID' && purchase.dueMzn > 0) {
+        await this.payments.pay(pharmacyId, actorId, { purchaseId: id, amount: purchase.dueMzn, paidFrom: pay.paidFrom, method: pay.method }, tx, true);
+      }
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'purchase.confirm', entity: 'Purchase', entityId: id },
       });
@@ -104,6 +170,8 @@ export class PurchasesService {
 
   async cancel(pharmacyId: string, actorId: string, id: string) {
     const purchase = await this.findOne(pharmacyId, id);
+    if (purchase.paidTotal > 0) throw new BadRequestException('Compra com pagamentos não pode ser cancelada.');
+    if (purchase.stockLots.length > 0) throw new BadRequestException('Compra com caixas registadas não pode ser cancelada.');
     if (purchase.status === 'CANCELLED') throw new BadRequestException('Compra já cancelada.');
 
     return this.prisma.$transaction(async (tx) => {

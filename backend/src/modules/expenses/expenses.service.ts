@@ -3,13 +3,30 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { Prisma } from '@prisma/client';
+import { SettingsService } from '../settings/settings.service';
+
+function derivePaidFrom(method: string): string {
+  const mapa: Record<string, string> = { CASH: 'PHARMACY_CASH', MPESA: 'MPESA', EMOLA: 'EMOLA', CARD: 'BANK', TRANSFER: 'BANK', OTHER: 'OTHER' };
+  return mapa[method] ?? 'OTHER';
+}
+
+const PAID_FROM_METHODS: Record<string, string[]> = { PHARMACY_CASH: ['CASH'], OWNER_CASH: ['CASH'], BANK: ['CARD', 'TRANSFER'], MPESA: ['MPESA'], EMOLA: ['EMOLA'], OTHER: ['OTHER'] };
 
 @Injectable()
 export class ExpensesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService) {}
 
-  async create(pharmacyId: string, userId: string, dto: CreateExpenseDto) {
-    return this.prisma.$transaction(async (tx) => {
+  private async assertPaidFromAllowed(pharmacyId: string, paidFrom: string, origin: string, method: string, tx: Prisma.TransactionClient) {
+    if (!(PAID_FROM_METHODS[paidFrom] ?? []).includes(method)) throw new BadRequestException('Método de pagamento incompatível com a origem do dinheiro.');
+    const s = await this.settings.get(pharmacyId, tx);
+    if (origin === 'COLLABORATOR' && !s.collaboratorExpenses) throw new BadRequestException('A farmácia não permite despesas registadas pelo colaborador.');
+    if (paidFrom === 'PHARMACY_CASH' && !s.allowCashExpenses) throw new BadRequestException('A farmácia não permite pagar despesas pela caixa.');
+  }
+
+  async create(pharmacyId: string, userId: string, dto: CreateExpenseDto, outerTx?: Prisma.TransactionClient) {
+    const run = async (tx: Prisma.TransactionClient) => {
+      const paidFrom = dto.paidFrom ?? derivePaidFrom(dto.method);
+      await this.assertPaidFromAllowed(pharmacyId, paidFrom, dto.origin ?? 'ADMIN', dto.method, tx);
       const expense = await tx.expense.create({
         data: {
           pharmacyId,
@@ -21,6 +38,8 @@ export class ExpensesService {
           expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : new Date(),
           externalReference: dto.externalReference,
           notes: dto.notes,
+          origin: dto.origin ?? 'ADMIN',
+          paidFrom: paidFrom as any,
           status: 'DRAFT',
         },
       });
@@ -30,7 +49,8 @@ export class ExpensesService {
       });
 
       return expense;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
   async findAll(
@@ -92,6 +112,9 @@ export class ExpensesService {
       const expense = await tx.expense.findFirst({ where: { id, pharmacyId } });
       if (!expense) throw new NotFoundException('Despesa não encontrada.');
       if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser editadas.');
+      const mergedMethod = dto.method ?? expense.method;
+      const mergedPaid = dto.paidFrom ?? (dto.method !== undefined ? derivePaidFrom(dto.method) : expense.paidFrom);
+      await this.assertPaidFromAllowed(pharmacyId, mergedPaid, expense.origin, mergedMethod, tx);
 
       const updated = await tx.expense.update({
         where: { id },
@@ -100,6 +123,7 @@ export class ExpensesService {
           ...(dto.category !== undefined && { category: dto.category }),
           ...(dto.amount !== undefined && { amount: dto.amount }),
           ...(dto.method !== undefined && { method: dto.method }),
+          ...((dto.paidFrom !== undefined || dto.method !== undefined) && { paidFrom: mergedPaid as any }),
           ...(dto.expenseDate !== undefined && { expenseDate: new Date(dto.expenseDate) }),
           ...(dto.externalReference !== undefined && { externalReference: dto.externalReference }),
           ...(dto.notes !== undefined && { notes: dto.notes }),
@@ -133,14 +157,13 @@ export class ExpensesService {
     });
   }
 
-  async confirm(pharmacyId: string, userId: string, id: string) {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
+  async confirm(pharmacyId: string, userId: string, id: string, outerTx?: Prisma.TransactionClient, permissions: string[] = []) {
+    const run = async (tx: Prisma.TransactionClient) => {
         const expenses = await tx.$queryRaw`
           SELECT * FROM "expenses" 
           WHERE id = ${id}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
           FOR UPDATE
-        ` as Array<{ id: string; status: string; amount: number; method: string; description: string; cashSessionId: string | null }>;
+        ` as Array<{ id: string; status: string; amount: number; method: string; description: string; cashSessionId: string | null; paidFrom: string; userId: string }>;
         const expense = expenses[0];
         if (!expense) throw new NotFoundException('Despesa não encontrada.');
 
@@ -151,15 +174,23 @@ export class ExpensesService {
         }
 
         if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser confirmadas.');
+        if (expense.paidFrom === 'PHARMACY_CASH' && !permissions.includes('pharmacy:config:write')) {
+          const ap = await this.settings.get(pharmacyId, tx);
+          if (ap.requireApprovalForCash) throw new BadRequestException('Aguarda aprovação do administrador.');
+        }
+        if (expense.paidFrom === 'PHARMACY_CASH') {
+          const st = await this.settings.get(pharmacyId, tx);
+          if (!st.allowCashExpenses) throw new BadRequestException('A farmácia não permite pagar despesas pela caixa.');
+        }
         if (expense.amount <= 0) throw new BadRequestException('Valor da despesa deve ser positivo.');
 
         let cashSessionId: string | null = null;
 
-        if (expense.method === 'CASH') {
+        if (expense.paidFrom === 'PHARMACY_CASH') {
           const sessions = await tx.$queryRaw`
             SELECT * FROM "cash_sessions" 
             WHERE "pharmacyId" = ${pharmacyId}::uuid 
-              AND "userId" = ${userId}::uuid 
+              AND "userId" = ${expense.userId}::uuid 
               AND status = 'OPEN'
             FOR UPDATE
           ` as Array<{ id: string }>;
@@ -198,7 +229,9 @@ export class ExpensesService {
         });
 
         return updated;
-      });
+    };
+    try {
+      return outerTx ? await run(outerTx) : await this.prisma.$transaction(run);
     } catch (error) {
       // Se a transacção falhou por violação de unicidade em cashMovement.expenseId,
       // é sinal de que outra transacção concorrente já criou o movimento.
@@ -220,3 +253,5 @@ export class ExpensesService {
     }
   }
 }
+
+

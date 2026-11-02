@@ -79,6 +79,6 @@ export class ExpensesController {
   @RequirePermissions(PERMISSIONS.EXPENSES_CONFIRM)
   @ApiOperation({ summary: 'Confirmar despesa (aplica movimento de caixa se CASH)' })
   confirm(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.service.confirm(pharmacyId, user.id, id);
+    return this.service.confirm(pharmacyId, user.id, id, undefined, user.permissions ?? []);
   }
 }

@@ -93,7 +93,13 @@ export class SalesService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findOne(pharmacyId: string, id: string) {
+  async findOne(pharmacyId: string, id: string, permissions?: string[]) {
+    const sale: any = await this.findOneRaw(pharmacyId, id);
+    if (!permissions || permissions.includes('pharmacy:config:write')) return sale;
+    return { ...sale, lines: (sale.lines ?? []).map((l: any) => ({ ...l, product: l.product ? ((p: any) => { const c: any = { ...p }; delete c.referenceCost; return c; })(l.product) : l.product, lots: (l.lots ?? []).map((x: any) => { const c: any = { ...x }; delete c.unitCost; return c; }) })) };
+  }
+
+  async findOneRaw(pharmacyId: string, id: string) {
     const sale = await this.prisma.sale.findFirst({
       where: { id, pharmacyId },
       include: { lines: { include: { product: true, lots: true } }, user: true, returns: true },
@@ -145,7 +151,7 @@ export class SalesService {
         let remainingQty = line.quantity;
 
         const lots = await txc.$queryRaw`
-          SELECT id, "quantityAvailable", "expiryDate", "createdAt"
+          SELECT id, "quantityAvailable", "expiryDate", "createdAt", "realUnitCost"
           FROM "stock_lots" 
           WHERE "productId" = ${line.productId}::uuid 
             AND "pharmacyId" = ${pharmacyId}::uuid 
@@ -154,7 +160,7 @@ export class SalesService {
             AND ("expiryDate" IS NULL OR "expiryDate" > NOW())
           ORDER BY "expiryDate" ASC NULLS LAST, "createdAt" ASC
           FOR UPDATE
-        ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date | null; createdAt: Date }>;
+        ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date | null; createdAt: Date; realUnitCost: any }>;
 
         if (lots.length === 0) throw new BadRequestException(`Sem stock valido para o produto ${line.productId}.`);
 
@@ -181,7 +187,7 @@ export class SalesService {
           });
 
           await txc.saleLineLot.create({
-            data: { saleLineId: line.id, lotId: lot.id, quantity: consume },
+            data: { saleLineId: line.id, lotId: lot.id, quantity: consume, unitCost: lot.realUnitCost ?? null },
           });
 
           remainingQty -= consume;

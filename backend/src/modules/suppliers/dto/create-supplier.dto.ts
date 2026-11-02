@@ -18,6 +18,11 @@ export class CreateSupplierDto {
   @IsOptional()
   phone?: string;
 
+  @ApiPropertyOptional({ example: '+258840000000' })
+  @IsString()
+  @IsOptional()
+  whatsapp?: string;
+
   @ApiPropertyOptional({ example: 'vendas@distribuidora.co.mz' })
   @IsEmail()
   @IsOptional()

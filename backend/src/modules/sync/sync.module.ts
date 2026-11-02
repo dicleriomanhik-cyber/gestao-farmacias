@@ -3,10 +3,12 @@ import { SyncController } from './sync.controller';
 import { SyncService } from './sync.service';
 import { SalesModule } from '../sales/sales.module';
 import { CashModule } from '../cash/cash.module';
+import { ExpensesModule } from '../expenses/expenses.module';
+import { ReturnsModule } from '../returns/returns.module';
 import { PrismaModule } from '../../database/prisma.module';
 
 @Module({
-  imports: [PrismaModule, SalesModule, CashModule],
+  imports: [PrismaModule, SalesModule, CashModule, ExpensesModule, ReturnsModule],
   controllers: [SyncController],
   providers: [SyncService],
 })

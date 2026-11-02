@@ -1,11 +1,12 @@
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './types/jwt-payload.interface';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   private signAccess(user: AuthenticatedUser): Promise<string> {
@@ -182,7 +184,11 @@ export class AuthService {
   }
   async register(dto: any) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existing) throw new UnauthorizedException('Email já registado.');
+    if (existing) throw new ConflictException('Email já registado.');
+    if (dto.pharmacyNif) {
+      const nifExists = await this.prisma.pharmacy.findUnique({ where: { nif: dto.pharmacyNif } });
+      if (nifExists) throw new ConflictException('NIF já registado.');
+    }
     const passwordHash = await bcrypt.hash(dto.password, this.config.get<number>('bcryptSaltRounds') ?? 12);
     return this.prisma.$transaction(async (tx) => {
       const pharmacy = await tx.pharmacy.create({ data: { name: dto.pharmacyName, nif: dto.pharmacyNif ?? null, status: 'ACTIVE' } });
@@ -195,22 +201,29 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) return { message: 'Se o email existir, receberá um link.' };
+    const generic = { message: 'Se o email existir, enviámos uma ligação para redefinir a palavra-passe.' };
+    const user = await this.prisma.user.findUnique({ where: { email }, include: { roles: { include: { role: true } } } });
+    if (!user || user.status !== 'ACTIVE') return generic;
+    if (!user.roles.some((ur) => ur.role.name === 'ADMIN')) return generic;
     const token = randomBytes(32).toString('hex');
     const tokenHash = sha256(token);
     const expiresAt = new Date(Date.now() + 3600_000);
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
-    return { message: 'Token gerado.', token };
+    const base = process.env.FRONTEND_URL ?? 'http://localhost:4173';
+    const root = base.endsWith('/') ? base.slice(0, -1) : base;
+    await this.mail.sendPasswordReset(user.email, root + '/redefinir-password?token=' + token);
+    return generic;
   }
 
   async resetPassword(dto: any) {
     const tokenHash = sha256(dto.token);
     const resetRecord = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
-    if (!resetRecord || resetRecord.expiresAt < new Date()) throw new UnauthorizedException('Token inválido ou expirado.');
+    if (!resetRecord || resetRecord.expiresAt < new Date()) throw new BadRequestException('Token inválido ou expirado.');
     const passwordHash = await bcrypt.hash(dto.newPassword, this.config.get<number>('bcryptSaltRounds') ?? 12);
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: resetRecord.userId }, data: { passwordHash } }),
+      this.prisma.refreshToken.updateMany({ where: { userId: resetRecord.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
       this.prisma.passwordResetToken.delete({ where: { id: resetRecord.id } }),
     ]);
     return { message: 'Password redefinida com sucesso.' };

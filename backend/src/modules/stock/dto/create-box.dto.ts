@@ -1,5 +1,5 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsISO8601, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateBoxDto {
@@ -49,9 +49,22 @@ export class CreateBoxDto {
   @IsOptional()
   totalUnits?: number;
 
-  @ApiProperty({ example: 100.0 })
-  @IsInt()
+  @ApiPropertyOptional({ description: 'Compra (rascunho) a que a caixa pertence.' })
+  @IsUUID()
+  @IsOptional()
+  purchaseId?: string;
+
+  @ApiPropertyOptional({ example: 2500, description: 'Custo de aquisição da caixa, na moeda da compra.' })
+  @IsNumber()
   @Min(0)
   @Type(() => Number)
-  unitCost!: number;
+  @IsOptional()
+  acquisitionCost?: number;
+
+  @ApiPropertyOptional({ example: 100.0, description: 'Custo por unidade; se omitido, fica 0.' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  unitCost?: number;
 }

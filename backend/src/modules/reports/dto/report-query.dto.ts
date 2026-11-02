@@ -37,7 +37,17 @@ export class ReportQueryDto {
   method?: PaymentMethodFilter;
 }
 
+export enum ExpensePaidFromFilter {
+  PHARMACY_CASH = 'PHARMACY_CASH', OWNER_CASH = 'OWNER_CASH', BANK = 'BANK',
+  MPESA = 'MPESA', EMOLA = 'EMOLA', OTHER = 'OTHER',
+}
+
 export class ExpenseReportQueryDto extends ReportQueryDto {
+  @ApiPropertyOptional({ enum: ExpensePaidFromFilter })
+  @IsEnum(ExpensePaidFromFilter)
+  @IsOptional()
+  paidFrom?: ExpensePaidFromFilter;
+
   @ApiPropertyOptional({ enum: ExpenseCategoryFilter })
   @IsEnum(ExpenseCategoryFilter)
   @IsOptional()

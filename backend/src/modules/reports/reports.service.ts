@@ -126,17 +126,23 @@ export class ReportsService {
     let whereClause = Prisma.sql`e."pharmacyId" = ${pharmacyId}::uuid AND e.status = ${status}::"ExpenseStatus" AND e."expenseDate" >= ${from} AND e."expenseDate" <= ${to}`;
     if (query.category) whereClause = Prisma.sql`${whereClause} AND e.category = ${query.category}::"ExpenseCategory"`;
     if (query.method) whereClause = Prisma.sql`${whereClause} AND e.method = ${query.method}::"PaymentMethod"`;
+    if (query.paidFrom) whereClause = Prisma.sql`${whereClause} AND e."paidFrom" = ${query.paidFrom}::"ExpensePaidFrom"`;
 
-    const [expenses, byCategoryRaw, byMethodRaw] = await this.prisma.$transaction([
+    const [expenses, byPaidFromRaw, byCategoryRaw, byMethodRaw] = await this.prisma.$transaction([
       this.prisma.expense.findMany({
         where: {
           pharmacyId, status, expenseDate: { gte: from, lte: to },
           ...(query.category ? { category: query.category } : {}),
           ...(query.method ? { method: query.method } : {}),
+          ...(query.paidFrom ? { paidFrom: query.paidFrom } : {}),
         },
         include: { user: { select: { fullName: true } } },
         orderBy: { expenseDate: 'desc' },
       }),
+      this.prisma.$queryRaw<Array<{ paidFrom: string, count: bigint, total: any }>>`
+        SELECT e."paidFrom" AS "paidFrom", COUNT(*)::bigint as count, SUM(e.amount) as total
+        FROM expenses e WHERE ${whereClause} GROUP BY e."paidFrom"
+      `,
       this.prisma.$queryRaw<Array<{ category: string, count: bigint, total: any }>>`
         SELECT e.category, COUNT(*)::bigint as count, SUM(e.amount) as total
         FROM expenses e WHERE ${whereClause} GROUP BY e.category
@@ -152,7 +158,7 @@ export class ReportsService {
     let digitalTotal = new Decimal(0);
     for (const e of expenses) {
       total = total.add(e.amount);
-      if (e.method === 'CASH') cashTotal = cashTotal.add(e.amount);
+      if (e.paidFrom === 'PHARMACY_CASH') cashTotal = cashTotal.add(e.amount);
       else digitalTotal = digitalTotal.add(e.amount);
     }
 
@@ -160,9 +166,10 @@ export class ReportsService {
       period: { from: from.toISOString(), to: to.toISOString() },
       summary: { count: expenses.length, total: total.toFixed(2), cashTotal: cashTotal.toFixed(2), digitalTotal: digitalTotal.toFixed(2) },
       byCategory: byCategoryRaw.map((g) => ({ category: g.category, count: Number(g.count), total: new Decimal(g.total || 0).toFixed(2) })),
+      byPaidFrom: byPaidFromRaw.map((g) => ({ paidFrom: g.paidFrom, count: Number(g.count), total: new Decimal(g.total || 0).toFixed(2) })),
       byMethod: byMethodRaw.map((g) => ({ method: g.method, count: Number(g.count), total: new Decimal(g.total || 0).toFixed(2) })),
       expenses: expenses.map((e) => ({
-        id: e.id, description: e.description, category: e.category, method: e.method,
+        id: e.id, description: e.description, category: e.category, method: e.method, paidFrom: e.paidFrom,
         amount: e.amount.toFixed(2), status: e.status, expenseDate: e.expenseDate.toISOString(), user: e.user.fullName,
       })),
     };
@@ -181,9 +188,9 @@ export class ReportsService {
       sessions: sessions.map((s) => {
         const cashSalePayments = s.payments.filter((p) => p.method === 'CASH').reduce((acc, p) => acc.add(p.amount), new Decimal(0));
         const cashIn = s.movements.filter((m) => m.type === 'IN').reduce((acc, m) => acc.add(m.amount), new Decimal(0));
-        const cashOutTotal = s.movements.filter((m) => m.type === 'OUT').reduce((acc, m) => acc.add(m.amount), new Decimal(0));
-        const expensesCash = s.movements.filter((m) => m.type === 'OUT' && m.expenseId !== null).reduce((acc, m) => acc.add(m.amount), new Decimal(0));
-        const refundsCash = s.movements.filter((m) => m.type === 'OUT' && m.expenseId === null && m.reason.startsWith('Reembolso')).reduce((acc, m) => acc.add(m.amount), new Decimal(0));
+        const cashOutTotal = s.movements.filter((m) => m.type === 'OUT' && m.method === 'CASH').reduce((acc, m) => acc.add(m.amount), new Decimal(0));
+        const expensesCash = s.movements.filter((m) => m.type === 'OUT' && m.method === 'CASH' && m.expenseId !== null).reduce((acc, m) => acc.add(m.amount), new Decimal(0));
+        const refundsCash = s.movements.filter((m) => m.type === 'OUT' && m.method === 'CASH' && m.expenseId === null && m.reason.startsWith('Reembolso')).reduce((acc, m) => acc.add(m.amount), new Decimal(0));
         const manualOut = cashOutTotal.sub(expensesCash).sub(refundsCash);
         const expected = new Decimal(s.openingBalance).add(cashSalePayments).add(cashIn).sub(cashOutTotal);
 
@@ -222,11 +229,11 @@ export class ReportsService {
 
       const lots = p.stockLots.map((l) => {
         let status: 'OK' | 'NEAR_EXPIRY' | 'EXPIRED' = 'OK';
-        if (l.expiryDate < now) { status = 'EXPIRED'; expiredLotsCount++; }
-        else if (l.expiryDate < thirtyDaysFromNow) { status = 'NEAR_EXPIRY'; nearExpiryLotsCount++; }
+        if (l.expiryDate && l.expiryDate < now) { status = 'EXPIRED'; expiredLotsCount++; }
+        else if (l.expiryDate && l.expiryDate < thirtyDaysFromNow) { status = 'NEAR_EXPIRY'; nearExpiryLotsCount++; }
         productStockValue = productStockValue.add(new Decimal(l.unitCost).mul(l.quantityAvailable));
         totalStockValue = totalStockValue.add(new Decimal(l.unitCost).mul(l.quantityAvailable));
-        return { id: l.id, lotNumber: l.lotNumber, quantityAvailable: l.quantityAvailable, expiryDate: l.expiryDate.toISOString(), unitCost: l.unitCost.toFixed(2), status };
+        return { id: l.id, lotNumber: l.lotNumber, quantityAvailable: l.quantityAvailable, expiryDate: l.expiryDate ? l.expiryDate.toISOString() : null, unitCost: l.unitCost.toFixed(2), status };
       });
 
       return { productId: p.id, productName: p.name, sku: p.sku, totalAvailable, totalValue: productStockValue.toFixed(2), lots };

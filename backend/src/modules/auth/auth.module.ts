@@ -6,9 +6,10 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LoginThrottleGuard } from '../../common/guards/login-throttle.guard';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), UsersModule],
+  imports: [PassportModule, JwtModule.register({}), UsersModule, MailModule],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, LoginThrottleGuard],
   exports: [AuthService],

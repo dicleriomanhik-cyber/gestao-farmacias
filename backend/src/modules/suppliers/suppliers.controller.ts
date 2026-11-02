@@ -46,6 +46,13 @@ export class SuppliersController {
     return this.service.findOne(pharmacyId, id);
   }
 
+  @Get(':id/summary')
+  @RequirePermissions(PERMISSIONS.PHARMACY_CONFIG_WRITE)
+  @ApiOperation({ summary: 'Ficha do fornecedor (resumo, compras, produtos, pagamentos)' })
+  summary(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.summary(pharmacyId, id);
+  }
+
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.SUPPLIERS_WRITE)
   @ApiOperation({ summary: 'Actualizar fornecedor' })

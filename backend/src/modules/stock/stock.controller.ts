@@ -48,8 +48,8 @@ export class StockController {
   @RequirePermissions(PERMISSIONS.STOCK_READ)
   @ApiOperation({ summary: 'Consultar lotes (ordem FEFO)' })
   @ApiQuery({ name: 'productId', required: false })
-  getLots(@Tenant() pharmacyId: string, @Query('productId') productId?: string) {
-    return this.service.getLots(pharmacyId, productId);
+  getLots(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('productId') productId?: string) {
+    return this.service.getLots(pharmacyId, productId, user.permissions ?? []);
   }
 
   @Get('movements')
@@ -78,17 +78,17 @@ export class StockController {
     @Tenant() pharmacyId: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
-    @Query('type') type?: string,
+    @CurrentUser() user: AuthenticatedUser, @Query('type') type?: string,
     @Query('state') state?: string,
   ) {
-    return this.service.getBoxes(pharmacyId, Number(page), Number(limit), type, state);
+    return this.service.getBoxes(pharmacyId, Number(page), Number(limit), type, state, user.permissions ?? []);
   }
 
   @Get('boxes/:id')
   @RequirePermissions(PERMISSIONS.STOCK_READ)
   @ApiOperation({ summary: 'Detalhe de caixa com packs calculados e historico' })
-  getBox(@Tenant() pharmacyId: string, @Param('id') id: string) {
-    return this.service.getBox(pharmacyId, id);
+  getBox(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.getBox(pharmacyId, id, user.permissions ?? []);
   }
 
   @Get('products-summary')

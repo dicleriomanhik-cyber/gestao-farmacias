@@ -23,6 +23,13 @@ export class ProductsService {
     }
   }
 
+  private hideCost<T>(p: T, permissions?: string[]): T {
+    if (!permissions || permissions.includes('pharmacy:config:write')) return p;
+    const c: any = { ...(p as any) };
+    delete c.referenceCost;
+    return c as T;
+  }
+
   private withSaleUnit<T extends { type: ProductType | string }>(product: T): T & { saleUnitLabel: string } {
     return { ...product, saleUnitLabel: saleUnitLabel(product.type) };
   }
@@ -30,7 +37,7 @@ export class ProductsService {
     this.validateProductShape(dto);
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inválida.');
+      if (!cat) throw new BadRequestException('Categoria invï¿½lida.');
     }
 
     try {
@@ -46,7 +53,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
+        throw new ConflictException('SKU ou Cï¿½digo de Barras jï¿½ existe nesta farmï¿½cia.');
       }
       throw e;
     }
@@ -59,6 +66,7 @@ export class ProductsService {
     search?: string,
     categoryId?: string,
     status?: string,
+    permissions?: string[],
   ) {
     const skip = (page - 1) * limit;
     
@@ -84,16 +92,16 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { data: data.map((p) => this.withSaleUnit(p)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    return { data: data.map((p) => this.hideCost(this.withSaleUnit(p), permissions)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findOne(pharmacyId: string, id: string) {
+  async findOne(pharmacyId: string, id: string, permissions?: string[]) {
     const product = await this.prisma.product.findFirst({
       where: { id, pharmacyId },
       include: { category: true },
     });
     if (!product) throw new NotFoundException('Produto nao encontrado.');
-    return this.withSaleUnit(product);
+    return this.hideCost(this.withSaleUnit(product), permissions);
   }
 
   async delete(pharmacyId: string, actorId: string, id: string) {
@@ -117,7 +125,7 @@ export class ProductsService {
 
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inválida.');
+      if (!cat) throw new BadRequestException('Categoria invï¿½lida.');
     }
 
     try {
@@ -134,7 +142,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
+        throw new ConflictException('SKU ou Cï¿½digo de Barras jï¿½ existe nesta farmï¿½cia.');
       }
       throw e;
     }

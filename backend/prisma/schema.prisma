@@ -109,6 +109,25 @@ enum ExpenseStatus {
   CANCELLED
 }
 
+enum ExpensePaidFrom {
+  PHARMACY_CASH
+  OWNER_CASH
+  BANK
+  MPESA
+  EMOLA
+  OTHER
+}
+
+enum PurchasePaymentStatus {
+  PAID
+  PARTIAL
+  CREDIT
+}
+
+enum ExtrasSplitMode {
+  BY_VALUE
+  BY_UNITS
+}
 enum ExpenseCategory {
   RENT
   UTILITIES
@@ -121,6 +140,8 @@ enum ExpenseCategory {
 }
 
 model Pharmacy {
+  supplierPayments SupplierPayment[]
+  settings PharmacySettings?
   syncOperations   SyncOperation[]
   syncClients      SyncClient[]
   syncCheckpoint  SyncCheckpoint?
@@ -214,6 +235,8 @@ model Product {
 }
 
 model Supplier {
+  whatsapp      String?
+  supplierPayments SupplierPayment[]
   id            String         @id @default(uuid()) @db.Uuid
   pharmacyId    String         @db.Uuid
   name          String
@@ -236,6 +259,15 @@ model Supplier {
 }
 
 model Purchase {
+  transportCost   Decimal        @default(0) @db.Decimal(12, 2)
+  otherCosts      Decimal        @default(0) @db.Decimal(12, 2)
+  invoiceTotal    Decimal?       @db.Decimal(12, 2)
+  currency        String         @default("MZN")
+  exchangeRate    Decimal        @default(1) @db.Decimal(14, 6)
+  paymentStatus   PurchasePaymentStatus @default(PAID)
+  dueDate         DateTime?
+  stockLots       StockLot[]
+  supplierPayments SupplierPayment[]
   id              String         @id @default(uuid()) @db.Uuid
   pharmacyId      String         @db.Uuid
   supplierId      String         @db.Uuid
@@ -276,6 +308,10 @@ model PurchaseLine {
 }
 
 model StockLot {
+  purchaseId  String?  @db.Uuid
+  purchase    Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  acquisitionCost Decimal? @db.Decimal(12, 2)
+  realUnitCost Decimal? @db.Decimal(14, 6)
   id                        String      @id @default(uuid()) @db.Uuid
   pharmacyId                String      @db.Uuid
   productId                 String      @db.Uuid
@@ -306,6 +342,7 @@ model StockLot {
   @@index([pharmacyId])
   @@index([productId])
   @@index([expiryDate])
+  @@index([purchaseId])
   @@map("stock_lots")
 }
 
@@ -383,6 +420,7 @@ model SaleLineLot {
   lotId       String   @db.Uuid
   quantity    Int
 
+  unitCost    Decimal? @db.Decimal(14, 6)
   saleLine    SaleLine @relation(fields: [saleLineId], references: [id], onDelete: Cascade)
   lot         StockLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
 
@@ -392,6 +430,7 @@ model SaleLineLot {
 }
 
 model CashSession {
+  supplierPayments SupplierPayment[]
   id              String            @id @default(uuid()) @db.Uuid
   pharmacyId      String            @db.Uuid
   userId          String            @db.Uuid
@@ -441,6 +480,7 @@ model CashMovement {
   cashSessionId String        @db.Uuid
   type          String
   amount        Decimal       @db.Decimal(12, 2)
+  method        String        @default("CASH")
   reason        String
   expenseId     String?       @unique @db.Uuid
   createdAt     DateTime      @default(now())
@@ -560,6 +600,8 @@ model ReturnRefund {
 }
 
 model Expense {
+  origin          String          @default("ADMIN")
+  paidFrom        ExpensePaidFrom @default(PHARMACY_CASH)
   id              String          @id @default(uuid()) @db.Uuid
   pharmacyId      String          @db.Uuid
   description     String
@@ -588,6 +630,7 @@ model Expense {
   @@index([category])
   @@index([method])
   @@index([expenseDate])
+  @@index([paidFrom])
   @@map("expenses")
 }
 
@@ -628,6 +671,7 @@ model RolePermission {
 }
 
 model User {
+  supplierPayments SupplierPayment[]
   passwordResetTokens PasswordResetToken[]
   id           String     @id @default(uuid()) @db.Uuid
   pharmacyId   String     @db.Uuid
@@ -813,6 +857,51 @@ model OutboxEvent {
 
   @@index([pharmacyId, sequence])
   @@map("outbox_events")
+}
+model SupplierPayment {
+  id            String          @id @default(uuid()) @db.Uuid
+  pharmacyId    String          @db.Uuid
+  supplierId    String          @db.Uuid
+  purchaseId    String?         @db.Uuid
+  amount        Decimal         @db.Decimal(12, 2)
+  paidFrom      ExpensePaidFrom
+  method        PaymentMethod
+  cashSessionId String?         @db.Uuid
+  paidAt        DateTime        @default(now())
+  userId        String          @db.Uuid
+  notes         String?
+  createdAt     DateTime        @default(now())
+
+  pharmacy      Pharmacy        @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  supplier      Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchase      Purchase?       @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  cashSession   CashSession?    @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([pharmacyId])
+  @@index([supplierId])
+  @@index([purchaseId])
+  @@index([cashSessionId])
+  @@map("supplier_payments")
+}
+
+model PharmacySettings {
+  id                     String          @id @default(uuid()) @db.Uuid
+  pharmacyId             String          @unique @db.Uuid
+  allowCashExpenses      Boolean         @default(true)
+  collaboratorExpenses   Boolean         @default(true)
+  requireApprovalForCash Boolean         @default(false)
+  usePayables            Boolean         @default(false)
+  multiCurrency          Boolean         @default(false)
+  extrasSplitMode        ExtrasSplitMode @default(BY_VALUE)
+  supplierExtraFields    Boolean         @default(false)
+  vatRegime              String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  pharmacy               Pharmacy        @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@map("pharmacy_settings")
 }
 model SyncCheckpoint {
   pharmacyId             String   @id @db.Uuid

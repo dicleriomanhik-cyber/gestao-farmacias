@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PurchaseLineDto {
@@ -41,9 +41,53 @@ export class CreatePurchaseDto {
   @IsOptional()
   notes?: string;
 
-  @ApiProperty({ type: [PurchaseLineDto] })
+  @ApiPropertyOptional({ example: 150 })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  @IsOptional()
+  transportCost?: number;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  @IsOptional()
+  otherCosts?: number;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  @IsOptional()
+  invoiceTotal?: number;
+
+  @ApiPropertyOptional({ example: 'MZN' })
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsNumber()
+  @Min(0.000001)
+  @Type(() => Number)
+  @IsOptional()
+  exchangeRate?: number;
+
+  @ApiPropertyOptional({ enum: ['PAID', 'CREDIT'] })
+  @IsIn(['PAID', 'CREDIT'])
+  @IsOptional()
+  paymentStatus?: 'PAID' | 'CREDIT';
+
+  @ApiPropertyOptional()
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  @ApiPropertyOptional({ type: [PurchaseLineDto] })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PurchaseLineDto)
-  lines!: PurchaseLineDto[];
+  lines?: PurchaseLineDto[];
 }

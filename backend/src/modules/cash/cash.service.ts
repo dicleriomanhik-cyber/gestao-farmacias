@@ -12,12 +12,13 @@ import { emitOutboxEvent } from '../sync/outbox.helper';
 export class CashService {
   constructor(private prisma: PrismaService) {}
 
-  async openCash(pharmacyId: string, userId: string, dto: OpenCashDto) {
-    return this.prisma.$transaction(async (tx) => {
+  async openCash(pharmacyId: string, userId: string, dto: OpenCashDto, outerTx?: Prisma.TransactionClient, returnExisting = false) {
+    const run = async (tx: Prisma.TransactionClient) => {
       const existing = await tx.cashSession.findFirst({
-        where: { pharmacyId, userId, status: 'OPEN' },
+        where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
       });
-      if (existing) throw new ConflictException('Já existe uma sessão de caixa aberta.');
+      if (existing && returnExisting) return existing;
+      if (existing) throw new ConflictException('Jï¿½ existe uma sessï¿½o de caixa aberta.');
 
       const session = await tx.cashSession.create({
         data: { pharmacyId, userId, openingBalance: dto.openingBalance, status: 'OPEN' },
@@ -27,19 +28,20 @@ export class CashService {
         data: { pharmacyId, userId, action: 'cash.open', entity: 'CashSession', entityId: session.id },
       });
       return session;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
-  async closeCash(pharmacyId: string, userId: string, sessionId: string, dto: CloseCashDto) {
-    return this.prisma.$transaction(async (tx) => {
+  async closeCash(pharmacyId: string, userId: string, sessionId: string, dto: CloseCashDto, outerTx?: Prisma.TransactionClient) {
+    const run = async (tx: Prisma.TransactionClient) => {
       const sessions = await tx.$queryRaw`
         SELECT * FROM "cash_sessions" 
         WHERE id = ${sessionId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid 
         FOR UPDATE
       ` as Array<{ id: string; openingBalance: Decimal; status: string }>;
       const session = sessions[0];
-      if (!session) throw new NotFoundException('Sessão de caixa não encontrada.');
-      if (session.status !== 'OPEN') throw new BadRequestException('Sessão já fechada.');
+      if (!session) throw new NotFoundException('Sessï¿½o de caixa nï¿½o encontrada.');
+      if (session.status !== 'OPEN') throw new BadRequestException('Sessï¿½o jï¿½ fechada.');
 
       const cashPayments = await tx.salePayment.aggregate({
         where: { cashSessionId: sessionId, method: 'CASH' },
@@ -50,7 +52,7 @@ export class CashService {
         _sum: { amount: true },
       });
       const movementsOut = await tx.cashMovement.aggregate({
-        where: { cashSessionId: sessionId, type: 'OUT' },
+        where: { cashSessionId: sessionId, type: 'OUT', method: 'CASH' },
         _sum: { amount: true },
       });
 
@@ -75,20 +77,21 @@ export class CashService {
         data: { pharmacyId, userId, action: 'cash.close', entity: 'CashSession', entityId: sessionId },
       });
       return closed;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
   async getActiveSession(pharmacyId: string, userId: string) {
     return this.prisma.cashSession.findFirst({
-      where: { pharmacyId, userId, status: 'OPEN' },
+      where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
   }
 
   async getPayments(pharmacyId: string, userId: string) {
     const session = await this.prisma.cashSession.findFirst({
-      where: { pharmacyId, userId, status: 'OPEN' },
+      where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('Não tem sessão de caixa aberta.');
+    if (!session) throw new NotFoundException('Nï¿½o tem sessï¿½o de caixa aberta.');
 
     const payments = await this.prisma.salePayment.findMany({
       where: { cashSessionId: session.id },
@@ -115,9 +118,9 @@ export class CashService {
 
   async getMovements(pharmacyId: string, userId: string) {
     const session = await this.prisma.cashSession.findFirst({
-      where: { pharmacyId, userId, status: 'OPEN' },
+      where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('Não tem sessão de caixa aberta.');
+    if (!session) throw new NotFoundException('Nï¿½o tem sessï¿½o de caixa aberta.');
 
     return this.prisma.cashMovement.findMany({
       where: { cashSessionId: session.id },
@@ -129,7 +132,7 @@ export class CashService {
     const run = async (txc: Prisma.TransactionClient) => {
       const sessions = await txc.$queryRaw`
         SELECT * FROM "cash_sessions" 
-        WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
+        WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN' ORDER BY "openedAt" DESC LIMIT 1
         FOR UPDATE
       ` as Array<{ id: string }>;
       const session = sessions[0];
@@ -192,11 +195,11 @@ export class CashService {
     return this.prisma.$transaction(async (tx) => {
       const sessions = await tx.$queryRaw`
         SELECT * FROM "cash_sessions" 
-        WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN'
+        WHERE "pharmacyId" = ${pharmacyId}::uuid AND "userId" = ${userId}::uuid AND status = 'OPEN' ORDER BY "openedAt" DESC LIMIT 1
         FOR UPDATE
       ` as Array<{ id: string }>;
       const session = sessions[0];
-      if (!session) throw new BadRequestException('Não tem sessão de caixa aberta.');
+      if (!session) throw new BadRequestException('Nï¿½o tem sessï¿½o de caixa aberta.');
 
       const movement = await tx.cashMovement.create({
         data: { cashSessionId: session.id, type: dto.type, amount: dto.amount, reason: dto.reason, userId },
@@ -210,3 +213,6 @@ export class CashService {
     });
   }
 }
+
+
+

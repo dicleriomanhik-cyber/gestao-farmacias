@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -34,20 +34,21 @@ export class ProductsController {
   @ApiQuery({ name: 'status', required: false })
   findAll(
     @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
     @Query('status') status?: string,
   ) {
-    return this.service.findAll(pharmacyId, Number(page), Number(limit), search, categoryId, status);
+    return this.service.findAll(pharmacyId, Number(page), Number(limit), search, categoryId, status, user.permissions ?? []);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   @ApiOperation({ summary: 'Obter produto' })
-  findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
-    return this.service.findOne(pharmacyId, id);
+  findOne(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.findOne(pharmacyId, id, user.permissions ?? []);
   }
 
   @Delete(':id')

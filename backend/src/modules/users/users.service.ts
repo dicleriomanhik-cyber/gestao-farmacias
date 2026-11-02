@@ -162,7 +162,7 @@ export class UsersService {
 
       const updated = await tx.user.update({ 
         where: { id: targetId }, 
-        data: { fullName: dto.fullName, status: dto.status } 
+        data: { fullName: dto.fullName, status: dto.status, ...(dto.password ? { passwordHash: await this.hashPassword(dto.password) } : {}) } 
       });
       await tx.auditLog.create({ data: { pharmacyId, action: 'user.update', entity: 'User', entityId: targetId } });
       return { id: updated.id, fullName: updated.fullName, status: updated.status };

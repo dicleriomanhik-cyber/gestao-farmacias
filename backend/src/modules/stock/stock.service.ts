@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
 import { emitOutboxEvent } from '../sync/outbox.helper';
@@ -8,6 +8,8 @@ import { CreateLotDto } from './dto/create-lot.dto';
 import { CreateBoxDto } from './dto/create-box.dto';
 import { derivePackState } from './pack-state.helper';
 import { saleUnitLabel } from '../products/sale-unit.helper';
+import { recomputePurchaseTotal } from '../purchases/purchase-math';
+import { recomputeLotCosts } from '../purchases/purchase-costs';
 
 @Injectable()
 export class StockService {
@@ -53,7 +55,7 @@ export class StockService {
             lotNumber: dto.lotNumber,
             expiryDate: new Date(dto.expiryDate),
             quantityReceived: dto.quantity,
-            quantityReceivedFromLine: dto.quantity,
+            quantityReceivedFromLine: dto.quantity, totalUnits: dto.quantity,
             quantityAvailable: 0,
             unitCost: dto.unitCost,
             status: 'ACTIVE',
@@ -66,7 +68,7 @@ export class StockService {
           where: { id: lot.id },
           data: {
             quantityReceived: { increment: dto.quantity },
-            quantityReceivedFromLine: { increment: dto.quantity },
+            quantityReceivedFromLine: { increment: dto.quantity }, totalUnits: { increment: dto.quantity },
           },
         });
       }
@@ -132,7 +134,7 @@ export class StockService {
             lotNumber: dto.lotNumber,
             expiryDate,
             quantityReceived: dto.quantity,
-            quantityReceivedFromLine: 0,
+            quantityReceivedFromLine: 0, totalUnits: dto.quantity,
             quantityAvailable: dto.quantity,
             unitCost: dto.unitCost,
             status: 'ACTIVE',
@@ -218,7 +220,13 @@ export class StockService {
     });
   }
 
-  async getLots(pharmacyId: string, productId?: string) {
+  async getLots(pharmacyId: string, productId?: string, permissions: string[] = []) {
+    const lots: any[] = await this.getLotsRaw(pharmacyId, productId);
+    if (permissions.includes('pharmacy:config:write')) return lots;
+    return lots.map((l: any) => { const c: any = { ...l }; for (const k of ['unitCost', 'acquisitionCost', 'realUnitCost', 'purchaseId']) delete c[k]; return c; });
+  }
+
+  async getLotsRaw(pharmacyId: string, productId?: string) {
     return this.prisma.stockLot.findMany({
       where: { pharmacyId, ...(productId && { productId }) },
       include: { product: { select: { name: true, sku: true } } },
@@ -252,6 +260,12 @@ export class StockService {
         product = matches[0] ?? null;
       }
       if (!product) throw new NotFoundException('Produto nao encontrado.');
+      if (dto.purchaseId) {
+        const pur = await tx.purchase.findFirst({ where: { id: dto.purchaseId, pharmacyId }, select: { status: true } });
+        if (!pur) throw new BadRequestException('Compra inválida.');
+        if (pur.status !== 'DRAFT') throw new BadRequestException('Só se juntam caixas a compras em rascunho.');
+        if (dto.acquisitionCost === undefined) throw new BadRequestException('Indica o custo de aquisição da caixa.');
+      }
       if (dto.expiryDate && product.hasExpiry === false) {
         throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
       }
@@ -295,7 +309,9 @@ export class StockService {
           innerCount,
           unitsPerInner,
           totalUnits,
-          unitCost: dto.unitCost,
+          unitCost: dto.unitCost ?? 0,
+          purchaseId: dto.purchaseId ?? null,
+          acquisitionCost: dto.acquisitionCost ?? null,
           status: 'ACTIVE',
         },
       });
@@ -317,6 +333,14 @@ export class StockService {
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'stock.box.create', entity: 'StockLot', entityId: lot.id },
       });
+      if (dto.purchaseId) {
+        await recomputePurchaseTotal(tx, dto.purchaseId);
+        await recomputeLotCosts(tx, dto.purchaseId);
+      } else if (dto.acquisitionCost != null && totalUnits > 0) {
+        await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: Math.round((dto.acquisitionCost / totalUnits) * 1e6) / 1e6 } });
+      } else if (dto.unitCost && dto.unitCost > 0) {
+        await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: dto.unitCost } });
+      }
       await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
 
       return lot;
@@ -335,9 +359,11 @@ export class StockService {
     limit: number = 20,
     typeFilter?: string,
     stateFilter?: string,
+    permissions: string[] = [],
   ) {
     const skip = (page - 1) * limit;
     const where: any = { pharmacyId };
+    const isAdmin = permissions.includes('pharmacy:config:write');
     if (typeFilter) where.product = { type: typeFilter };
 
     const now = new Date();
@@ -355,7 +381,7 @@ export class StockService {
         where,
         skip,
         take: limit,
-        include: { product: { select: { name: true, type: true, hasExpiry: true } } },
+        include: { product: { select: { name: true, type: true, hasExpiry: true, strength: true, salePrice: true } } },
         orderBy: [{ expiryDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
       }),
       this.prisma.stockLot.count({ where }),
@@ -370,6 +396,8 @@ export class StockService {
           qrCode: lot.qrCode,
           productName: lot.product.name,
           type: lot.product.type,
+          strength: lot.product.strength,
+          salePrice: lot.product.salePrice,
           saleUnitLabel: saleUnitLabel(lot.product.type),
           hasExpiry: lot.product.hasExpiry,
           expiryDate: lot.expiryDate,
@@ -378,16 +406,17 @@ export class StockService {
           totalUnits: lot.totalUnits,
           quantityAvailable: lot.quantityAvailable,
           state,
+          ...(isAdmin ? { acquisitionCost: lot.acquisitionCost, realUnitCost: lot.realUnitCost, costRegistered: lot.realUnitCost != null } : {}),
         };
       }),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
-  async getBox(pharmacyId: string, id: string) {
+  async getBox(pharmacyId: string, id: string, permissions: string[] = []) {
     const lot = await this.prisma.stockLot.findFirst({
       where: { id, pharmacyId },
-      include: { product: { select: { name: true, type: true, hasExpiry: true } } },
+      include: { product: { select: { name: true, type: true, hasExpiry: true, strength: true, salePrice: true } } },
     });
     if (!lot) throw new NotFoundException('Caixa nao encontrada.');
 
@@ -441,6 +470,7 @@ export class StockService {
       totalUnits: lot.totalUnits,
       quantityAvailable: lot.quantityAvailable,
       state,
+      ...(permissions.includes('pharmacy:config:write') ? { acquisitionCost: lot.acquisitionCost, realUnitCost: lot.realUnitCost, costRegistered: lot.realUnitCost != null } : {}),
       packs: packs ? packs.packs : null,
       currentPackNumber: packs ? packs.currentPackNumber : null,
       salesHistory,

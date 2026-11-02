@@ -9,6 +9,12 @@ export class UpdateUserDto {
   @IsOptional()
   fullName?: string;
 
+  @ApiPropertyOptional({ minLength: 8 })
+  @IsString()
+  @MinLength(8, { message: 'A password deve ter pelo menos 8 caracteres.' })
+  @IsOptional()
+  password?: string;
+
   @ApiPropertyOptional({ enum: UserStatus })
   @IsEnum(UserStatus, { message: 'O status deve ser ACTIVE, INACTIVE ou SUSPENDED.' })
   @IsOptional()

@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
@@ -33,10 +33,11 @@ export class ReturnsController {
   @ApiQuery({ name: 'limit', required: false })
   findAll(
     @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
   ) {
-    return this.service.findAll(pharmacyId, Number(page), Number(limit));
+    return this.service.findAll(pharmacyId, Number(page), Number(limit), user.permissions ?? []);
   }
 
   @Get('quarantine')
@@ -46,17 +47,18 @@ export class ReturnsController {
   @ApiQuery({ name: 'limit', required: false })
   listQuarantine(
     @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
   ) {
-    return this.service.listQuarantine(pharmacyId, Number(page), Number(limit));
+    return this.service.listQuarantine(pharmacyId, Number(page), Number(limit), user.permissions ?? []);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.RETURNS_READ)
   @ApiOperation({ summary: 'Obter devoluÃ§Ã£o por ID' })
-  findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
-    return this.service.findOne(pharmacyId, id);
+  findOne(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.findOne(pharmacyId, id, user.permissions ?? []);
   }
 
   @Patch(':id/confirm')
@@ -66,6 +68,12 @@ export class ReturnsController {
     return this.service.confirm(pharmacyId, user.id, id);
   }
 
+  @Patch(':id/cancel')
+  @RequirePermissions(PERMISSIONS.RETURNS_CONFIRM)
+  @ApiOperation({ summary: 'Cancelar devolução confirmada sem inspeção nem reembolso' })
+  cancel(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.cancel(pharmacyId, user.id, id);
+  }
   @Patch(':id/lines/:lineId/inspect')
   @RequirePermissions(PERMISSIONS.RETURNS_INSPECT)
   @ApiOperation({ summary: 'Inspecionar e libertar artigo da quarentena' })

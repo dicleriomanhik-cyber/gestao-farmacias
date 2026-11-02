@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { InspectReturnDto } from './dto/inspect-return.dto';
@@ -11,8 +11,21 @@ import { Prisma } from '@prisma/client';
 export class ReturnsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(pharmacyId: string, userId: string, dto: CreateReturnDto) {
-    return this.prisma.$transaction(async (tx) => {
+  private stripRef<T>(v: T, permissions?: string[]): T {
+    if (!permissions || permissions.includes('pharmacy:config:write')) return v;
+    const f = (x: any): any =>
+      Array.isArray(x)
+        ? x.map(f)
+        : x && typeof x === 'object'
+          ? typeof x.toJSON === 'function'
+            ? x
+            : Object.fromEntries(Object.entries(x).filter(([k]) => k !== 'referenceCost' && k !== 'unitCost').map(([k, y]) => [k, f(y)]))
+          : x;
+    return f(v);
+  }
+
+  async create(pharmacyId: string, userId: string, dto: CreateReturnDto, outerTx?: Prisma.TransactionClient) {
+    const run = async (tx: Prisma.TransactionClient) => {
       const sale = await tx.sale.findFirst({
         where: { id: dto.saleId, pharmacyId },
         include: { lines: true },
@@ -73,33 +86,34 @@ export class ReturnsService {
         },
         include: { lines: true },
       });
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
-  async findAll(pharmacyId: string, page: number = 1, limit: number = 20) {
+  async findAll(pharmacyId: string, page: number = 1, limit: number = 20, permissions?: string[]) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.saleReturn.findMany({
         where: { pharmacyId },
         skip, take: limit,
-        include: { lines: { include: { product: true } }, sale: { select: { saleNumber: true } } },
+        include: { lines: { include: { product: true, refunds: true } }, sale: { select: { saleNumber: true } } },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.saleReturn.count({ where: { pharmacyId } }),
     ]);
-    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    return { data: this.stripRef(data, permissions), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findOne(pharmacyId: string, id: string) {
+  async findOne(pharmacyId: string, id: string, permissions?: string[]) {
     const ret = await this.prisma.saleReturn.findFirst({
       where: { id, pharmacyId },
-      include: { lines: { include: { product: true } }, sale: { select: { saleNumber: true } } },
+      include: { lines: { include: { product: true, refunds: true } }, sale: { select: { saleNumber: true } } },
     });
     if (!ret) throw new NotFoundException('Devolução não encontrada.');
-    return ret;
+    return this.stripRef(ret, permissions);
   }
 
-  async listQuarantine(pharmacyId: string, page: number = 1, limit: number = 20) {
+  async listQuarantine(pharmacyId: string, page: number = 1, limit: number = 20, permissions?: string[]) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.quarantineStock.findMany({
@@ -111,11 +125,11 @@ export class ReturnsService {
       }),
       this.prisma.quarantineStock.count({ where: { pharmacyId } }),
     ]);
-    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    return { data: this.stripRef(data, permissions), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async confirm(pharmacyId: string, userId: string, returnId: string) {
-    return this.prisma.$transaction(async (tx) => {
+  async confirm(pharmacyId: string, userId: string, returnId: string, outerTx?: Prisma.TransactionClient) {
+    const run = async (tx: Prisma.TransactionClient) => {
       const returns = await tx.$queryRaw`
         SELECT * FROM "sale_returns" 
         WHERE id = ${returnId}::uuid AND "pharmacyId" = ${pharmacyId}::uuid 
@@ -167,9 +181,36 @@ export class ReturnsService {
       });
 
       return updated;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
+  async cancel(pharmacyId: string, userId: string, returnId: string, outerTx?: Prisma.TransactionClient) {
+    const run = async (tx: Prisma.TransactionClient) => {
+      const saleReturn = await tx.saleReturn.findFirst({ where: { id: returnId, pharmacyId } });
+      if (!saleReturn) throw new NotFoundException('Devolução não encontrada.');
+      if (saleReturn.status !== 'CONFIRMED') throw new BadRequestException('Apenas devoluções confirmadas podem ser canceladas.');
+
+      const lineIds = (await tx.saleReturnLine.findMany({ where: { returnId }, select: { id: true } })).map((l) => l.id);
+      const quarantines = await tx.quarantineStock.findMany({ where: { saleReturnLineId: { in: lineIds } } });
+      if (quarantines.some((q) => q.quantityInspected > 0)) {
+        throw new BadRequestException('Não é possível cancelar: a devolução já foi inspecionada.');
+      }
+      const reembolsos = await tx.returnRefund.count({
+        where: { returnLineId: { in: lineIds }, status: { in: ['PENDING', 'COMPLETED'] } },
+      });
+      if (reembolsos > 0) throw new BadRequestException('Não é possível cancelar: já existem reembolsos registados.');
+
+      await tx.quarantineStock.deleteMany({ where: { saleReturnLineId: { in: lineIds } } });
+      await tx.stockMovement.deleteMany({ where: { referenceType: 'SaleReturn', referenceId: returnId, type: 'SALE_RETURN' } });
+      await tx.saleReturn.update({ where: { id: returnId }, data: { status: 'CANCELLED' } });
+      await tx.auditLog.create({
+        data: { pharmacyId, userId, action: 'sale.return.cancel', entity: 'SaleReturn', entityId: returnId },
+      });
+      return { id: returnId, status: 'CANCELLED' };
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
+  }
   async inspectAndRelease(pharmacyId: string, userId: string, returnId: string, lineId: string, dto: InspectReturnDto) {
     return this.prisma.$transaction(async (tx) => {
       const quarantines = await tx.$queryRaw`
@@ -201,7 +242,7 @@ export class ReturnsService {
               productId: q.productId,
               lotNumber: q.lotNumber,
               expiryDate: q.expiryDate,
-              quantityReceived: dto.quantityToRelease,
+              quantityReceived: dto.quantityToRelease, totalUnits: dto.quantityToRelease,
               quantityAvailable: dto.quantityToRelease,
               unitCost: q.unitCost,
               status: 'ACTIVE',
@@ -211,7 +252,7 @@ export class ReturnsService {
           await tx.stockLot.update({
             where: { id: lot.id },
             data: { 
-              quantityReceived: { increment: dto.quantityToRelease },
+              quantityReceived: { increment: dto.quantityToRelease }, totalUnits: { increment: dto.quantityToRelease },
               quantityAvailable: { increment: dto.quantityToRelease }
             }
           });
@@ -309,14 +350,10 @@ export class ReturnsService {
         }
 
         let cashSessionId = dto.cashSessionId;
-        let status: 'PENDING' | 'COMPLETED' = 'PENDING';
-
-        if (dto.method === 'CASH') {
-          if (!cashSessionId) throw new BadRequestException('Sessão de caixa obrigatória para reembolso em dinheiro.');
-          const session = await tx.cashSession.findFirst({ where: { id: cashSessionId, pharmacyId, status: 'OPEN' } });
-          if (!session) throw new BadRequestException('Sessão de caixa inválida ou fechada.');
-          status = 'COMPLETED';
-        }
+        if (!cashSessionId) throw new BadRequestException('Sessão de caixa obrigatória para reembolso.');
+        const session = await tx.cashSession.findFirst({ where: { id: cashSessionId, pharmacyId, status: 'OPEN' } });
+        if (!session) throw new BadRequestException('Sessão de caixa inválida ou fechada.');
+        const status = 'COMPLETED' as const;
 
         const refund = await tx.returnRefund.create({
           data: {
@@ -326,22 +363,21 @@ export class ReturnsService {
             status,
             amount: dto.amount,
             idempotencyKey: dto.idempotencyKey,
-            cashSessionId: dto.method === 'CASH' ? cashSessionId : null,
+            cashSessionId,
             userId,
           }
         });
 
-        if (dto.method === 'CASH') {
-          await tx.cashMovement.create({
-            data: {
-              cashSessionId,
-              type: 'OUT',
-              amount: dto.amount,
-              reason: `Reembolso devolução ${saleReturn.returnNumber}`,
-              userId,
-            }
-          });
-        }
+        await tx.cashMovement.create({
+          data: {
+            cashSessionId,
+            type: 'OUT',
+            method: dto.method,
+            amount: dto.amount,
+            reason: `Reembolso devolução ${saleReturn.returnNumber}`,
+            userId,
+          }
+        });
 
         await tx.auditLog.create({
           data: { pharmacyId, userId, action: 'sale.return.refund', entity: 'ReturnRefund', entityId: refund.id },
@@ -388,3 +424,5 @@ export class ReturnsService {
     });
   }
 }
+
+

@@ -16,6 +16,7 @@ async function main(): Promise<void> {
     ADMIN: 'Administração da farmácia, utilizadores e configurações',
     PHARMACIST: 'Operações profissionais permitidas',
     CASHIER: 'Operações de venda e caixa',
+    COLLABORATOR: 'Colaborador do ponto de venda (POS)',
     STOCK_MANAGER: 'Stock, lotes e recepção de mercadoria',
   };
 

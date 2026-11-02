@@ -32,17 +32,18 @@ export class SalesController {
   @ApiQuery({ name: 'limit', required: false })
   findAll(
     @Tenant() pharmacyId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
   ) {
-    return this.service.findAll(pharmacyId, Number(page), Number(limit));
+    return this.service.findAll(pharmacyId, Number(page), Number(limit)).then((r: any) => (user.permissions ?? []).includes('pharmacy:config:write') ? r : { ...r, data: r.data.map((s: any) => ({ ...s, lines: (s.lines ?? []).map((l: any) => ({ ...l, product: l.product ? ((p: any) => { const c: any = { ...p }; delete c.referenceCost; return c; })(l.product) : l.product })) })) });
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.SALES_READ)
   @ApiOperation({ summary: 'Obter detalhe da venda' })
-  findOne(@Tenant() pharmacyId: string, @Param('id') id: string) {
-    return this.service.findOne(pharmacyId, id);
+  findOne(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.findOne(pharmacyId, id, user.permissions ?? []);
   }
 
   @Get(':id/payments')
@@ -73,7 +74,7 @@ export class SalesController {
 
   @Get('pos/stock')
   @RequirePermissions(PERMISSIONS.SALES_READ)
-  @ApiOperation({ summary: 'Stock do POS (colaborador) — somente leitura' })
+  @ApiOperation({ summary: 'Stock do POS (colaborador) ï¿½ somente leitura' })
   getPosStock(@Tenant() pharmacyId: string) {
     return this.stockService.getPosStock(pharmacyId);
   }

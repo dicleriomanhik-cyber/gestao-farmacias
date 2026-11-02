@@ -1,0 +1,1 @@
+ALTER TABLE "cash_movements" ADD COLUMN "method" TEXT NOT NULL DEFAULT 'CASH';

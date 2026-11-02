@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { PurchasesService } from './purchases.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto } from './dto/update-purchase.dto';
+import { ConfirmPurchaseDto } from './dto/confirm-purchase.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions';
 import { Tenant } from '../../common/decorators/tenant.decorator';
@@ -33,8 +34,10 @@ export class PurchasesController {
     @Tenant() pharmacyId: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
+    @Query('status') status?: string,
+    @Query('supplierId') supplierId?: string,
   ) {
-    return this.service.findAll(pharmacyId, Number(page), Number(limit));
+    return this.service.findAll(pharmacyId, Number(page), Number(limit), status, supplierId);
   }
 
   @Get(':id')
@@ -59,8 +62,8 @@ export class PurchasesController {
   @Patch(':id/confirm')
   @RequirePermissions(PERMISSIONS.PURCHASES_WRITE)
   @ApiOperation({ summary: 'Confirmar compra' })
-  confirm(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.service.confirm(pharmacyId, user.id, id);
+  confirm(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() body: ConfirmPurchaseDto) {
+    return this.service.confirm(pharmacyId, user.id, id, body?.paidFrom && body?.method ? { paidFrom: body.paidFrom, method: body.method } : undefined);
   }
 
   @Patch(':id/cancel')
