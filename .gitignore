@@ -41,6 +41,7 @@ Thumbs.db
 
 *.bak
 *.bak*
-*.sql
+backup*.sql
+*backup*.sql
 backend/permissoes.txt
 frontend/resultado.txt

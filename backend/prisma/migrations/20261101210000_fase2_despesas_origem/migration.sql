@@ -1,0 +1,10 @@
+ALTER TABLE "expenses" ADD COLUMN "paidFrom" TEXT NOT NULL DEFAULT 'OTHER', ADD COLUMN "origin" TEXT NOT NULL DEFAULT 'ADMIN';
+
+UPDATE "expenses" SET "paidFrom" = CASE
+  WHEN "cashSessionId" IS NOT NULL THEN 'PHARMACY_CASH'
+  WHEN "method" = 'CASH' THEN 'OWNER_CASH'
+  WHEN "method" = 'MPESA' THEN 'MPESA'
+  WHEN "method" = 'EMOLA' THEN 'EMOLA'
+  WHEN "method" IN ('CARD', 'TRANSFER') THEN 'BANK'
+  ELSE 'OTHER'
+END;
