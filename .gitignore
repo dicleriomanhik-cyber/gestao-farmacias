@@ -49,3 +49,11 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+# Backups e scripts locais
+*.dump
+backups/
+backend/scripts/
+PROMPT_RETOMADA*.txt
+backend/permissoes.txt
+backend/backup_*.sql
+backup_*.sql
