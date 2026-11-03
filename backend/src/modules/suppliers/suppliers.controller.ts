@@ -40,6 +40,13 @@ export class SuppliersController {
     return this.service.findAll(pharmacyId, Number(page), Number(limit), search);
   }
 
+  @Get(':id/summary')
+  @RequirePermissions(PERMISSIONS.SUPPLIERS_READ)
+  @ApiOperation({ summary: 'Ficha do fornecedor' })
+  getSummary(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.getSummary(pharmacyId, id);
+  }
+
   @Get(':id')
   @RequirePermissions(PERMISSIONS.SUPPLIERS_READ)
   @ApiOperation({ summary: 'Obter fornecedor' })

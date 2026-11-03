@@ -366,4 +366,18 @@ export class ReturnsService {
       return updated;
     });
   }
+
+  async findAll(pharmacyId: string, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.saleReturn.findMany({
+        where: { pharmacyId },
+        skip, take: limit,
+        include: { lines: { include: { product: true } }, sale: { select: { saleNumber: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.saleReturn.count({ where: { pharmacyId } }),
+    ]);
+    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+  }
 }

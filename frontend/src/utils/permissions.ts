@@ -57,3 +57,7 @@ export function canAccessReports(permissions: string[] | undefined): boolean {
 export function canAccessFinancialReports(permissions: string[] | undefined): boolean {
   return hasPermission(permissions, "reports:financial");
 }
+
+export function isCollaborator(user: { roles?: string[] } | null | undefined): boolean {
+  return (user?.roles ?? []).includes("COLLABORATOR");
+}

@@ -1,9 +1,15 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { CreateBoxDto } from './dto/create-box.dto';
+import { derivePackState } from './pack-state.helper';
+import { Prisma } from '@prisma/client';
 
+function saleUnitLabel(type: string | null | undefined): string {
+  return type === 'MEDICINE' ? 'carteira' : 'unidade';
+}
 @Injectable()
 export class StockService {
   constructor(private prisma: PrismaService) {}
@@ -154,4 +160,234 @@ export class StockService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async createBox(pharmacyId: string, actorId: string, dto: CreateBoxDto) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+      let product: { id: string; type: string; hasExpiry: boolean } | null = null;
+      if (dto.productId) {
+        product = await tx.product.findFirst({
+          where: { id: dto.productId, pharmacyId },
+          select: { id: true, type: true, hasExpiry: true },
+        });
+      } else if (dto.productName) {
+        const matches = await tx.product.findMany({
+          where: { pharmacyId, name: { equals: dto.productName.trim(), mode: 'insensitive' }, status: 'ACTIVE' },
+          select: { id: true, type: true, hasExpiry: true },
+          take: 2,
+        });
+        if (matches.length > 1) throw new BadRequestException('Existe mais de um produto com este nome. Use o produto correto.');
+        product = matches[0] ?? null;
+      }
+      if (!product) throw new NotFoundException('Produto nao encontrado.');
+      if (dto.expiryDate && product.hasExpiry === false) {
+        throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
+      }
+      if (product.hasExpiry && !dto.expiryDate) {
+        throw new BadRequestException('expiryDate obrigatoria para este produto.');
+      }
+
+      let innerCount: number | null = null;
+      let unitsPerInner: number | null = null;
+      let totalUnits: number;
+
+      if (product.type === 'MEDICINE') {
+        if (!dto.innerCount || !dto.unitsPerInner) {
+          throw new BadRequestException('MEDICINE requer innerCount e unitsPerInner.');
+        }
+        if (dto.totalUnits !== undefined && dto.totalUnits !== dto.innerCount * dto.unitsPerInner) {
+          throw new BadRequestException('totalUnits deve ser innerCount * unitsPerInner.');
+        }
+        innerCount = dto.innerCount;
+        unitsPerInner = dto.unitsPerInner;
+        totalUnits = innerCount * unitsPerInner;
+      } else {
+        if (!dto.totalUnits) {
+          throw new BadRequestException('PRODUCT requer totalUnits.');
+        }
+        totalUnits = dto.totalUnits;
+      }
+
+      let purchaseId: string | null = null;
+      if (dto.purchaseId) {
+        const purchase = await tx.purchase.findFirst({ where: { id: dto.purchaseId, pharmacyId } });
+        if (!purchase) throw new NotFoundException('Compra nao encontrada.');
+        if (purchase.status !== 'DRAFT') throw new BadRequestException('So se registam caixas numa compra em rascunho.');
+        purchaseId = purchase.id;
+      }
+      const lotNumber = dto.lotNumber ?? dto.qrCode;
+
+      const lot = await tx.stockLot.create({
+        data: {
+          pharmacyId,
+          productId: product.id,
+          lotNumber,
+          qrCode: dto.qrCode,
+          expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+          quantityReceived: totalUnits,
+          quantityReceivedFromLine: 0,
+          quantityAvailable: totalUnits,
+          innerCount,
+          unitsPerInner,
+          totalUnits,
+          unitCost: dto.unitCost ?? (dto.acquisitionCost != null ? Math.round((dto.acquisitionCost / totalUnits) * 100) / 100 : 0),
+          purchaseId,
+          acquisitionCost: dto.acquisitionCost ?? null,
+          status: 'ACTIVE',
+        },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          pharmacyId,
+          productId: product.id,
+          lotId: lot.id,
+          type: 'DIRECT_ENTRY',
+          quantity: totalUnits,
+          referenceId: lot.id,
+          referenceType: 'StockLot',
+          userId: actorId,
+          notes: 'Entrada directa de caixa (createBox)',
+        },
+      });
+
+      await tx.auditLog.create({
+        data: { pharmacyId, userId: actorId, action: 'stock.box.create', entity: 'StockLot', entityId: lot.id },
+      });
+      if (purchaseId) {
+        const agg = await tx.stockLot.aggregate({ where: { purchaseId }, _sum: { acquisitionCost: true } });
+        const lineAgg = await tx.purchaseLine.aggregate({ where: { purchaseId }, _sum: { subtotal: true } });
+        await tx.purchase.update({ where: { id: purchaseId }, data: { totalAmount: Number(agg._sum.acquisitionCost ?? 0) + Number(lineAgg._sum.subtotal ?? 0) } });
+      }
+
+      return lot;
+      });
+    } catch (e: any) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BadRequestException('QR Code ou lotNumber duplicado nesta farmacia.');
+      }
+      throw e;
+    }
+  }
+
+  async getBoxes(
+    pharmacyId: string,
+    page: number = 1,
+    limit: number = 20,
+    typeFilter?: string,
+    stateFilter?: string,
+  ) {
+    const skip = (page - 1) * limit;
+    const where: any = { pharmacyId };
+    if (typeFilter) where.product = { type: typeFilter };
+
+    const now = new Date();
+    if (stateFilter === 'DEPLETED') where.quantityAvailable = 0;
+    else if (stateFilter === 'EXPIRED') {
+      where.expiryDate = { lt: now };
+      where.quantityAvailable = { gt: 0 };
+    } else if (stateFilter === 'ACTIVE') {
+      where.quantityAvailable = { gt: 0 };
+      where.OR = [{ expiryDate: null }, { expiryDate: { gte: now } }];
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.stockLot.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { product: { select: { name: true, type: true, hasExpiry: true, strength: true, salePrice: true } } },
+        orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+      }),
+      this.prisma.stockLot.count({ where }),
+    ]);
+
+    return {
+      data: data.map((lot) => {
+        const expired = lot.expiryDate && lot.expiryDate < now;
+        const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : lot.quantityAvailable === lot.totalUnits ? 'NEW' : 'ACTIVE';
+        return {
+          id: lot.id,
+          qrCode: lot.qrCode,
+          productName: lot.product.name,
+          type: lot.product.type,
+          strength: lot.product.strength,
+          salePrice: lot.product.salePrice,
+          saleUnitLabel: saleUnitLabel(lot.product.type),
+          hasExpiry: lot.product.hasExpiry,
+          expiryDate: lot.expiryDate,
+          innerCount: lot.innerCount,
+          unitsPerInner: lot.unitsPerInner,
+          totalUnits: lot.totalUnits,
+          quantityAvailable: lot.quantityAvailable,
+          state,
+        };
+      }),
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getBox(pharmacyId: string, id: string) {
+    const lot = await this.prisma.stockLot.findFirst({
+      where: { id, pharmacyId },
+      include: { product: { select: { name: true, type: true, hasExpiry: true, strength: true, salePrice: true } } },
+    });
+    if (!lot) throw new NotFoundException('Caixa nao encontrada.');
+
+    const packs = lot.product.type === 'MEDICINE' && lot.unitsPerInner
+      ? derivePackState(lot.totalUnits, lot.unitsPerInner, lot.quantityAvailable)
+      : null;
+
+    const movements = await this.prisma.stockMovement.findMany({
+      where: { lotId: lot.id, type: 'SALE' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const saleIds = Array.from(new Set(movements.map((m) => m.referenceId).filter(Boolean) as string[]));
+    const sales = saleIds.length
+      ? await this.prisma.sale.findMany({
+          where: { id: { in: saleIds }, pharmacyId },
+          select: { id: true, saleNumber: true, createdAt: true },
+        })
+      : [];
+    const salesById = new Map(sales.map((s) => [s.id, s]));
+
+    let running = lot.totalUnits;
+    const salesHistory = movements.map((m) => {
+      const units = Math.abs(m.quantity);
+      running -= units;
+      const s = m.referenceId ? salesById.get(m.referenceId) : undefined;
+      return {
+        saleId: m.referenceId,
+        saleNumber: s?.saleNumber ?? null,
+        soldAt: s?.createdAt ?? m.createdAt,
+        units,
+        balanceAfter: running,
+      };
+    });
+
+    const now = new Date();
+    const expired = lot.expiryDate && lot.expiryDate < now;
+    const state = lot.quantityAvailable === 0 ? 'DEPLETED' : expired ? 'EXPIRED' : lot.quantityAvailable === lot.totalUnits ? 'NEW' : 'ACTIVE';
+
+    return {
+      id: lot.id,
+      qrCode: lot.qrCode,
+      lotNumber: lot.lotNumber,
+      productName: lot.product.name,
+      type: lot.product.type,
+      saleUnitLabel: saleUnitLabel(lot.product.type),
+      hasExpiry: lot.product.hasExpiry,
+      expiryDate: lot.expiryDate,
+      innerCount: lot.innerCount,
+      unitsPerInner: lot.unitsPerInner,
+      totalUnits: lot.totalUnits,
+      quantityAvailable: lot.quantityAvailable,
+      state,
+      packs: packs ? packs.packs : null,
+      currentPackNumber: packs ? packs.currentPackNumber : null,
+      salesHistory,
+    };
+  }
+
 }

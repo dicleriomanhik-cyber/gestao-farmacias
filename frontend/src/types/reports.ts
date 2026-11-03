@@ -1,4 +1,4 @@
-﻿export interface ReportPeriod {
+export interface ReportPeriod {
   from: string;
   to: string;
 }
@@ -52,6 +52,7 @@ export interface ReportExpense {
   amount: string;
   status: string;
   expenseDate: string;
+  paidFrom?: string;
   user: string;
 }
 
@@ -64,6 +65,7 @@ export interface ReportExpensesData {
     digitalTotal: string;
   };
   byCategory: { category: string; count: number; total: string }[];
+  byPaidFrom?: { paidFrom: string; count: number; total: string }[];
   byMethod: { method: string; count: number; total: string }[];
   expenses: ReportExpense[];
 }

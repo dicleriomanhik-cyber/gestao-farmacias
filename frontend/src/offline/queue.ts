@@ -1,4 +1,5 @@
-﻿import { openDb, getMeta, setMeta, type OutboxOperation } from "./db";
+import { openDb, getMeta, setMeta, type OutboxOperation } from "./db";
+import { triggerSync } from "./events";
 
 export function generateUuid(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -21,7 +22,7 @@ export async function getClientId(): Promise<string> {
 }
 
 export async function enqueueOperation(
-  operationType: "SALE" | "PAYMENT",
+  operationType: "CASH_OPEN" | "SALE" | "PAYMENT" | "EXPENSE" | "RETURN" | "CASH_CLOSE" | "EXPENSE_CONFIRM" | "EXPENSE_CANCEL" | "EXPENSE_UPDATE" | "RETURN_CONFIRM" | "RETURN_INSPECT" | "RETURN_CANCEL" | "REFUND" | "CATEGORY_CREATE" | "CATEGORY_UPDATE" | "PRODUCT_CREATE" | "STOCK_BOX_CREATE",
   payload: any
 ): Promise<OutboxOperation> {
   const db = await openDb();
@@ -37,7 +38,7 @@ export async function enqueueOperation(
   return new Promise((resolve, reject) => {
     const tx = db.transaction("outbox", "readwrite");
     tx.objectStore("outbox").add(op);
-    tx.oncomplete = () => resolve(op);
+    tx.oncomplete = () => { triggerSync(); resolve(op); };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -73,3 +74,5 @@ export async function updateOperation(
     tx.onerror = () => reject(tx.error);
   });
 }
+
+

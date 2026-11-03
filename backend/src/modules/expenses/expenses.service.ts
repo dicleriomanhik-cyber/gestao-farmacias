@@ -5,12 +5,40 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { Prisma } from '@prisma/client';
 
+const METHODS_FOR: Record<string, string[]> = {
+  PHARMACY_CASH: ['CASH'],
+  OWNER_CASH: ['CASH'],
+  BANK: ['TRANSFER', 'CARD'],
+  MPESA: ['MPESA'],
+  EMOLA: ['EMOLA'],
+  OTHER: ['OTHER'],
+};
+
+function derivePaidFrom(method: string, allowCash: boolean) {
+  if (method === 'CASH') return allowCash ? 'PHARMACY_CASH' : 'OWNER_CASH';
+  if (method === 'MPESA') return 'MPESA';
+  if (method === 'EMOLA') return 'EMOLA';
+  if (method === 'CARD' || method === 'TRANSFER') return 'BANK';
+  return 'OTHER';
+}
+
 @Injectable()
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
   async create(pharmacyId: string, userId: string, dto: CreateExpenseDto) {
     return this.prisma.$transaction(async (tx) => {
+      const st = await tx.pharmacySettings.findUnique({ where: { pharmacyId } });
+      const allowCash = st ? st.allowCashExpenses : true;
+      const origin = dto.origin === 'COLLABORATOR' ? 'COLLABORATOR' : 'ADMIN';
+      if (origin === 'COLLABORATOR' && st && st.collaboratorExpenses === false) {
+        throw new BadRequestException('O colaborador não pode registar despesas (Definições).');
+      }
+      const paidFrom = dto.paidFrom ?? derivePaidFrom(dto.method, allowCash);
+      if (paidFrom === 'PHARMACY_CASH' && !allowCash) {
+        throw new BadRequestException('Pagar pela caixa da farmácia está desligado em Definições.');
+      }
+      const method = METHODS_FOR[paidFrom].includes(dto.method) ? dto.method : METHODS_FOR[paidFrom][0];
       const expense = await tx.expense.create({
         data: {
           pharmacyId,
@@ -18,7 +46,9 @@ export class ExpensesService {
           description: dto.description,
           category: dto.category,
           amount: dto.amount,
-          method: dto.method,
+          method,
+          paidFrom,
+          origin,
           expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : new Date(),
           externalReference: dto.externalReference,
           notes: dto.notes,
@@ -93,6 +123,14 @@ export class ExpensesService {
       const expense = await tx.expense.findFirst({ where: { id, pharmacyId } });
       if (!expense) throw new NotFoundException('Despesa não encontrada.');
       if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser editadas.');
+      if (dto.paidFrom !== undefined) {
+        const st = await tx.pharmacySettings.findUnique({ where: { pharmacyId } });
+        if (dto.paidFrom === 'PHARMACY_CASH' && st && st.allowCashExpenses === false) {
+          throw new BadRequestException('Pagar pela caixa da farmácia está desligado em Definições.');
+        }
+        const allowed = METHODS_FOR[dto.paidFrom];
+        if (allowed && !allowed.includes(dto.method ?? expense.method)) dto.method = allowed[0];
+      }
 
       const updated = await tx.expense.update({
         where: { id },
@@ -101,6 +139,7 @@ export class ExpensesService {
           ...(dto.category !== undefined && { category: dto.category }),
           ...(dto.amount !== undefined && { amount: dto.amount }),
           ...(dto.method !== undefined && { method: dto.method }),
+          ...(dto.paidFrom !== undefined && { paidFrom: dto.paidFrom }),
           ...(dto.expenseDate !== undefined && { expenseDate: new Date(dto.expenseDate) }),
           ...(dto.externalReference !== undefined && { externalReference: dto.externalReference }),
           ...(dto.notes !== undefined && { notes: dto.notes }),
@@ -134,7 +173,7 @@ export class ExpensesService {
     });
   }
 
-  async confirm(pharmacyId: string, userId: string, id: string) {
+  async confirm(pharmacyId: string, userId: string, id: string, permissions: string[] = []) {
     return this.prisma.$transaction(async (tx) => {
       // Lock da despesa para evitar dupla confirmação
       const expenses = await tx.$queryRaw`
@@ -147,14 +186,20 @@ export class ExpensesService {
       if (expense.status !== 'DRAFT') throw new BadRequestException('Apenas despesas em rascunho podem ser confirmadas.');
       if (Number(expense.amount) <= 0) throw new BadRequestException('Valor da despesa deve ser positivo.');
 
+      const isAdmin = permissions.includes('pharmacy:config:write');
+      if (expense.paidFrom === 'PHARMACY_CASH' && !isAdmin) {
+        const st = await tx.pharmacySettings.findUnique({ where: { pharmacyId } });
+        if (st && st.requireApprovalForCash) throw new BadRequestException('Aguarda aprovação do administrador.');
+      }
+
       let cashSessionId: string | null = null;
 
-      if (expense.method === 'CASH') {
+      if (expense.paidFrom === 'PHARMACY_CASH') {
         // Lock da sessão de caixa aberta do utilizador/farmácia
         const sessions = await tx.$queryRaw`
           SELECT * FROM "cash_sessions" 
           WHERE "pharmacyId" = ${pharmacyId}::uuid 
-            AND "userId" = ${userId}::uuid 
+            AND "userId" = ${expense.userId}::uuid 
             AND status = 'OPEN'
           FOR UPDATE
         `;

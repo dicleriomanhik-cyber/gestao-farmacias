@@ -6,6 +6,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 const STATE_LABEL: Record<StockBoxState, string> = {
   NEW: "Nova",
@@ -92,17 +93,7 @@ export default function StockBoxListPage() {
         <div style={{ display: "flex", gap: 24, alignItems: "end" }}>
           <div style={{ width: 180 }}>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#5b6478", marginBottom: "4px", fontWeight: 500 }}>Estado</label>
-            <select 
-              value={state} 
-              onChange={(e) => setState(e.target.value as StockBoxState | "")} 
-              style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, background: "#fff", color: "#1d2433", fontSize: "0.9rem" }}
-            >
-              <option value="">Todos</option>
-              <option value="NEW">Nova</option>
-              <option value="ACTIVE">Em uso</option>
-              <option value="DEPLETED">Esgotada</option>
-              <option value="EXPIRED">Expirada</option>
-            </select>
+            <CustomSelect value={state} onChange={(v) => setState(v as StockBoxState | "")} options={[{ value: "", label: "Todos" }, { value: "NEW", label: "Nova" }, { value: "ACTIVE", label: "Em uso" }, { value: "DEPLETED", label: "Esgotada" }, { value: "EXPIRED", label: "Expirada" }]} />
           </div>
 
           <div style={{ textAlign: "right", minWidth: 100 }}>

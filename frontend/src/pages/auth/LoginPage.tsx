@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../contexts/ToastContext";
@@ -7,8 +7,8 @@ import type { ApiErrorEnvelope } from "../../types/auth";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginPage() {
-  const { login, loginAsDemo } = useAuth();
+export default function LoginPage({ variant = "admin" }: { variant?: "admin" | "pos" }) {
+  const { login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: { pathname: string } } };
@@ -37,7 +37,7 @@ export default function LoginPage() {
     try {
       await login({ email, password });
       toast.success("Sessão iniciada com sucesso.");
-      const to = location.state?.from?.pathname ?? "/";
+      const to = location.state?.from?.pathname ?? (variant === "pos" ? "/pos" : "/");
       navigate(to, { replace: true });
     } catch (err) {
       const ax = err as AxiosError<ApiErrorEnvelope>;
@@ -47,7 +47,7 @@ export default function LoginPage() {
       let msg: string;
 
       if (!ax.response) {
-        msg = "Não foi possível ligar ao servidor.";
+        msg = "Não foi possível ligar à internet.";
       } else if (status === 401) {
         msg = "Credenciais inválidas.";
       } else if (status === 403 && code === "INVALID_CREDENTIALS") {
@@ -57,7 +57,7 @@ export default function LoginPage() {
       } else if (status === 400) {
         msg = "Dados inválidos. Verifica os campos.";
       } else if (status && status >= 500) {
-        msg = "Erro no servidor. Tenta novamente mais tarde.";
+        msg = "Não foi possível concluir. Tenta novamente mais tarde.";
       } else {
         msg = ax.response?.data?.error?.message ?? "Não foi possível autenticar.";
       }
@@ -67,12 +67,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleDemo() {
-    loginAsDemo();
-    toast.info("Sessão de demonstração iniciada.");
-    navigate("/", { replace: true });
   }
 
   return (
@@ -106,10 +100,15 @@ export default function LoginPage() {
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", cursor: loading ? "not-allowed" : "pointer", fontWeight: "bold", opacity: loading ? 0.6 : 1 }}>
             {loading ? "A entrar…" : "Entrar"}
           </button>
-          <button type="button" onClick={handleDemo} style={{ width: "100%", padding: "0.75rem", marginTop: "1rem", backgroundColor: "#e5e7eb", color: "#374151", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-            Entrar (Modo Demo)
-          </button>
         </form>
+        {variant === "admin" && (
+          <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.9rem" }}>
+            <Link to="/esqueci-password" style={{ color: "#2563eb" }}>Esqueci a palavra-passe</Link>
+            <div style={{ marginTop: "0.75rem", color: "#475569" }}>
+              Ainda não tens conta? <Link to="/criar-conta" style={{ color: "#2563eb", fontWeight: 600 }}>Criar conta</Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from "react";
+import PharmacyName from "../../components/layout/PharmacyName";
+import{ useEffect, useState } from "react";
 import { useAuth } from '../../hooks/useAuth';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { getSales } from "../../services/saleService";
@@ -145,7 +146,7 @@ export default function DashboardPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.25rem" }}>
-          Olá, {user?.name ?? user?.email ?? "—"}
+          <PharmacyName fallback={user?.name ?? user?.email ?? "—"} />
         </h1>
         <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>
           {new Date().toLocaleDateString("pt-PT", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}

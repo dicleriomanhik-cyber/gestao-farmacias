@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { createProduct, getProducts } from "../../services/productService";
 import { createStockBox } from "../../services/stockService";
 import type { Product, ProductRequest, ProductType } from "../../types/products";
@@ -8,6 +8,8 @@ import type { StockBoxCreateRequest } from "../../types/stock";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { getPurchases } from "../../services/purchaseService";
+import type { Purchase } from "../../types/purchases";
 
 const C = {
   border: "#d9dee9",
@@ -73,6 +75,10 @@ export default function StockBoxFormPage() {
   const [unitsPerInner, setUnitsPerInner] = useState("");
   const [totalUnits, setTotalUnits] = useState("");
   const [salePrice, setSalePrice] = useState("");
+  const [params] = useSearchParams();
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchaseId, setPurchaseId] = useState(params.get("compra") ?? "");
+  const [acquisitionCost, setAcquisitionCost] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -83,8 +89,8 @@ export default function StockBoxFormPage() {
   function load() {
     setLoading(true);
     setError(false);
-    getProducts({ status: "ACTIVE", limit: 100 })
-      .then((res) => setProducts(res.data))
+    Promise.all([getProducts({ status: "ACTIVE", limit: 100 }), getPurchases({ status: "DRAFT", limit: 100 }).catch(() => ({ data: [] as Purchase[] }))])
+      .then(([res, pur]) => { setProducts(res.data); setPurchases(pur.data); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
@@ -172,6 +178,11 @@ export default function StockBoxFormPage() {
       return toast.error("Indica o total de unidades.");
     }
 
+    if (purchaseId) {
+      const c = parseFloat(acquisitionCost);
+      if (isNaN(c) || c < 0) return toast.error("Indica o custo de aquisição da caixa.");
+    }
+
     let price = 0;
     if (creatingNew) {
       price = parseFloat(salePrice);
@@ -212,11 +223,16 @@ export default function StockBoxFormPage() {
         payload.totalUnits = total;
       }
 
+      if (purchaseId) {
+        payload.purchaseId = purchaseId;
+        payload.acquisitionCost = parseFloat(acquisitionCost);
+      }
+
       await createStockBox(payload);
       toast.success("Caixa registada com sucesso.");
-      navigate("/stock/caixas");
+      navigate(purchaseId ? `/fornecedores/compras/${purchaseId}` : "/stock/caixas");
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message ?? "Erro ao registar a caixa.";
+      const msg = err?.response ? (err.response.data?.error?.message ?? "Erro ao registar a caixa.") : (err?.message ?? "Erro ao registar a caixa.");
       toast.error(String(msg));
     } finally {
       setSubmitting(false);
@@ -386,6 +402,35 @@ export default function StockBoxFormPage() {
     </div>
   );
 
+  const selectedPurchase = purchases.find((p) => p.id === purchaseId);
+
+  const compraField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Compra</label>
+      <select
+        value={purchaseId}
+        onChange={(e) => {
+          if (e.target.value === "__nova") navigate("/fornecedores/compras/nova");
+          else setPurchaseId(e.target.value);
+        }}
+        style={inputStyle}
+      >
+        <option value="">Sem compra</option>
+        {purchases.map((p) => (
+          <option key={p.id} value={p.id}>{p.documentNumber} — {p.supplier?.name ?? "—"}</option>
+        ))}
+        <option value="__nova">+ Nova compra</option>
+      </select>
+    </div>
+  );
+
+  const custoField = (
+    <div className={isMobile ? "sbf-field" : undefined}>
+      <label style={labelStyle}>Custo de aquisição da caixa ({selectedPurchase && selectedPurchase.currency !== "MZN" ? selectedPurchase.currency : "MT"})</label>
+      <input autoComplete="off" type="number" min="0" step="0.01" value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)} style={inputStyle} />
+    </div>
+  );
+
   const resumoBoxes = (
     <>
       <div style={{ padding: "8px 12px", background: C.okSoft, border: `1px dashed ${C.ok}`, borderRadius: 6, fontSize: "0.85rem", color: C.text }}>
@@ -463,6 +508,14 @@ export default function StockBoxFormPage() {
             </div>
           </section>
 
+          <section className="sbf-section">
+            <h3 className="sbf-subtitle">Compra</h3>
+            <div className="sbf-grid">
+              {compraField}
+              {purchaseId && custoField}
+            </div>
+          </section>
+
           <section className="sbf-summary">{resumoBoxes}</section>
 
           <div className="sbf-actions">{botoes}</div>
@@ -508,6 +561,8 @@ export default function StockBoxFormPage() {
             {fabricoField}
             {validadeField}
             {isMedicine && precoField}
+            {compraField}
+            {purchaseId && custoField}
           </div>
         </div>
 
@@ -519,7 +574,7 @@ export default function StockBoxFormPage() {
   );
 }
 
-function MonthField({ value, onChange, disabled, style }: { value: string; onChange: (v: string) => void; disabled?: boolean; style: CSSProperties }) {
+export function MonthField({ value, onChange, disabled, style }: { value: string; onChange: (v: string) => void; disabled?: boolean; style: CSSProperties }) {
   const isMobile = useIsMobile();
   const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const MESES_LONGOS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -533,6 +588,7 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
   const [aberto, setAberto] = useState(false);
   const [anoVista, setAnoVista] = useState(value ? Number(value.slice(0, 4)) : anoAtual);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     setText(toText(value));
@@ -579,6 +635,15 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
   const abrir = () => {
     if (disabled) return;
     setAnoVista(value ? Number(value.slice(0, 4)) : anoAtual);
+    const r = wrapRef.current?.getBoundingClientRect();
+    if (r) {
+      const w = 240, h = 270;
+      const cabe = r.right + 8 + w <= window.innerWidth - 8;
+      setPos({
+        left: cabe ? r.right + 8 : Math.max(8, (window.innerWidth - w) / 2),
+        top: Math.min(Math.max(8, r.top + r.height / 2 - h / 2), window.innerHeight - h - 8),
+      });
+    }
     setAberto(true);
   };
 
@@ -615,7 +680,7 @@ function MonthField({ value, onChange, disabled, style }: { value: string; onCha
       </button>
 
       {aberto && !isMobile && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 60, width: 240, background: "#fff", border: "1px solid #d9dee9", borderRadius: 8, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "0.6rem" }}>
+        <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 3000, width: 240, background: "#fff", border: "1px solid #d9dee9", borderRadius: 8, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "0.6rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
             <button type="button" onClick={() => setAnoVista(anoVista - 1)} style={navBtn}>‹</button>
             <span style={{ fontWeight: 600, color: "#1d2433" }}>{anoVista}</span>

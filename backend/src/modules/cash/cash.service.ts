@@ -171,4 +171,33 @@ export class CashService {
       return movement;
     });
   }
+
+  async getPayments(pharmacyId: string, userId: string) {
+    const session = await this.prisma.cashSession.findFirst({
+      where: { pharmacyId, userId, status: 'OPEN' },
+    });
+    if (!session) throw new NotFoundException('Não tem sessão de caixa aberta.');
+
+    const payments = await this.prisma.salePayment.findMany({
+      where: { cashSessionId: session.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalsByMethod = {
+      CASH: 0,
+      CARD: 0,
+      MPESA: 0,
+      EMOLA: 0,
+      TRANSFER: 0,
+      OTHER: 0,
+    };
+
+    payments.forEach((p) => {
+      if (totalsByMethod[p.method] !== undefined) {
+        totalsByMethod[p.method] += parseFloat(p.amount.toString());
+      }
+    });
+
+    return { session, payments, totalsByMethod };
+  }
 }

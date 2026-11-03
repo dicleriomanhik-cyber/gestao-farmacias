@@ -1,4 +1,4 @@
-﻿# Segredos e configurações locais
+# Segredos e configurações locais
 .env
 .env.*
 !.env.example
@@ -38,3 +38,9 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+*.bak
+*.bak*
+*.sql
+backend/permissoes.txt
+frontend/resultado.txt

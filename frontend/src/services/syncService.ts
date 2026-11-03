@@ -55,7 +55,7 @@ export async function pushOperations(
 
   const resp = await apiClient.post<SyncPushResponse>("/sync/push", {
     clientId,
-    clientVersion: "1.0.0",
+    appVersion: "1.0.0",
     operations: batch,
   });
   return resp.data.data.results;
@@ -82,3 +82,4 @@ export async function getOperationStatus(
   );
   return resp.data.data;
 }
+

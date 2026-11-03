@@ -1,8 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getReturnById, confirmReturn, inspectReturnLine, createRefund } from "../../services/returnService";
+import { getReturnById, confirmReturn, inspectReturnLine, createRefund, cancelReturn, confirmRefund } from "../../services/returnService";
 import { getSalePayments } from "../../services/saleService";
 import { getActiveCashSession } from "../../services/cashService";
+import { notifyDataChanged } from "../../offline/dataChanged";
+import { refundedAmount } from "../../utils/refundStatus";
 import type { SaleReturn, ReturnLineCondition } from "../../types/returns";
 import type { Payment, CashSession } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
@@ -50,7 +52,34 @@ export default function OperationalReturnDetailPage() {
   const [selectedPayment, setSelectedPayment] = useState<string>("");
   const [selectedLine, setSelectedLine] = useState<string>("");
   const [refundMethod, setRefundMethod] = useState<"CASH" | "CARD" | "MPESA" | "EMOLA">("CASH");
+  const concluidaRef = useRef(false);
+  const retRef = useRef<SaleReturn | null>(null);
 
+  useEffect(() => { retRef.current = ret; }, [ret]);
+
+  useEffect(() => {
+    return () => {
+      const r = retRef.current;
+      if (!r || concluidaRef.current) return;
+      if (r.status !== "CONFIRMED" && r.status !== "DRAFT") return;
+      if ((r.refunds ?? []).some((f: any) => f.status === "COMPLETED")) return;
+      cancelReturn(r.id).catch(() => undefined);
+    };
+  }, []);
+
+  async function handleRefundStatus(refundId: string, status: "COMPLETED" | "CANCELLED") {
+    setActionLoading(true);
+    try {
+      await confirmRefund(refundId, status);
+      if (status === "COMPLETED") concluidaRef.current = true;
+      toast.success(status === "COMPLETED" ? "Pagamento confirmado." : "Reembolso cancelado.");
+      await load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Não foi possível atualizar o reembolso.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
   async function load() {
     if (!id) return;
     setLoading(true);
@@ -127,23 +156,25 @@ export default function OperationalReturnDetailPage() {
       return toast.error(`O método de reembolso (${methodLabels[refundMethod]}) tem de ser igual ao pagamento original (${methodLabels[payment.method]}).`);
     }
 
-    if (refundMethod === "CASH" && !cashSession) {
-      return toast.error("É necessário abrir a caixa antes de reembolsar em dinheiro.");
+    if (!cashSession) {
+      return toast.error("É necessário abrir a caixa antes de reembolsar.");
     }
-
-    const lineSubtotal = parseFloat(ret.lines?.find(l => l.id === selectedLine)?.subtotal ?? ret.totalRefund);
 
     setActionLoading(true);
     try {
-      await createRefund(id, {
-        returnLineId: selectedLine,
-        salePaymentId: selectedPayment,
-        method: refundMethod,
-        amount: lineSubtotal,
-        cashSessionId: refundMethod === "CASH" ? cashSession?.id : undefined,
-      });
+      const todo = (ret.lines ?? []).filter((l: any) => parseFloat(l.subtotal) - refundedAmount(ret, l) > 0.005);
+      for (const l of todo as any[]) {
+        await createRefund(id, {
+          returnLineId: l.id,
+          salePaymentId: selectedPayment,
+          method: refundMethod,
+          amount: Number((parseFloat(l.subtotal) - refundedAmount(ret, l)).toFixed(2)),
+          cashSessionId: cashSession?.id,
+        });
+      }
+      concluidaRef.current = true;
+      notifyDataChanged();
       toast.success("Reembolso registado.");
-      // Redirecionar para o caixa após o reembolso
       navigate("/pos/caixa");
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message ?? "Erro ao reembolsar.";
@@ -219,13 +250,17 @@ export default function OperationalReturnDetailPage() {
       {ret.status === "CONFIRMED" && (
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.75rem" }}>Reembolso</h3>
+          {(ret.lines ?? []).flatMap((l: any) => (l.refunds ?? []).filter((f: any) => f.status === "PENDING").map((f: any) => (
+            <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem", padding: "0.5rem 0.75rem", background: "#fefce8", borderRadius: "6px" }}>
+              <span>{methodLabels[f.method] ?? f.method} — {parseFloat(f.amount).toFixed(2)} MT — pagamento por confirmar</span>
+              <span style={{ display: "flex", gap: "0.5rem" }}>
+                <button className="btn btn-success" disabled={actionLoading} onClick={() => handleRefundStatus(f.id, "COMPLETED")}>Confirmar pagamento</button>
+                <button className="btn" disabled={actionLoading} onClick={() => handleRefundStatus(f.id, "CANCELLED")}>Cancelar</button>
+              </span>
+            </div>
+          )))}
           
-          <label style={{ display: "block", marginBottom: "0.5rem" }}>Linha a reembolsar:</label>
-          <select value={selectedLine} onChange={(e) => setSelectedLine(e.target.value)} className="input" style={{ marginBottom: "1rem" }}>
-            {(ret.lines ?? []).map((l) => (
-              <option key={l.id} value={l.id}>{l.product?.name ?? l.productId.substring(0, 8)} — {parseFloat(l.subtotal).toFixed(2)} MT</option>
-            ))}
-          </select>
+          <p style={{ marginBottom: "1rem" }}>Total a reembolsar: {parseFloat(ret.totalRefund).toFixed(2)} MT</p>
 
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Pagamento original:</label>
           <select value={selectedPayment} onChange={(e) => setSelectedPayment(e.target.value)} className="input" style={{ marginBottom: "1rem" }}>

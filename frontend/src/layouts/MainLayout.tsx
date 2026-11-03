@@ -2,6 +2,7 @@ import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { hasPermission } from "../utils/permissions";
 import SyncStatusBadge from "../components/offline/SyncStatusBadge";
+import PharmacyName from "../components/layout/PharmacyName";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
@@ -13,11 +14,12 @@ export default function MainLayout() {
   const allItems = [
     { path: "/", label: "Dashboard", show: true },
     { path: "/caixa-admin", label: "Gestão de Caixa", show: hasPermission(permissions, "cash:open") },
-    { path: "/produtos", label: "Produtos", show: hasPermission(permissions, "products:read") },
+    
     { path: "/stock/caixas", label: "Stock", show: hasPermission(permissions, "stock:read") },
+    { path: "/fornecedores", label: "Fornecedores", show: hasPermission(permissions, "pharmacy:config:write") },
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
     { path: "/devolucoes", label: "Devoluções", show: hasPermission(permissions, "returns:read") },
-    { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") },
+    { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") }, { path: "/definicoes", label: "Definições", show: hasPermission(permissions, "pharmacy:config:write") },
     { path: "/utilizadores", label: "Utilizadores", show: hasPermission(permissions, "users:read") },
   ];
 
@@ -34,7 +36,7 @@ export default function MainLayout() {
         <h2 className="app-brand">Sistema de Gestão</h2>
         <div className="app-actions">
           <SyncStatusBadge />
-          <span className="app-user header-user-name">{displayName}</span>
+          <span className="app-user header-user-name"><PharmacyName fallback={displayName} /></span>
           <Link to="/pos" className="app-link-pos">Abrir POS</Link>
           <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>

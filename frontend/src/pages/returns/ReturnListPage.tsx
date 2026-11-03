@@ -1,10 +1,10 @@
-﻿import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getReturns } from "../../services/returnService";
 import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
 
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from '../../components/ui/PageHeader';
+
 import CustomSelect from '../../components/ui/CustomSelect';
 
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
@@ -128,8 +128,8 @@ export default function ReturnListPage() {
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <PageHeader title="Devoluções" />
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 -1.5rem 0 #f1f5f9, 0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        
 
         {/* BARRA DE FILTROS */}
         <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>

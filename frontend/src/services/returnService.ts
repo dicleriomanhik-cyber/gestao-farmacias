@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createReturnLocal, confirmReturnLocal, inspectReturnLocal, createRefundLocal, cancelReturnLocal } from "../offline/operationsLocal";
 import type {
   SaleReturn,
   ReturnListParams,
@@ -39,13 +40,32 @@ export async function createReturn(data: {
   reason: string;
   lines: { saleLineId: string; quantity: number; lotNumber?: string; expiryDate?: string }[];
 }): Promise<SaleReturn> {
-  const resp = await apiClient.post<Envelope<SaleReturn>>("/returns", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<SaleReturn>>("/returns", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await createReturnLocal(data)) as SaleReturn;
+  }
 }
 
 export async function confirmReturn(id: string): Promise<SaleReturn> {
-  const resp = await apiClient.patch<Envelope<SaleReturn>>(`/returns/${id}/confirm`);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.patch<Envelope<SaleReturn>>(`/returns/${id}/confirm`);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await confirmReturnLocal(id)) as SaleReturn;
+  }
+}
+
+export async function cancelReturn(id: string): Promise<void> {
+  try {
+    await apiClient.patch(`/returns/${id}/cancel`);
+  } catch (err: any) {
+    if (err?.response) throw err;
+    await cancelReturnLocal(id);
+  }
 }
 
 export async function inspectReturnLine(
@@ -53,8 +73,13 @@ export async function inspectReturnLine(
   lineId: string,
   data: { condition: ReturnLineCondition; quantityToRelease: number }
 ): Promise<SaleReturn> {
-  const resp = await apiClient.patch<Envelope<SaleReturn>>(`/returns/${returnId}/lines/${lineId}/inspect`, data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.patch<Envelope<SaleReturn>>(`/returns/${returnId}/lines/${lineId}/inspect`, data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await inspectReturnLocal(returnId, lineId, data)) as SaleReturn;
+  }
 }
 
 export async function createRefund(
@@ -67,8 +92,13 @@ export async function createRefund(
     cashSessionId?: string;
   }
 ): Promise<ReturnRefund> {
-  const resp = await apiClient.post<Envelope<ReturnRefund>>(`/returns/${returnId}/refund`, data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<ReturnRefund>>(`/returns/${returnId}/refund`, data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await createRefundLocal(returnId, data)) as ReturnRefund;
+  }
 }
 
 export async function confirmRefund(refundId: string, status: "COMPLETED" | "FAILED" | "CANCELLED"): Promise<ReturnRefund> {

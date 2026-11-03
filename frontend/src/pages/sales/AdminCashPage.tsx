@@ -1,10 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
-import { getExpenses } from "../../services/expenseService";
+
 import { getSales } from "../../services/saleService";
 import { apiClient } from "../../services/api";
 import type { CashSession, PaymentMethod, Sale } from "../../types/sales";
-import type { Expense } from "../../types/expenses";
+
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -21,6 +21,7 @@ interface CashMovement {
   type: "IN" | "OUT";
   amount: string;
   reason: string;
+  method?: string;
   createdAt: string;
 }
 
@@ -31,7 +32,7 @@ export default function AdminCashPage() {
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -48,14 +49,14 @@ export default function AdminCashPage() {
     setLoading(true);
     setError(false);
     try {
-      const [active, salesRes, expRes] = await Promise.all([
+      const [active, salesRes] = await Promise.all([
         getActiveCashSession(),
         getSales({ limit: 1000 }),
-        getExpenses({ limit: 1000 }),
+        
       ]);
       setSession(active);
       setSales(salesRes.data);
-      setExpenses(expRes.data);
+      
 
       if (active) {
         const data = await getPayments();
@@ -129,18 +130,19 @@ export default function AdminCashPage() {
   }
 
   const filteredSales = sales.filter(s => s.status === "CONFIRMED" && isWithinPeriod(s.createdAt));
-  const filteredExpenses = expenses.filter(e => e.status === "CONFIRMED" && isWithinPeriod(e.expenseDate));
+  
   const totalSalesPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
 
-  const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalExpensesCash = filteredExpenses.filter(e => e.method === "CASH").reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const totalOut = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalIn = movements.filter((m) => m.type === "IN" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalExpensesCash = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH" && String(m.reason).startsWith("Despesa")).reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalOutDigital = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") !== "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
 
   const cashInDrawer = session 
-    ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
+    ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut 
     : 0;
   
-  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
+  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0) - totalOutDigital;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

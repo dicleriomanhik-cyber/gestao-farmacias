@@ -1,4 +1,4 @@
-﻿export type ReturnStatus = "DRAFT" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+export type ReturnStatus = "DRAFT" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
 export type ReturnLineCondition = "RESELLABLE" | "DAMAGED" | "EXPIRED" | "LOST";
 
@@ -30,6 +30,7 @@ export interface SaleReturn {
   createdAt: string;
   updatedAt: string;
   lines?: ReturnLine[];
+  refunds?: ReturnRefund[];
   sale?: { saleNumber: string };
 }
 

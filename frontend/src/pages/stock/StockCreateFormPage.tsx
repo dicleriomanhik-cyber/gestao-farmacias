@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { createLot } from "../../services/stockService";
 import { getProducts } from "../../services/productService";
@@ -73,7 +73,7 @@ export default function StockCreateFormPage() {
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
           <label style={{ fontWeight: 500 }}>Produto *</label>
-          <Link to="/produtos/novo" style={{ color: "#2563eb", fontSize: "0.85rem", textDecoration: "underline" }}>
+          <Link to="/stock/caixas/nova" style={{ color: "#2563eb", fontSize: "0.85rem", textDecoration: "underline" }}>
             + Novo Produto
           </Link>
         </div>

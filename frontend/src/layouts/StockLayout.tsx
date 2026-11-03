@@ -53,6 +53,7 @@ export default function StockLayout() {
             {abrindo ? "A abrir..." : "Detalhe da caixa"}
           </button>
         )}
+        <NavLink to="/stock/produtos" style={({ isActive }) => tab(isActive)}>Editar produtos</NavLink>
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Outlet />

@@ -1,7 +1,8 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
 import type {
   Purchase,
   PurchaseRequest,
+  PurchaseUpdateRequest,
   PaginatedResult,
   ListParams,
 } from "../types/purchases";
@@ -27,6 +28,7 @@ export async function getPurchases(params: ListParams = {}): Promise<PaginatedRe
       page: params.page ?? 1,
       limit: params.limit ?? 20,
       ...(params.status ? { status: params.status } : {}),
+      ...(params.supplierId ? { supplierId: params.supplierId } : {}),
     },
   });
   return resp.data.data;
@@ -42,8 +44,13 @@ export async function createPurchase(data: PurchaseRequest): Promise<Purchase> {
   return resp.data.data;
 }
 
-export async function confirmPurchase(id: string): Promise<Purchase> {
-  const resp = await apiClient.patch<Envelope<Purchase>>(`/purchases/${id}/confirm`);
+export async function updatePurchase(id: string, data: PurchaseUpdateRequest): Promise<Purchase> {
+  const resp = await apiClient.patch<Envelope<Purchase>>(`/purchases/${id}`, data);
+  return resp.data.data;
+}
+
+export async function confirmPurchase(id: string, pay?: { paidFrom: string; method: string }): Promise<Purchase> {
+  const resp = await apiClient.patch<Envelope<Purchase>>(`/purchases/${id}/confirm`, pay ?? {});
   return resp.data.data;
 }
 

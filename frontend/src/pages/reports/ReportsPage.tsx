@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getReportSummary,
   getReportSales,
@@ -16,7 +16,7 @@ import type {
 import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from '../../components/ui/PageHeader';
+
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
@@ -26,6 +26,15 @@ function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
   return parseFloat(String(v)).toFixed(2);
 }
+
+const PAID_FROM_LABELS: Record<string, string> = {
+  PHARMACY_CASH: "Caixa da farmácia",
+  OWNER_CASH: "Dinheiro do dono ou do colaborador",
+  BANK: "Banco / transferência",
+  MPESA: "M-Pesa",
+  EMOLA: "e-Mola",
+  OTHER: "Outro",
+};
 
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
@@ -44,6 +53,7 @@ export default function ReportsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [paidFromFilter, setPaidFromFilter] = useState("ALL");
 
   function load() {
     setLoading(true);
@@ -105,7 +115,13 @@ export default function ReportsPage() {
   }
 
   const filteredSalesList = sales?.sales.filter(s => isWithinPeriod(s.createdAt)) ?? [];
-  const filteredExpensesList = expenses?.expenses.filter(e => isWithinPeriod(e.expenseDate)) ?? [];
+  const periodExpensesList = expenses?.expenses.filter(e => isWithinPeriod(e.expenseDate)) ?? [];
+  const filteredExpensesList = paidFromFilter === "ALL" ? periodExpensesList : periodExpensesList.filter(e => (e.paidFrom ?? "OTHER") === paidFromFilter);
+  const byOrigin = Object.entries(PAID_FROM_LABELS).map(([key, label]) => {
+    const rows = periodExpensesList.filter(e => (e.paidFrom ?? "OTHER") === key);
+    return { key, label, count: rows.length, total: rows.reduce((a, e) => a + parseFloat(e.amount), 0) };
+  }).filter(r => r.count > 0);
+  const totalOrigins = byOrigin.reduce((a, r) => a + r.total, 0);
   const filteredReturnsList = returns.filter(r => isWithinPeriod(r.createdAt));
 
   const totalSales = filteredSalesList.reduce((acc, s) => acc + parseFloat(s.total), 0);
@@ -157,20 +173,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <PageHeader
-          title="Relatórios"
-          actions={
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-
-              <button onClick={handleExportPDF} className="btn btn-secondary" disabled={loading}>📄 PDF</button>
-              <button onClick={load} className="btn btn-secondary" disabled={loading}>
-                {loading ? "A carregar…" : "Atualizar"}
-              </button>
-            </div>
-          }
-        />
-
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f1f5f9", paddingBottom: "1rem", paddingTop: "0.5rem", boxShadow: "0 -1.5rem 0 #f1f5f9, 0 4px 6px -1px rgba(0,0,0,0.05)" }}>
         <div className="card" style={{ padding: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
           <div style={{ width: "220px" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Período</label>
@@ -189,6 +192,18 @@ export default function ReportsPage() {
             />
           </div>
 
+          {canFinancial && (
+            <div style={{ width: "260px" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "#475569" }}>Pago com</label>
+              <CustomSelect
+                value={paidFromFilter}
+                onChange={setPaidFromFilter}
+                options={[{ value: "ALL", label: "Todas as origens" }, ...Object.entries(PAID_FROM_LABELS).map(([value, label]) => ({ value, label }))]}
+                style={{ width: "100%", fontSize: "0.85rem", padding: "0.4rem 0.6rem" }}
+              />
+            </div>
+          )}
+
           {dateFilter === "CUSTOM" && (
             <>
               <div>
@@ -201,6 +216,13 @@ export default function ReportsPage() {
               </div>
             </>
           )}
+
+          <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
+            <button onClick={handleExportPDF} className="btn btn-secondary" disabled={loading}>{"\u{1F4C4} PDF"}</button>
+            <button onClick={load} className="btn btn-secondary" disabled={loading}>
+              {loading ? "A carregar…" : "Atualizar"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -225,6 +247,33 @@ export default function ReportsPage() {
           <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
         </div>
       </div>
+
+      {canFinancial && byOrigin.length > 0 && (
+        <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Despesas por Origem</h2>
+          <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <thead>
+              <tr><th style={{ width: "50%" }}>Origem</th><th style={{ width: "15%" }}>Despesas</th><th style={{ width: "20%" }}>Total</th><th style={{ width: "15%" }}>%</th></tr>
+            </thead>
+            <tbody>
+              {byOrigin.map((r) => (
+                <tr key={r.key}>
+                  <td>{r.label}</td>
+                  <td>{r.count}</td>
+                  <td>{money(r.total)} MT</td>
+                  <td>{totalOrigins > 0 ? ((r.total / totalOrigins) * 100).toFixed(1) : "0.0"}%</td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: "bold" }}>
+                <td>Total</td>
+                <td>{periodExpensesList.length}</td>
+                <td>{money(totalOrigins)} MT</td>
+                <td>100.0%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {canFinancial && filteredExpensesList.length > 0 && (
         <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>

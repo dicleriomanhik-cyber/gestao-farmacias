@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useDataChanged } from "../../offline/dataChanged";
 import { apiClient } from "../../services/api";
 import { formatDateTime } from "../../utils/formatDate";
 import LoadingState from "../../components/ui/LoadingState";
@@ -22,12 +23,15 @@ export default function CashMovementsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMovement, setSelectedMovement] = useState<CashMovement | null>(null);
 
-  useEffect(() => {
+  function load() {
     apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements")
       .then((resp) => setMovements(resp.data.data ?? []))
       .catch(() => setMovements([]))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { load(); }, []);
+  useDataChanged(load);
 
   if (loading) return <LoadingState />;
 

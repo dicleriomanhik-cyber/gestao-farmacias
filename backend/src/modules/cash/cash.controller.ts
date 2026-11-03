@@ -59,4 +59,11 @@ export class CashController {
   createMovement(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCashMovementDto) {
     return this.service.createMovement(pharmacyId, user.id, dto);
   }
+
+  @Get('payments')
+  @RequirePermissions(PERMISSIONS.SALES_READ)
+  @ApiOperation({ summary: 'Pagamentos da sessão de caixa aberta' })
+  getPayments(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getPayments(pharmacyId, user.id);
+  }
 }

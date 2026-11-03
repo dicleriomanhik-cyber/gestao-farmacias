@@ -1,7 +1,9 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getSaleById, getSales } from "../../services/saleService";
 import { getReturns, createReturn } from "../../services/returnService";
+import { useDataChanged } from "../../offline/dataChanged";
+import { fullyRefundedSaleIds } from "../../utils/refundStatus";
 import { formatDateTime } from "../../utils/formatDate";
 import type { Sale } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
@@ -22,6 +24,8 @@ export default function OperationalReturnPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [tick, setTick] = useState(0);
+  useDataChanged(() => { if (!saleId) setTick((t) => t + 1); });
   
   const [dateFilter, setDateFilter] = useState<"ALL" | "DAILY">("DAILY");
 
@@ -36,25 +40,19 @@ export default function OperationalReturnPage() {
         .catch(() => setError(true))
         .finally(() => setLoading(false));
     } else {
-      setLoading(true);
+      if (tick === 0) setLoading(true);
       Promise.all([
         getSales({ limit: 100, status: "CONFIRMED" }),
         getReturns({ page: 1, limit: 100 })
       ])
         .then(([salesRes, returnsRes]) => {
           setSales(salesRes.data);
-          const ids = new Set<string>();
-          returnsRes.data.forEach((r) => {
-            if (r.status === "CONFIRMED" || r.status === "COMPLETED" || r.status === "DRAFT") {
-              ids.add(r.saleId);
-            }
-          });
-          setReturnedSaleIds(ids);
+          setReturnedSaleIds(fullyRefundedSaleIds(returnsRes.data));
         })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
     }
-  }, [saleId]);
+  }, [saleId, tick]);
 
   function updateLineQty(saleLineId: string, qty: number) {
     setLines((prev) => prev.map((l) => l.saleLineId === saleLineId ? { ...l, quantity: Math.max(1, qty) } : l));

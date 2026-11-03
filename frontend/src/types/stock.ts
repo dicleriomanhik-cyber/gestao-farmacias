@@ -82,6 +82,8 @@ export interface StockBox {
   totalUnits: number;
   quantityAvailable: number;
   state: StockBoxState;
+  acquisitionCost?: string | number | null;
+  realUnitCost?: string | number | null;
 }
 
 export interface StockBoxInner {
@@ -113,6 +115,8 @@ export interface StockBoxListParams {
 }
 
 export interface StockBoxCreateRequest {
+  purchaseId?: string;
+  acquisitionCost?: number;
   productId: string;
   qrCode: string;
   expiryDate?: string | null;

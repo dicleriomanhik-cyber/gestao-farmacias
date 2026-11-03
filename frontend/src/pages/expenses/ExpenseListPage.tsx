@@ -1,13 +1,14 @@
-﻿import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getExpenses, confirmExpense, cancelExpense } from "../../services/expenseService";
-import type { Expense, ExpenseCategory, ExpenseMethod } from "../../types/expenses";
+import type { Expense, ExpenseCategory, ExpenseMethod, ExpensePaidFrom } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from '../../components/ui/PageHeader';
+
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../hooks/useAuth";
+import { useDataChanged } from "../../offline/dataChanged";
 import { hasPermission } from "../../utils/permissions";
 
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -30,6 +31,15 @@ const METHOD_LABELS: Record<ExpenseMethod, string> = {
   OTHER: "Outro",
 };
 
+const PAID_FROM_LABELS: Record<ExpensePaidFrom, string> = {
+  PHARMACY_CASH: "Caixa da farmácia",
+  OWNER_CASH: "Dinheiro do dono ou do colaborador",
+  BANK: "Banco / transferência",
+  MPESA: "M-Pesa",
+  EMOLA: "e-Mola",
+  OTHER: "Outro",
+};
+
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
 interface Props { isOperational?: boolean }
@@ -37,18 +47,20 @@ interface Props { isOperational?: boolean }
 export default function ExpenseListPage({ isOperational = false }: Props) {
   const { user } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [cancelId, setCancelId] = useState<string | null>(null);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  function load() {
-    setLoading(true);
+  function load(silent = false) {
+    if (!silent) setLoading(true);
     setError(false);
     getExpenses({ limit: 1000 })
       .then((res) => setExpenses(res.data))
@@ -59,6 +71,15 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   useEffect(() => {
     load();
   }, []);
+
+  useDataChanged(() => load(true));
+
+  useEffect(() => {
+    if (!cancelId) return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setCancelId(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [cancelId]);
 
   async function handleConfirm(id: string) {
     setActionLoading(id);
@@ -74,7 +95,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   }
 
   async function handleCancel(id: string) {
-    if (!window.confirm("Cancelar esta despesa?")) return;
+    setCancelId(null);
     setActionLoading(id);
     try {
       await cancelExpense(id);
@@ -91,7 +112,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   if (error) return <ErrorState message="Não foi possível carregar as despesas." onRetry={load} />;
 
   const now = new Date();
-  let filteredExpenses = expenses.filter(e => e.status !== "CANCELLED");
+  let filteredExpenses = (isOperational ? expenses.filter(e => e.origin === "COLLABORATOR") : expenses).filter(e => e.status !== "CANCELLED");
 
   if (dateFilter === "DAILY") {
     const todayStr = now.toLocaleDateString("pt-PT");
@@ -120,8 +141,8 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
     }
   }
 
-  const totalPeriod = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
-  const totalCount = filteredExpenses.length;
+  const totalPeriod = filteredExpenses.filter((e) => e.status === "CONFIRMED").reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const totalCount = filteredExpenses.filter((e) => e.status === "CONFIRMED").length;
 
   function statusBadge(status: string) {
     const map: Record<string, { bg: string; color: string; label: string }> = {
@@ -138,7 +159,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   }
 
   function getOrigin(e: Expense) {
-    return e.cashSessionId ? (
+    return e.origin === "COLLABORATOR" ? (
       <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: "500" }}>
         Colaborador
       </span>
@@ -153,10 +174,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
 
   return (
     <div>
-      <PageHeader
-        title="Despesas"
-        actions={canWrite ? <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link> : null}
-      />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link> : null}</div>
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ width: "220px" }}>
@@ -222,7 +240,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                   <td>{parseFloat(e.amount).toFixed(2)} MT</td>
                   <td>{getOrigin(e)}</td>
                   <td>{statusBadge(e.status)}</td>
-                  <td style={{ display: "flex", gap: "0.5rem" }}>
+                  <td><div style={{ display: "flex", gap: "0.5rem" }}>
                     <button
                       onClick={() => setSelectedExpense(e)}
                       style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
@@ -232,6 +250,13 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                     {e.status === "DRAFT" && canWrite && (
                       <>
                         <button
+                          onClick={() => navigate(isOperational ? `/pos/despesas/${e.id}/editar` : `/despesas/${e.id}/editar`)}
+                          className="btn btn-secondary"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          Editar
+                        </button>
+                        <button
                           onClick={() => handleConfirm(e.id)}
                           disabled={actionLoading === e.id}
                           className="btn btn-success"
@@ -240,7 +265,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                           Confirmar
                         </button>
                         <button
-                          onClick={() => handleCancel(e.id)}
+                          onClick={() => setCancelId(e.id)}
                           disabled={actionLoading === e.id}
                           className="btn btn-danger"
                           style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
@@ -249,11 +274,43 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                         </button>
                       </>
                     )}
-                  </td>
+                  </div></td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {cancelId && (
+        <div
+          onClick={() => setCancelId(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", width: "100%", maxWidth: "380px", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}
+          >
+            <div style={{ fontSize: "1.05rem", fontWeight: 600, color: "#0f172a", marginBottom: "0.5rem" }}>Cancelar esta despesa?</div>
+            <div style={{ fontSize: "0.9rem", color: "#334155", marginBottom: "1.25rem" }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button
+                onClick={() => setCancelId(null)}
+                style={{ padding: "0.55rem 1.1rem", borderRadius: "999px", border: "1px solid #e2e8f0", background: "#fff", color: "#0f172a", cursor: "pointer", fontSize: "0.9rem" }}
+              >
+                Voltar
+              </button>
+              <button
+                autoFocus
+                onClick={() => void handleCancel(cancelId)}
+                style={{ padding: "0.55rem 1.1rem", borderRadius: "999px", border: "none", background: "#e11d1d", color: "#fff", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }}
+              >
+                Cancelar despesa
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -282,6 +339,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
             <p><strong>Origem:</strong> {getOrigin(selectedExpense)}</p>
             <p><strong>Categoria:</strong> {CATEGORY_LABELS[selectedExpense.category] ?? selectedExpense.category}</p>
             <p><strong>Método:</strong> {METHOD_LABELS[selectedExpense.method] ?? selectedExpense.method}</p>
+            <p><strong>Pago com:</strong> {selectedExpense.paidFrom ? PAID_FROM_LABELS[selectedExpense.paidFrom] : "—"}</p>
             <p><strong>Valor:</strong> <span style={{ color: "#b91c1c", fontWeight: "bold" }}>{parseFloat(selectedExpense.amount).toFixed(2)} MT</span></p>
             <p><strong>Estado:</strong> {statusBadge(selectedExpense.status)}</p>
             <p style={{ marginTop: "1rem" }}><strong>Descrição completa:</strong></p>

@@ -1,6 +1,9 @@
-﻿import { apiClient } from "./api";
+import { isApiOnline } from "../offline/connectivity";
+import { apiClient } from "./api";
 import type { Sale, SaleRequest, PaginatedResult, SaleListParams, Payment } from "../types/sales";
 import { enqueueOperation } from "../offline/queue";
+import { localSales, localActiveCashSession } from "../offline/readModel";
+import { saveLocalSale } from "../offline/localWrite";
 
 interface Envelope<T> {
   success: true;
@@ -18,18 +21,22 @@ interface PaginatedEnvelope<T> {
 }
 
 function isOffline(): boolean {
-  return typeof navigator !== "undefined" && !navigator.onLine;
+  return !isApiOnline();
 }
 
 export async function getSales(params: SaleListParams = {}): Promise<PaginatedResult<Sale>> {
-  const resp = await apiClient.get<PaginatedEnvelope<Sale>>("/sales", {
-    params: {
-      page: params.page ?? 1,
-      limit: params.limit ?? 20,
-      ...(params.status ? { status: params.status } : {}),
-    },
-  });
-  return resp.data.data;
+  try {
+    const resp = await apiClient.get<PaginatedEnvelope<Sale>>("/sales", {
+      params: {
+        page: params.page ?? 1,
+        limit: params.limit ?? 20,
+        ...(params.status ? { status: params.status } : {}),
+      },
+    });
+    return resp.data.data;
+  } catch {
+    return localSales(params) as Promise<PaginatedResult<Sale>>;
+  }
 }
 
 export async function getSaleById(id: string): Promise<Sale> {
@@ -63,10 +70,13 @@ export async function createSaleOffline(
   salePayload: SaleRequest,
   paymentPayload?: { amount: number; method: string }
 ): Promise<Sale> {
-  await enqueueOperation("SALE", salePayload);
+  if (paymentPayload) await enqueueOperation("CASH_OPEN", { openingBalance: 0 });
+  const saleOp = await enqueueOperation("SALE", salePayload);
   if (paymentPayload) {
-    await enqueueOperation("PAYMENT", paymentPayload);
+    await enqueueOperation("PAYMENT", { ...paymentPayload, saleKey: saleOp.idempotencyKey });
   }
+  const session = await localActiveCashSession();
+  await saveLocalSale(salePayload.lines, paymentPayload ? { amount: paymentPayload.amount, method: paymentPayload.method, cashSessionId: session?.id ?? null, userId: session?.userId ?? "offline" } : undefined, saleOp.idempotencyKey);
   // Retornar um Sale sintético para a UI
   const synthetic: Sale = {
     id: `offline-${Date.now()}`,
@@ -84,3 +94,8 @@ export async function createSaleOffline(
   };
   return synthetic;
 }
+
+
+
+
+

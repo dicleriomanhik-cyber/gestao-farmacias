@@ -1,4 +1,4 @@
-﻿export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER";
+export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER" | "COLLABORATOR";
 export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export interface ManagedUser {
@@ -19,6 +19,8 @@ export interface UserRequest {
 }
 
 export interface UserUpdateRequest {
+  password?: string;
+  status?: UserStatus;
   fullName: string;    // só o nome é atualizável via PATCH
 }
 
@@ -41,6 +43,7 @@ export interface ListParams {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Administrador",
+  COLLABORATOR: "Colaborador",
   PHARMACIST: "Farmacêutico",
   CASHIER: "Caixa",
   STOCK_MANAGER: "Gestor de Stock",

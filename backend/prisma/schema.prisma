@@ -50,6 +50,7 @@ enum MovementType {
   LOSS
   EXPIRY
   INVENTORY_ADJUSTMENT
+  DIRECT_ENTRY
 }
 
 enum SaleStatus {
@@ -146,6 +147,8 @@ model Pharmacy {
   returns       SaleReturn[]
   quarantine    QuarantineStock[]
   expenses      Expense[]
+  supplierPayments SupplierPayment[]
+  settings      PharmacySettings?
 
   @@map("pharmacies")
 }
@@ -185,6 +188,9 @@ model Product {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
+  type               ProductType   @default(PRODUCT)
+  hasExpiry          Boolean       @default(true)
+  minStock           Int?
   pharmacy           Pharmacy      @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
   category           Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   purchaseLines      PurchaseLine[]
@@ -206,6 +212,8 @@ model Supplier {
   pharmacyId    String         @db.Uuid
   name          String
   taxId         String?
+  whatsapp      String?
+  supplierPayments SupplierPayment[]
   phone         String?
   email         String?
   address       String?
@@ -228,6 +236,15 @@ model Purchase {
   pharmacyId      String         @db.Uuid
   supplierId      String         @db.Uuid
   documentNumber  String
+  transportCost   Decimal               @default(0) @db.Decimal(12, 2)
+  otherCosts      Decimal               @default(0) @db.Decimal(12, 2)
+  invoiceTotal    Decimal?              @db.Decimal(12, 2)
+  currency        String                @default("MZN")
+  exchangeRate    Decimal               @default(1) @db.Decimal(14, 6)
+  paymentStatus   PurchasePaymentStatus @default(PAID)
+  dueDate         DateTime?
+  boxes           StockLot[]
+  supplierPayments SupplierPayment[]
   purchaseDate    DateTime       @default(now())
   status          PurchaseStatus @default(DRAFT)
   notes           String?
@@ -278,6 +295,13 @@ model StockLot {
   createdAt                 DateTime    @default(now())
   updatedAt                 DateTime    @updatedAt
 
+  qrCode                    String?
+  innerCount                Int?
+  unitsPerInner             Int?
+  purchaseId                String?     @db.Uuid
+  acquisitionCost           Decimal?    @db.Decimal(12, 2)
+  purchase                  Purchase?   @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  totalUnits                Int          @default(0)
   pharmacy                  Pharmacy    @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
   product                   Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
   purchaseLine              PurchaseLine? @relation(fields: [purchaseLineId], references: [id], onDelete: SetNull)
@@ -379,6 +403,7 @@ model CashSession {
   pharmacyId      String            @db.Uuid
   userId          String            @db.Uuid
   openedAt        DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
   closedAt        DateTime?
   openingBalance  Decimal           @db.Decimal(12, 2)
   expectedBalance Decimal?          @db.Decimal(12, 2)
@@ -550,6 +575,8 @@ model Expense {
   amount          Decimal         @db.Decimal(12, 2)
   method          PaymentMethod
   status          ExpenseStatus   @default(DRAFT)
+  paidFrom        String          @default("OTHER")
+  origin          String          @default("ADMIN")
   expenseDate     DateTime        @default(now())
   externalReference String?
   notes           String?
@@ -708,4 +735,85 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model SyncOperation {
+  id              String    @id @default(uuid()) @db.Uuid
+  pharmacyId      String    @db.Uuid
+  clientId        String
+  idempotencyKey  String    @unique
+  operationType   String
+  status          String    @default("PENDING")
+  payload         Json
+  result          Json?
+  saleId          String?   @db.Uuid
+  rejectionCode   String?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([pharmacyId, status])
+  @@map("sync_operations")
+}
+
+enum ProductType {
+  MEDICINE
+  PRODUCT
+}
+
+
+
+enum PurchasePaymentStatus {
+  PAID
+  PARTIAL
+  CREDIT
+}
+
+enum ExtrasSplitMode {
+  BY_VALUE
+  BY_UNITS
+}
+
+model PharmacySettings {
+  id                     String          @id @default(uuid()) @db.Uuid
+  pharmacyId             String          @unique @db.Uuid
+  allowCashExpenses      Boolean         @default(true)
+  collaboratorExpenses   Boolean         @default(true)
+  requireApprovalForCash Boolean         @default(false)
+  usePayables            Boolean         @default(false)
+  multiCurrency          Boolean         @default(false)
+  extrasSplitMode        ExtrasSplitMode @default(BY_VALUE)
+  supplierExtraFields    Boolean         @default(false)
+  vatRegime              String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  pharmacy               Pharmacy        @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@map("pharmacy_settings")
+}
+
+model SupplierPayment {
+  id             String        @id @default(uuid()) @db.Uuid
+  pharmacyId     String        @db.Uuid
+  supplierId     String        @db.Uuid
+  purchaseId     String        @db.Uuid
+  amount         Decimal       @db.Decimal(12, 2)
+  paidFrom       String
+  method         PaymentMethod
+  paidAt         DateTime      @default(now())
+  notes          String?
+  userId         String        @db.Uuid
+  cashSessionId  String?       @db.Uuid
+  cashMovementId String?       @db.Uuid
+  createdAt      DateTime      @default(now())
+
+  pharmacy       Pharmacy      @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  supplier       Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchase       Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+
+  @@index([pharmacyId])
+  @@index([supplierId])
+  @@index([purchaseId])
+  @@map("supplier_payments")
 }

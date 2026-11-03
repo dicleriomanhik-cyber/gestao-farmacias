@@ -1,23 +1,16 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { openDb } from "../../offline/db";
+import { visibleOperations, buildGroups } from "../../offline/outboxAdmin";
+import { useApiOnline } from "../../offline/connectivity";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function SyncStatusBadge() {
-  const [online, setOnline] = useState(navigator.onLine);
+  const online = useApiOnline();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [pending, setPending] = useState(0);
   const [rejected, setRejected] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
-
-  useEffect(() => {
-    function update() {
-      setOnline(navigator.onLine);
-    }
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
 
   useEffect(() => {
     async function refresh() {
@@ -27,11 +20,12 @@ export default function SyncStatusBadge() {
         const req = tx.objectStore("outbox").getAll();
         req.onsuccess = () => {
           const all = (req.result ?? []) as any[];
-          setPending(all.filter((o) => o.status === "PENDING" || o.status === "SYNCING").length);
-          setRejected(all.filter((o) => o.status === "REJECTED" || o.status === "CONFLICT").length);
+          const groups = buildGroups(visibleOperations(all));
+          const isRej = (o: any) => o.status === "REJECTED" || o.status === "CONFLICT";
+          setRejected(groups.filter((g) => g.ops.some(isRej)).length);
+          setPending(groups.filter((g) => !g.ops.some(isRej)).length);
         };
-        const metaTx = db.transaction("meta", "readonly");
-        const metaReq = metaTx.objectStore("meta").get("lastSyncAt");
+        const metaReq = db.transaction("meta", "readonly").objectStore("meta").get("lastSyncAt");
         metaReq.onsuccess = () => {
           setLastSync(metaReq.result?.value ?? null);
         };
@@ -40,7 +34,7 @@ export default function SyncStatusBadge() {
       }
     }
     refresh();
-    const interval = setInterval(refresh, 5000);
+    const interval = setInterval(refresh, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,16 +48,19 @@ export default function SyncStatusBadge() {
 
   return (
     <div
-      title={tooltip}
+      title={tooltip + " • clique para ver"}
+      role="button"
+      onClick={() => navigate(pathname.startsWith("/pos") ? "/pos/sincronizacao" : "/sincronizacao")}
       style={{
-        display: "flex", alignItems: "center", gap: "0.5rem",
+        display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer",
         fontSize: "0.75rem", color: "#94a3b8", padding: "0.25rem 0.5rem",
         borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.05)",
       }}
     >
       <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: dotColor, display: "inline-block" }} />
-      {pending > 0 && <span>{pending} pend.</span>}
-      {rejected > 0 && <span style={{ color: "#fca5a5" }}>{rejected} rej.</span>}
+      {pending + rejected > 0 && (
+        <span style={{ fontWeight: 600, color: rejected > 0 ? "#fca5a5" : "#cbd5e1" }}>{pending + rejected}</span>
+      )}
     </div>
   );
 }

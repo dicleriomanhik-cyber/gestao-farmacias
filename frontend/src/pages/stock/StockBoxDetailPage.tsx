@@ -5,6 +5,8 @@ import { getStockBox, getStockBoxes } from "../../services/stockService";
 import type { StockBox, StockBoxDetail, StockBoxInner } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { useAuth } from "../../hooks/useAuth";
+import { hasPermission } from "../../utils/permissions";
 
 const C = {
   border: "#e5e7eb",
@@ -30,6 +32,10 @@ function formatDateTime(s: string) {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function fmtCusto(v: string | number) {
+  return Number(v).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const INNER_LABEL: Record<StockBoxInner["state"], string> = {
   FULL: "",
   IN_USE: "em uso",
@@ -43,19 +49,22 @@ const thStyle: CSSProperties = {
   position: "sticky",
   top: 0,
   zIndex: 1,
-  background: "#ffffff",
-  padding: "8px 10px",
-  borderBottom: `1px solid ${C.border}`,
+  background: "#f8fafc",
+  padding: "10px 16px",
+  borderBottom: "1px solid #e5e7eb",
+  borderRight: "1px solid #e5e7eb",
   textAlign: "left",
   fontSize: 12,
-  color: C.muted,
+  color: "#5b6478",
   fontWeight: 600,
   textTransform: "uppercase",
+  letterSpacing: "0.05em",
 };
 
 const tdStyle: CSSProperties = {
-  padding: "10px",
-  borderBottom: `1px solid ${C.border}`,
+  padding: "10px 16px",
+  borderBottom: "1px solid #e5e7eb",
+  borderRight: "1px solid #e5e7eb",
   fontSize: 14,
   color: C.text,
 };
@@ -66,6 +75,8 @@ export default function StockBoxDetailPage() {
   const [todas, setTodas] = useState<StockBox[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { user } = useAuth();
+  const podeVerCustos = hasPermission(user?.permissions, "pharmacy:config:write");
 
   function load() {
     if (!id) return;
@@ -126,6 +137,13 @@ export default function StockBoxDetailPage() {
           </div>
         </div>
 
+        {podeVerCustos && box.realUnitCost !== undefined && (
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12, fontSize: 14, color: C.muted }}>
+            <span>Custo real por {box.saleUnitLabel}: <b style={{ color: C.text }}>{box.realUnitCost === null ? "custo não registado" : `${fmtCusto(box.realUnitCost)} MZN`}</b></span>
+            {box.acquisitionCost != null && <span>Aquisição da caixa: <b style={{ color: C.text }}>{fmtCusto(box.acquisitionCost)} MZN</b></span>}
+          </div>
+        )}
+
         <div style={{ height: 8, background: "#e5e7eb", borderRadius: 999, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${pct}%`, background: C.accent }} />
         </div>
@@ -153,7 +171,7 @@ export default function StockBoxDetailPage() {
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>Caixa {i + 1}</div>
-                    <code style={{ fontSize: 12, color: C.muted }}>{b.qrCode}</code>
+                    <span style={{ fontSize: 13, color: C.muted, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.productName}</span>
                   </Link>
                 );
               })}
@@ -201,14 +219,14 @@ export default function StockBoxDetailPage() {
           {saleHistory.length === 0 ? (
             <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>Ainda sem vendas.</p>
           ) : (
-            <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 8 }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <th style={thStyle}>Data</th>
                     <th style={thStyle}>Venda</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>{unitPlural}</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Restam</th>
+                    <th style={{ ...thStyle, textAlign: "right", borderRight: 0 }}>Restam</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,7 +235,7 @@ export default function StockBoxDetailPage() {
                       <td style={tdStyle}>{formatDateTime(h.soldAt)}</td>
                       <td style={tdStyle}>#{h.saleNumber}</td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>−{h.units}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>{h.balanceAfter}</td>
+                      <td style={{ ...tdStyle, textAlign: "right", borderRight: 0 }}>{h.balanceAfter}</td>
                     </tr>
                   ))}
                 </tbody>

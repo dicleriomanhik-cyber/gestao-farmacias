@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createProductLocal } from "../offline/operationsLocal";
 import type {
   Product,
   Category,
@@ -47,8 +48,13 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function createProduct(data: ProductRequest): Promise<Product> {
-  const resp = await apiClient.post<Envelope<Product>>("/products", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<Product>>("/products", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await createProductLocal(data);
+  }
 }
 
 export async function deleteProduct(id: string): Promise<void> {

@@ -1,6 +1,8 @@
-﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isApiOnline } from "../../offline/connectivity";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createSale, confirmSale, createSaleOffline } from '../../services/saleService';
 import { getProducts } from "../../services/productService";
+import { getCatalogProducts, refreshCatalog } from "../../offline/catalog";
 import { registerPayment, getActiveCashSession, openCash } from "../../services/cashService";
 import type { Product } from "../../types/products";
 import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
@@ -59,8 +61,16 @@ export default function PosPage() {
     setLoading(true);
     setError(false);
     getProducts({ page: 1, limit: 100, search: query || undefined, status: "ACTIVE" })
-      .then((res) => setProducts(Array.isArray(res?.data) ? res.data : []))
-      .catch(() => setError(true))
+      .then((res) => {
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        setProducts(lista);
+        void refreshCatalog().catch(() => undefined);
+      })
+      .catch(async () => {
+        const local = await getCatalogProducts(query);
+        if (local.length > 0) setProducts(local);
+        else setError(true);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -134,7 +144,7 @@ export default function PosPage() {
 
     setSubmitting(true);
     try {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (!isApiOnline()) {
         await createSaleOffline({ lines }, { amount: total, method: paymentMethod });
         toast.success("Venda guardada offline. Será sincronizada quando houver ligação.");
         setCompletedSale({ id: `offline-${Date.now()}`, saleNumber: "OFFLINE", total: total.toFixed(2), change: paymentMethod === "CASH" ? change : null });
@@ -169,7 +179,7 @@ export default function PosPage() {
         err?.code === "ERR_INTERNET_DISCONNECTED" ||
         err?.code === "ERR_FAILED" ||
         (!err?.response && err?.request) ||
-        (typeof navigator !== "undefined" && !navigator.onLine);
+        (!isApiOnline());
       if (isNetworkError) {
         try {
           await createSaleOffline({ lines }, { amount: total, method: paymentMethod });

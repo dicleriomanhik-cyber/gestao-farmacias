@@ -83,4 +83,15 @@ export class ReturnsController {
   ) {
     return this.service.confirmRefund(pharmacyId, user.id, refundId, dto);
   }
+
+  @Get()
+  @RequirePermissions(PERMISSIONS.RETURNS_READ)
+  @ApiOperation({ summary: 'Listar devoluções' })
+  findAll(
+    @Tenant() pharmacyId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    return this.service.findAll(pharmacyId, Number(page), Number(limit));
+  }
 }

@@ -1,4 +1,4 @@
-﻿export type ExpenseCategory =
+export type ExpenseCategory =
   | "RENT"
   | "UTILITIES"
   | "TRANSPORT"
@@ -18,6 +18,8 @@ export type ExpenseMethod =
 
 export type ExpenseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
+export type ExpensePaidFrom = "PHARMACY_CASH" | "OWNER_CASH" | "BANK" | "MPESA" | "EMOLA" | "OTHER";
+
 export interface Expense {
   id: string;
   pharmacyId: string;
@@ -30,6 +32,8 @@ export interface Expense {
   externalReference: string | null;
   notes: string | null;
   cashSessionId: string | null;
+  origin: "ADMIN" | "COLLABORATOR";
+  paidFrom?: ExpensePaidFrom;
   userId: string;
   confirmedBy: string | null;
   confirmedAt: string | null;
@@ -38,6 +42,8 @@ export interface Expense {
 }
 
 export interface ExpenseRequest {
+  origin?: "ADMIN" | "COLLABORATOR";
+  paidFrom?: ExpensePaidFrom;
   description: string;
   amount: number;
   category: ExpenseCategory;

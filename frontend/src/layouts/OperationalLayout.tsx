@@ -1,14 +1,26 @@
 import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { isCollaborator } from "../utils/permissions";
+import { useEffect, useState } from "react";
+import { getSettings } from "../services/settingsService";
 import SyncStatusBadge from "../components/offline/SyncStatusBadge";
 
 export default function OperationalLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [hideExpenses, setHideExpenses] = useState(false);
+
+  useEffect(() => {
+    if (!isCollaborator(user)) return;
+    const load = () => getSettings().then((st) => setHideExpenses(!st.collaboratorExpenses)).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [user]);
 
   async function onLogout() {
     await logout();
-    navigate("/login", { replace: true });
+    navigate(isCollaborator(user) ? "/pos/login" : "/login", { replace: true });
   }
 
   const navItems = [
@@ -28,13 +40,13 @@ export default function OperationalLayout() {
         <div className="app-actions">
           <SyncStatusBadge />
           <span className="app-user header-user-name">{user?.name || user?.email}</span>
-          <Link to="/" className="app-link-exit">Sair do POS</Link>
+          {!isCollaborator(user) && <Link to="/" className="app-link-exit">Sair do POS</Link>}
           <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>
       </header>
 
       <nav style={{ backgroundColor: "#334155", display: "flex", overflowX: "auto", padding: "0 1.5rem", flexShrink: 0 }}>
-        {navItems.map((item) => (
+        {navItems.filter((item) => item.path !== "/pos/despesas" || !hideExpenses).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

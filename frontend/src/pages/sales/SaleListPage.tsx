@@ -1,8 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useDataChanged } from "../../offline/dataChanged";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSales } from "../../services/saleService";
 import { formatDateTime } from "../../utils/formatDate";
 import { getReturns } from "../../services/returnService";
+import { fullyRefundedSaleIds } from "../../utils/refundStatus";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -33,8 +35,8 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  function load() {
-    setLoading(true);
+  function load(silent = false) {
+    if (!silent) setLoading(true);
     setError(false);
     
     Promise.all([
@@ -44,13 +46,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
       .then(([salesRes, returnsRes]) => {
         setSales(salesRes.data);
         setMeta(salesRes.meta);
-        const ids = new Set<string>();
-        returnsRes.data.forEach((r) => {
-          if (r.status === "CONFIRMED" || r.status === "COMPLETED") {
-            ids.add(r.saleId);
-          }
-        });
-        setReturnedSaleIds(ids);
+        setReturnedSaleIds(fullyRefundedSaleIds(returnsRes.data));
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -60,6 +56,8 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useDataChanged(() => load(true));
 
   function statusBadge(status: SaleStatus) {
     const map = {

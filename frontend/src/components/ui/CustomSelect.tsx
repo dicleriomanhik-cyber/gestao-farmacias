@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface Option {
   value: string;
@@ -11,11 +11,12 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  menuMaxWidth?: number | string;
   disabled?: boolean;
   style?: React.CSSProperties;
 }
 
-export default function CustomSelect({ options, value, onChange, placeholder = "Seleciona…", disabled = false, style }: Props) {
+export default function CustomSelect({ options, value, onChange, placeholder = "Seleciona…", disabled = false, style, menuMaxWidth }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -74,6 +75,7 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
             borderRadius: "8px",
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
             maxHeight: "250px",
+            maxWidth: menuMaxWidth,
             overflowY: "auto",
             zIndex: 1000,
           }}

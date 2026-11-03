@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { StockService } from './stock.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
@@ -10,6 +10,7 @@ import { Tenant } from '../../common/decorators/tenant.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { CreateBoxDto } from './dto/create-box.dto';
 
 @ApiTags('stock')
 @ApiBearerAuth()
@@ -46,5 +47,37 @@ export class StockController {
   @ApiQuery({ name: 'productId', required: false })
   getMovements(@Tenant() pharmacyId: string, @Query('productId') productId?: string) {
     return this.service.getMovements(pharmacyId, productId);
+  }
+
+
+  @Post('boxes')
+  @RequirePermissions(PERMISSIONS.STOCK_WRITE)
+  @ApiOperation({ summary: 'Registar caixa fisica (QR Code)' })
+  createBox(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBoxDto) {
+    return this.service.createBox(pharmacyId, user.id, dto);
+  }
+
+  @Get('boxes')
+  @RequirePermissions(PERMISSIONS.STOCK_READ)
+  @ApiOperation({ summary: 'Listar caixas (paginado, filtros type/state)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({ name: 'state', required: false })
+  getBoxes(
+    @Tenant() pharmacyId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+    @Query('type') type?: string,
+    @Query('state') state?: string,
+  ) {
+    return this.service.getBoxes(pharmacyId, Number(page), Number(limit), type, state);
+  }
+
+  @Get('boxes/:id')
+  @RequirePermissions(PERMISSIONS.STOCK_READ)
+  @ApiOperation({ summary: 'Detalhe de caixa com packs calculados e historico' })
+  getBox(@Tenant() pharmacyId: string, @Param('id') id: string) {
+    return this.service.getBox(pharmacyId, id);
   }
 }

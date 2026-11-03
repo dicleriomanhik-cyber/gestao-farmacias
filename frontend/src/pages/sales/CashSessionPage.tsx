@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from "react";
+import { useDataChanged } from "../../offline/dataChanged";
+import { useEffect, useRef, useState } from "react";
 import { getActiveCashSession, openCash, closeCash, getPayments } from "../../services/cashService";
 import { getExpenses } from "../../services/expenseService";
 import { apiClient } from "../../services/api";
@@ -21,6 +22,7 @@ interface CashMovement {
   id: string;
   type: "IN" | "OUT";
   amount: string;
+  method?: string;
   reason: string;
   createdAt: string;
 }
@@ -35,11 +37,14 @@ export default function CashSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [amount, setAmount] = useState("");
+  const sessionRef = useRef<CashSession | null>(null);
+
+  useEffect(() => { sessionRef.current = session; }, [session]);
   const [submitting, setSubmitting] = useState(false);
   const allowed = canAccessCash(user?.permissions);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const active = await getActiveCashSession();
@@ -65,7 +70,7 @@ export default function CashSessionPage() {
           sessionExpenses = expRes.data.filter(e => 
             e.cashSessionId === active.id && 
             e.method === "CASH" && 
-            (e.status === "CONFIRMED" || e.status === "DRAFT")
+            e.status === "CONFIRMED"
           );
           setExpenses(sessionExpenses);
         } catch {
@@ -73,11 +78,10 @@ export default function CashSessionPage() {
         }
 
         // Cálculo do valor contado (saldo em gaveta)
-        const totalOut = movementsData.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+        const totalOut = movementsData.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
         const totalIn = movementsData.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-        const totalExpensesCash = sessionExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
-        
-        const expected = parseFloat(active.openingBalance.toString()) + (data.totalsByMethod.CASH || 0) + totalIn - totalOut - totalExpensesCash;
+                
+        const expected = parseFloat(active.openingBalance.toString()) + (data.totalsByMethod.CASH || 0) + totalIn - totalOut;
         setAmount(expected.toFixed(2));
       } else {
         setTotals({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
@@ -94,9 +98,11 @@ export default function CashSessionPage() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(() => { if (!sessionRef.current) return; load(true); }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useDataChanged(() => { if (sessionRef.current) load(true); });
 
   async function handleOpen(e: React.FormEvent) {
     e.preventDefault();
@@ -135,17 +141,25 @@ export default function CashSessionPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={load} />;
 
-  const totalOut = movements.filter((m) => m.type === "OUT").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalOut = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalExpensesCash = expenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const refundOf = (method: string) =>
+    movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === method && /reembolso/i.test(m.reason)).reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const net = {
+    CASH: (totals.CASH || 0) - refundOf("CASH"),
+    CARD: (totals.CARD || 0) - refundOf("CARD"),
+    MPESA: (totals.MPESA || 0) - refundOf("MPESA"),
+    EMOLA: (totals.EMOLA || 0) - refundOf("EMOLA"),
+  };
   
   // Saldo em Gaveta (Dinheiro físico)
   const cashInDrawer = session 
-    ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut - totalExpensesCash 
+    ? parseFloat(session.openingBalance.toString()) + (totals.CASH || 0) + totalIn - totalOut 
     : 0;
   
   // Saldo Total (Geral) = Dinheiro em Gaveta + Cartão + M-Pesa + e-Mola
-  const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0);
+  const totalAllMethods = cashInDrawer + net.CARD + net.MPESA + net.EMOLA;
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -196,19 +210,19 @@ export default function CashSessionPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro (líquido)</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(net.CASH)} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e40af" }}>{money(totals.CARD)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e40af" }}>{money(net.CARD)} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>M-Pesa</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#b45309" }}>{money(totals.MPESA)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#b45309" }}>{money(net.MPESA)} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>e-Mola</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(net.EMOLA)} MT</div>
               </div>
             </div>
           </div>

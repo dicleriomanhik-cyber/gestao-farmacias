@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createBoxLocal } from "../offline/operationsLocal";
 import type {
   StockLot,
   StockMovement,
@@ -59,7 +60,12 @@ export async function getStockBox(id: string): Promise<StockBoxDetail> {
 }
 
 export async function createStockBox(data: StockBoxCreateRequest): Promise<StockBox> {
-  const resp = await apiClient.post<any>("/stock/boxes", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<any>("/stock/boxes", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await createBoxLocal(data);
+  }
 }
 

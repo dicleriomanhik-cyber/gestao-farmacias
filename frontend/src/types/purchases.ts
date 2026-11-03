@@ -1,4 +1,5 @@
-﻿export type PurchaseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+export type PurchaseStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+export type PurchasePaymentStatus = "PAID" | "PARTIAL" | "CREDIT";
 
 export interface PurchaseSupplierRef {
   id: string;
@@ -26,6 +27,31 @@ export interface PurchaseLine {
   product?: PurchaseProductRef;
 }
 
+export interface PurchaseBox {
+  id: string;
+  qrCode: string;
+  totalUnits: number;
+  acquisitionCost: string | null;
+  product?: { name: string };
+}
+
+export interface PurchasePaymentRow {
+  id: string;
+  amount: string;
+  paidFrom: string;
+  method: string;
+  paidAt: string;
+  notes: string | null;
+}
+
+export interface PurchaseConference {
+  invoiceTotal: number | null;
+  goodsTotal: number;
+  diff: number | null;
+  matches: boolean | null;
+  boxCount: number;
+}
+
 export interface Purchase {
   id: string;
   pharmacyId: string;
@@ -35,10 +61,23 @@ export interface Purchase {
   status: PurchaseStatus;
   notes: string | null;
   totalAmount: string;
+  transportCost: string;
+  otherCosts: string;
+  invoiceTotal: string | null;
+  currency: string;
+  exchangeRate: string;
+  paymentStatus: PurchasePaymentStatus;
+  dueDate: string | null;
+  dueMzn: number;
+  paidTotal: number;
+  outstanding: number;
   createdAt: string;
   updatedAt: string;
   supplier?: PurchaseSupplierRef;
   lines?: PurchaseLine[];
+  boxes?: PurchaseBox[];
+  supplierPayments?: PurchasePaymentRow[];
+  conference?: PurchaseConference;
 }
 
 export interface PurchaseLineRequest {
@@ -50,7 +89,23 @@ export interface PurchaseLineRequest {
 export interface PurchaseRequest {
   supplierId: string;
   documentNumber: string;
-  lines: PurchaseLineRequest[];
+  notes?: string;
+  transportCost?: number;
+  otherCosts?: number;
+  invoiceTotal?: number;
+  currency?: string;
+  exchangeRate?: number;
+  paymentStatus?: "PAID" | "CREDIT";
+  dueDate?: string;
+  lines?: PurchaseLineRequest[];
+}
+
+export interface PurchaseUpdateRequest {
+  transportCost?: number;
+  otherCosts?: number;
+  invoiceTotal?: number | null;
+  dueDate?: string | null;
+  notes?: string | null;
 }
 
 export interface PaginatedMeta {
@@ -69,4 +124,5 @@ export interface ListParams {
   page?: number;
   limit?: number;
   status?: PurchaseStatus;
+  supplierId?: string;
 }

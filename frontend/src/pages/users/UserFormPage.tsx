@@ -1,12 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createUser, getUserById, updateUser } from "../../services/userService";
-import { ROLE_LABELS, type UserRole } from "../../types/users";
+import type { UserStatus } from "../../types/users";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-
-const ROLES: UserRole[] = ["ADMIN", "PHARMACIST", "CASHIER", "STOCK_MANAGER"];
 
 export default function UserFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +15,8 @@ export default function UserFormPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
-  const [roleName, setRoleName] = useState<UserRole>("PHARMACIST");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [status, setStatus] = useState<UserStatus>("ACTIVE");
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
@@ -30,8 +29,7 @@ export default function UserFormPage() {
       .then((u) => {
         setEmail(u.email);
         setFullName(u.fullName);
-        const role = (u.roles?.[0] as UserRole) ?? "PHARMACIST";
-        setRoleName(role);
+        setStatus(u.status === "ACTIVE" ? "ACTIVE" : "INACTIVE");
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -44,51 +42,59 @@ export default function UserFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const nome = fullName.trim();
     if (!isEditing && !email.includes("@")) return toast.error("Email inválido.");
-    if (!fullName.trim()) return toast.error("Nome é obrigatório.");
-    if (!isEditing && password.length < 8) return toast.error("Password deve ter pelo menos 8 caracteres.");
+    if (nome.length < 3) return toast.error("O nome deve ter pelo menos 3 caracteres.");
+    const querPassword = !isEditing || password.length > 0;
+    if (querPassword) {
+      if (password.length < 8) return toast.error("A password deve ter pelo menos 8 caracteres.");
+      if (password !== confirmPassword) return toast.error("As passwords não coincidem.");
+    }
 
     setSubmitting(true);
     try {
       if (isEditing && id) {
-        await updateUser(id, { fullName: fullName.trim() });
-        toast.success("Utilizador atualizado.");
+        await updateUser(id, { fullName: nome, status, ...(password ? { password } : {}) });
+        toast.success("Conta atualizada.");
       } else {
-        await createUser({ email: email.trim(), fullName: fullName.trim(), password, roleName });
-        toast.success("Utilizador criado.");
+        await createUser({ email: email.trim(), fullName: nome, password, roleName: "COLLABORATOR" });
+        toast.success("Conta de colaborador criada.");
       }
       navigate("/utilizadores");
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message;
-      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? "Erro ao guardar utilizador."));
+      if (!err?.response) {
+        toast.error("Sem ligação neste momento. Tenta novamente quando houver internet.");
+        return;
+      }
+      const msg = err.response?.data?.error?.message;
+      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? "Erro ao guardar a conta."));
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar o utilizador." onRetry={load} />;
+  if (error) return <ErrorState message="Não foi possível carregar a conta." onRetry={load} />;
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>
-        {isEditing ? "Editar Utilizador" : "Novo Utilizador"}
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
+        {isEditing ? "Editar conta de colaborador" : "Nova conta de colaborador"}
       </h1>
+      <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+        {isEditing
+          ? "O email não pode ser alterado. Podes redefinir a password ou desativar a conta."
+          : "O colaborador entra no painel dele com este email e esta password. Entrega-lhe estas credenciais."}
+      </p>
 
-      {isEditing && (
-        <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1rem" }}>
-          O email e a função não podem ser alterados. Contacta o administrador para alterar.
-        </p>
-      )}
-
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autoComplete="off">
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
           <input type="text" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
         </div>
 
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email de acesso *</label>
           <input
             type="email"
             className="input"
@@ -96,34 +102,54 @@ export default function UserFormPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={isEditing}
+            autoComplete="off"
             style={{ opacity: isEditing ? 0.6 : 1 }}
           />
         </div>
 
-        {!isEditing && (
-          <>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Password *</label>
-              <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
-            </div>
+        <div style={{ marginBottom: "1rem" }}>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+            {isEditing ? "Nova password (deixa vazio para manter)" : "Password *"}
+          </label>
+          <input
+            type="password"
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={isEditing && password.length === 0 ? undefined : 8}
+            required={!isEditing}
+            autoComplete="new-password"
+          />
+        </div>
 
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Função *</label>
-              <select value={roleName} onChange={(e) => setRoleName(e.target.value as UserRole)} className="input">
-                {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-            </div>
-          </>
-        )}
+        <div style={{ marginBottom: "1rem" }}>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Confirmar password{isEditing ? "" : " *"}</label>
+          <input
+            type="password"
+            className="input"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required={!isEditing}
+            autoComplete="new-password"
+          />
+        </div>
 
         {isEditing && (
-          <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", fontSize: "0.875rem" }}>
-            <strong>Função:</strong> {ROLE_LABELS[roleName] ?? roleName}
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Estado da conta</label>
+            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
+              <option value="ACTIVE">Ativa</option>
+              <option value="INACTIVE">Inativa (não consegue entrar)</option>
+            </select>
           </div>
         )}
 
+        <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", fontSize: "0.875rem" }}>
+          <strong>Função:</strong> Colaborador
+        </div>
+
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A guardar…" : "Guardar Utilizador"}
+          {submitting ? "A guardar…" : isEditing ? "Guardar alterações" : "Criar conta"}
         </button>
       </form>
     </div>
