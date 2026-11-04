@@ -4,6 +4,7 @@ import type { Sale, SaleRequest, PaginatedResult, SaleListParams, Payment } from
 import { enqueueOperation } from "../offline/queue";
 import { localSales, localActiveCashSession } from "../offline/readModel";
 import { saveLocalSale } from "../offline/localWrite";
+import { getSelectedOperator } from "../offline/operators";
 
 interface Envelope<T> {
   success: true;
@@ -53,7 +54,8 @@ export async function createSale(data: SaleRequest): Promise<Sale> {
   if (isOffline()) {
     throw new Error("OFFLINE_QUEUED");
   }
-  const resp = await apiClient.post<Envelope<Sale>>("/sales", data);
+  const operator = getSelectedOperator();
+  const resp = await apiClient.post<Envelope<Sale>>("/sales", operator ? { ...data, operatorId: operator.id } : data);
   return resp.data.data;
 }
 
@@ -70,13 +72,15 @@ export async function createSaleOffline(
   salePayload: SaleRequest,
   paymentPayload?: { amount: number; method: string }
 ): Promise<Sale> {
+  const operator = getSelectedOperator();
+  if (operator) salePayload = { ...salePayload, operatorId: operator.id };
   if (paymentPayload) await enqueueOperation("CASH_OPEN", { openingBalance: 0 });
   const saleOp = await enqueueOperation("SALE", salePayload);
   if (paymentPayload) {
     await enqueueOperation("PAYMENT", { ...paymentPayload, saleKey: saleOp.idempotencyKey });
   }
   const session = await localActiveCashSession();
-  await saveLocalSale(salePayload.lines, paymentPayload ? { amount: paymentPayload.amount, method: paymentPayload.method, cashSessionId: session?.id ?? null, userId: session?.userId ?? "offline" } : undefined, saleOp.idempotencyKey);
+  await saveLocalSale(salePayload.lines, paymentPayload ? { amount: paymentPayload.amount, method: paymentPayload.method, cashSessionId: session?.id ?? null, userId: session?.userId ?? "offline" } : undefined, saleOp.idempotencyKey, operator);
   // Retornar um Sale sintético para a UI
   const synthetic: Sale = {
     id: `offline-${Date.now()}`,

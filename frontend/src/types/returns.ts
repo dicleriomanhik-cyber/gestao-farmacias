@@ -24,6 +24,8 @@ export interface SaleReturn {
   saleId: string;
   userId: string;
   returnNumber: string;
+  operatorId?: string | null;
+  operatorName?: string | null;
   reason: string;
   totalRefund: string;
   status: ReturnStatus;

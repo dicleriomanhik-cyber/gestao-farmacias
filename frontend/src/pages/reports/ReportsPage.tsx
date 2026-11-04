@@ -27,6 +27,10 @@ function money(v: string | number | undefined | null): string {
   return parseFloat(String(v)).toFixed(2);
 }
 
+function opName(r: unknown): string {
+  return (r as { operatorName?: string | null }).operatorName || "—";
+}
+
 const PAID_FROM_LABELS: Record<string, string> = {
   PHARMACY_CASH: "Caixa da farmácia",
   OWNER_CASH: "Dinheiro do dono ou do colaborador",
@@ -174,7 +178,7 @@ export default function ReportsPage() {
 
     doc.setFontSize(14);
     doc.text("Vendas", 14, y);
-    autoTable(doc, { startY: y + 4, head: [["Nº", "Data", "Total"]], body: filteredSalesList.map(s => [s.saleNumber, formatDate(s.createdAt), parseFloat(s.total).toFixed(2) + " MT"]), styles: { fontSize: 9 }, headStyles: { fillColor: [22, 101, 52] } });
+    autoTable(doc, { startY: y + 4, head: [["Nº", "Data", "Total", "Colaborador"]], body: filteredSalesList.map(s => [s.saleNumber, formatDate(s.createdAt), parseFloat(s.total).toFixed(2) + " MT", s.operatorName || "—"]), styles: { fontSize: 9 }, headStyles: { fillColor: [22, 101, 52] } });
     y = (doc as any).lastAutoTable.finalY + 10;
 
     doc.setFontSize(14);
@@ -184,7 +188,7 @@ export default function ReportsPage() {
 
     doc.setFontSize(14);
     doc.text("Devoluções", 14, y);
-    autoTable(doc, { startY: y + 4, head: [["Nº", "Venda", "Motivo", "Total"]], body: filteredReturnsList.map(r => [r.returnNumber, r.sale?.saleNumber ?? "—", r.reason, parseFloat(r.totalRefund).toFixed(2) + " MT"]), styles: { fontSize: 9 }, headStyles: { fillColor: [202, 138, 4] } });
+    autoTable(doc, { startY: y + 4, head: [["Nº", "Venda", "Motivo", "Total", "Colaborador"]], body: filteredReturnsList.map(r => [r.returnNumber, r.sale?.saleNumber ?? "—", r.reason, parseFloat(r.totalRefund).toFixed(2) + " MT", opName(r)]), styles: { fontSize: 9 }, headStyles: { fillColor: [202, 138, 4] } });
     y = (doc as any).lastAutoTable.finalY + 10;
 
     doc.setFontSize(14);
@@ -325,7 +329,7 @@ export default function ReportsPage() {
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "15%" }}>Nº</th><th style={{ width: "20%" }}>Data</th><th style={{ width: "20%" }}>Total</th></tr>
+              <tr><th style={{ width: "15%" }}>Nº</th><th style={{ width: "20%" }}>Data</th><th style={{ width: "20%" }}>Total</th><th style={{ width: "30%" }}>Colaborador</th></tr>
             </thead>
             <tbody>
               {filteredSalesList.map((s) => (
@@ -333,6 +337,7 @@ export default function ReportsPage() {
                   <td>{s.saleNumber}</td>
                   <td>{formatDate(s.createdAt)}</td>
                   <td>{money(s.total)} MT</td>
+                  <td>{s.operatorName || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -345,7 +350,7 @@ export default function ReportsPage() {
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Devoluções do Período</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "12%" }}>Nº</th><th style={{ width: "12%" }}>Venda</th><th style={{ width: "45%" }}>Motivo</th><th style={{ width: "16%" }}>Total</th><th style={{ width: "15%" }}>Ações</th></tr>
+              <tr><th style={{ width: "12%" }}>Nº</th><th style={{ width: "12%" }}>Venda</th><th style={{ width: "30%" }}>Motivo</th><th style={{ width: "16%" }}>Total</th><th style={{ width: "15%" }}>Colaborador</th><th style={{ width: "15%" }}>Ações</th></tr>
             </thead>
             <tbody>
               {filteredReturnsList.map((r) => (
@@ -354,6 +359,7 @@ export default function ReportsPage() {
                   <td>{r.sale?.saleNumber ?? "—"}</td>
                   <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.reason}>{r.reason}</td>
                   <td>{money(r.totalRefund)} MT</td>
+                  <td>{opName(r)}</td>
                   <td>
                     <button onClick={() => setSelectedReturn(r)} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                       Ver
@@ -415,6 +421,7 @@ export default function ReportsPage() {
             </h2>
             <p><strong>Venda:</strong> {selectedReturn.sale?.saleNumber ?? "—"}</p>
             <p><strong>Estado:</strong> {selectedReturn.status}</p>
+            <p><strong>Colaborador:</strong> {opName(selectedReturn)}</p>
             <p><strong>Total Reembolso:</strong> {parseFloat(selectedReturn.totalRefund).toFixed(2)} MT</p>
             <p style={{ marginTop: "1rem" }}><strong>Motivo:</strong></p>
             <p style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>

@@ -24,7 +24,7 @@ export async function openCash(data: CashOpenRequest): Promise<CashSession> {
     return resp.data.data;
   } catch (err: any) {
     if (err?.response) throw err;
-    return (await openCashLocal(data.openingBalance)) as CashSession;
+    return (await openCashLocal(data.openingBalance, data.operatorId)) as CashSession;
   }
 }
 
@@ -36,7 +36,7 @@ export async function closeCash(id: string, data: CashCloseRequest): Promise<Cas
     if (err?.response) throw err;
     const active: any = await localActiveCashSession();
     if (!active || active.id !== id) throw err;
-    return (await closeCashLocal(active, data.countedBalance)) as CashSession;
+    return (await closeCashLocal(active, data.countedBalance, data.operatorId)) as CashSession;
   }
 }
 

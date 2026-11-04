@@ -216,6 +216,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
               <tr>
                 <th>Nº</th>
                 <th>Data</th>
+                {isOperational && <th>Colaborador</th>}
                 <th>Total</th>
                 <th>Estado</th>
                 <th>Ações</th>
@@ -228,6 +229,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
                   <tr key={s.id}>
                     <td>{s.saleNumber}</td>
                     <td>{formatDateTime(s.createdAt)}</td>
+                    {isOperational && <td>{s.operatorName || "—"}</td>}
                     <td>{parseFloat(s.total).toFixed(2)} MT</td>
                     <td>
                       {isReturned ? (

@@ -29,6 +29,7 @@ export interface ReportSale {
   createdAt: string;
   user: string;
   payments: ReportPayment[];
+  operatorName?: string | null;
 }
 
 export interface ReportSalesData {

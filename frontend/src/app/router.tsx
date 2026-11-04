@@ -1,3 +1,4 @@
+import PharmacyAccountFormPage from "../pages/users/PharmacyAccountFormPage";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import OperationalLayout from "../layouts/OperationalLayout";
@@ -130,7 +131,7 @@ export default function AppRouter() {
           </Route>
 
           <Route path="utilizadores" element={<ProtectedRoute requiredPermission="users:read"><UserListPage /></ProtectedRoute>} />
-          <Route path="utilizadores/novo" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
+          <Route path="utilizadores/novo" element={<ProtectedRoute requiredPermission="users:write"><PharmacyAccountFormPage /></ProtectedRoute>} /><Route path="utilizadores/farmacias/:id/editar" element={<ProtectedRoute requiredPermission="users:write"><PharmacyAccountFormPage /></ProtectedRoute>} />
           <Route path="utilizadores/:id/editar" element={<ProtectedRoute requiredPermission="users:write"><UserFormPage /></ProtectedRoute>} />
 
           <Route path="devolucoes" element={<ProtectedRoute requiredPermission="returns:read"><ReturnListPage /></ProtectedRoute>} />

@@ -4,11 +4,22 @@ import { isCollaborator } from "../utils/permissions";
 import { useEffect, useState } from "react";
 import { getSettings } from "../services/settingsService";
 import SyncStatusBadge from "../components/offline/SyncStatusBadge";
+import { useOperators, setSessionOperator } from "../offline/operators";
+import { getActiveCashSession } from "../services/cashService";
 
 export default function OperationalLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [hideExpenses, setHideExpenses] = useState(false);
+  const ops = useOperators();
+
+  useEffect(() => {
+    let alive = true;
+    const sync = () => getActiveCashSession().then((s: any) => { if (alive) setSessionOperator(s?.openedByOperatorId ?? null, s?.openedByOperatorName ?? null); }).catch(() => undefined);
+    void sync();
+    const t = setInterval(() => void sync(), 2000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   useEffect(() => {
     if (!isCollaborator(user)) return;
@@ -36,7 +47,12 @@ export default function OperationalLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "#f1f5f9" }}>
       <header className="app-header">
-        <h2 className="app-brand">Sistema de Gestão</h2>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, minWidth: 0 }}>
+          <h2 className="app-brand" style={{ fontSize: "1rem", lineHeight: 1.1 }}>{ops.pharmacyName || "Sistema de Gestão"}</h2>
+          {ops.operators.length > 0 && (
+            <span style={{ display: "block", color: "#cbd5e1", fontSize: "0.75rem", lineHeight: 1, height: "15px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ops.selectedName || "\u00a0"}</span>
+          )}
+        </div>
         <div className="app-actions">
           <SyncStatusBadge />
           <span className="app-user header-user-name">{user?.name || user?.email}</span>

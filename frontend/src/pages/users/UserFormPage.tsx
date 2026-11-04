@@ -4,6 +4,7 @@ import { createUser, getUserById, updateUser } from "../../services/userService"
 import type { UserStatus } from "../../types/users";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
+import OperatorsPanel from "../../components/users/OperatorsPanel";
 import ErrorState from "../../components/ui/ErrorState";
 
 export default function UserFormPage() {
@@ -44,7 +45,7 @@ export default function UserFormPage() {
     e.preventDefault();
     const nome = fullName.trim();
     if (!isEditing && !email.includes("@")) return toast.error("Email inválido.");
-    if (nome.length < 3) return toast.error("O nome deve ter pelo menos 3 caracteres.");
+    if (!isEditing && nome.length < 3) return toast.error("O nome deve ter pelo menos 3 caracteres.");
     const querPassword = !isEditing || password.length > 0;
     if (querPassword) {
       if (password.length < 8) return toast.error("A password deve ter pelo menos 8 caracteres.");
@@ -54,7 +55,7 @@ export default function UserFormPage() {
     setSubmitting(true);
     try {
       if (isEditing && id) {
-        await updateUser(id, { fullName: nome, status, ...(password ? { password } : {}) });
+        await updateUser(id, { fullName, status, ...(password ? { password } : {}) });
         toast.success("Conta atualizada.");
       } else {
         await createUser({ email: email.trim(), fullName: nome, password, roleName: "COLLABORATOR" });
@@ -77,7 +78,7 @@ export default function UserFormPage() {
   if (error) return <ErrorState message="Não foi possível carregar a conta." onRetry={load} />;
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "600px", margin: "0 auto" }}><div className="card" style={{ padding: "2rem" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
         {isEditing ? "Editar conta de colaborador" : "Nova conta de colaborador"}
       </h1>
@@ -88,10 +89,12 @@ export default function UserFormPage() {
       </p>
 
       <form onSubmit={handleSubmit} autoComplete="off">
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
-          <input type="text" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        </div>
+        {!isEditing && (
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
+            <input type="text" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          </div>
+        )}
 
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email de acesso *</label>
@@ -152,6 +155,8 @@ export default function UserFormPage() {
           {submitting ? "A guardar…" : isEditing ? "Guardar alterações" : "Criar conta"}
         </button>
       </form>
+      </div>
+      {isEditing && <OperatorsPanel />}
     </div>
   );
 }

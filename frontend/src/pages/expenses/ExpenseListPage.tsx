@@ -10,6 +10,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../hooks/useAuth";
 import { useDataChanged } from "../../offline/dataChanged";
 import { hasPermission } from "../../utils/permissions";
+import { getSettings } from "../../services/settingsService";
 
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   RENT: "Renda",
@@ -54,6 +55,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [allowCash, setAllowCash] = useState(true);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
@@ -73,6 +75,11 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
   }, []);
 
   useDataChanged(() => load(true));
+
+  useEffect(() => {
+    if (!isOperational) return;
+    getSettings().then((s) => setAllowCash(s.allowCashExpenses)).catch(() => undefined);
+  }, [isOperational]);
 
   useEffect(() => {
     if (!cancelId) return;
@@ -174,7 +181,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link> : null}</div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? (isOperational && !allowCash ? <button type="button" className="btn btn-primary" disabled title="Despesas desativadas pelo administrador" style={{ opacity: 0.5, cursor: "not-allowed" }}>+ Nova Despesa</button> : <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link>) : null}</div>
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ width: "220px" }}>

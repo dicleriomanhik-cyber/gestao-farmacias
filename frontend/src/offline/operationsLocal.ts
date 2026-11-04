@@ -1,6 +1,7 @@
 import { openDb, putRecords, deleteRecord } from "./db";
 import { enqueueOperation, generateUuid } from "./queue";
 import { localActiveCashSession } from "./readModel";
+import { findOperator, getSelectedOperator } from "./operators";
 
 function localId(): string {
   return "LOCAL-" + generateUuid();
@@ -25,8 +26,9 @@ function returnRef(rec: any): any {
   return rec.createKey ? { createKey: rec.createKey } : { returnId: rec.id };
 }
 
-export async function openCashLocal(openingBalance: number): Promise<any> {
-  const op = await enqueueOperation("CASH_OPEN", { openingBalance });
+export async function openCashLocal(openingBalance: number, operatorId?: string): Promise<any> {
+  const operator = operatorId ? findOperator(operatorId) : null;
+  const op = await enqueueOperation("CASH_OPEN", { openingBalance, ...(operator ? { operatorId: operator.id } : {}) });
   const session = {
     id: localId(),
     status: "OPEN",
@@ -35,20 +37,25 @@ export async function openCashLocal(openingBalance: number): Promise<any> {
     closedAt: null,
     countedBalance: null,
     openKey: op.idempotencyKey,
+    openedByOperatorId: operator?.id ?? null,
+    openedByOperatorName: operator?.name ?? null,
   };
   await putRecords("cash_sessions", [session]);
   return session;
 }
 
-export async function closeCashLocal(session: any, countedBalance: number): Promise<any> {
+export async function closeCashLocal(session: any, countedBalance: number, operatorId?: string): Promise<any> {
+  const operator = operatorId ? findOperator(operatorId) : null;
   const closed = {
     ...session,
     status: "CLOSED",
     closedAt: new Date().toISOString(),
     countedBalance: String(countedBalance),
+    closedByOperatorId: operator?.id ?? null,
+    closedByOperatorName: operator?.name ?? null,
   };
   await putRecords("cash_sessions", [closed]);
-  await enqueueOperation("CASH_CLOSE", session.openKey ? { openKey: session.openKey, countedBalance } : { sessionId: session.id, countedBalance });
+  await enqueueOperation("CASH_CLOSE", { ...(session.openKey ? { openKey: session.openKey } : { sessionId: session.id }), countedBalance, ...(operator ? { operatorId: operator.id } : {}) });
   return closed;
 }
 
@@ -169,6 +176,8 @@ export async function createReturnLocal(data: any): Promise<any> {
     createKey: op.idempotencyKey,
     saleId: data.saleId,
     returnNumber: "DEV-" + op.idempotencyKey.slice(0, 8).toUpperCase(),
+    operatorId: data.operatorId ?? null,
+    operatorName: getSelectedOperator()?.name ?? null,
     reason: data.reason,
     totalRefund: total.toFixed(2),
     status: "DRAFT",

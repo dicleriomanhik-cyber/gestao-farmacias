@@ -181,6 +181,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
       </div>
 
       <p><strong>Data:</strong> {formatDateTime(sale.createdAt)}</p>
+      {sale.operatorName && <p><strong>Colaborador:</strong> {sale.operatorName}</p>}
       <p><strong>Subtotal:</strong> {parseFloat(sale.subtotal).toFixed(2)} MT</p>
       <p><strong>Desconto:</strong> {parseFloat(sale.discount).toFixed(2)} MT</p>
       <p><strong>Total:</strong> {parseFloat(sale.total).toFixed(2)} MT</p>

@@ -1,4 +1,4 @@
-﻿import { openDb } from "./db";
+import { openDb } from "./db";
 
 function uid(): string {
   return "LOCAL-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -17,7 +17,8 @@ const money = (n: number) => n.toFixed(2);
 export async function saveLocalSale(
   lines: { productId: string; quantity: number }[],
   payment?: { amount?: number; method: string; cashSessionId: string | null; userId: string },
-  localId?: string
+  localId?: string,
+  operator?: { id: string; name: string } | null
 ): Promise<{ saleId: string; saleNumber: string; total: string; faltas: number }> {
   const db = await openDb();
   const products = await getAll(db, "products");
@@ -99,6 +100,8 @@ export async function saveLocalSale(
     discount: "0",
     total,
     notes: "Venda offline (pendente de sincronização)",
+    operatorId: operator?.id ?? null,
+    operatorName: operator?.name ?? null,
     userId,
     createdAt: now,
     updatedAt: now,

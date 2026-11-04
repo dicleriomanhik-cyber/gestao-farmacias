@@ -13,6 +13,8 @@ export interface SaleLine {
 }
 
 export interface Sale {
+  operatorId?: string | null;
+  operatorName?: string | null;
   id: string;
   pharmacyId: string;
   saleNumber: string;
@@ -33,6 +35,7 @@ export interface SaleLineRequest {
 }
 
 export interface SaleRequest {
+  operatorId?: string;
   lines: SaleLineRequest[];
 }
 
@@ -47,14 +50,19 @@ export interface CashSession {
   countedBalance: string | null;
   difference: string | null;
   status: "OPEN" | "CLOSED";
+  openedByOperatorId?: string | null;
+  openedByOperatorName?: string | null;
+  closedByOperatorName?: string | null;
 }
 
 export interface CashOpenRequest {
   openingBalance: number;
+  operatorId?: string;
 }
 
 export interface CashCloseRequest {
   countedBalance: number;
+  operatorId?: string;
 }
 
 export interface PaginatedMeta {

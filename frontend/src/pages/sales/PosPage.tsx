@@ -7,6 +7,7 @@ import { registerPayment, getActiveCashSession, openCash } from "../../services/
 import type { Product } from "../../types/products";
 import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
+import { operatorRequired } from "../../offline/operators";
 import { newIdempotencyKey } from "../../utils/idempotencyKey";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -135,6 +136,7 @@ export default function PosPage() {
   }, [cart, submitting, paymentMethod, paid, total, completedSale]);
 
   async function handleCheckout() {
+    if (operatorRequired()) return toast.error("Abre a caixa e escolhe o colaborador antes de vender.");
     if (cart.length === 0) return toast.error("Carrinho vazio.");
     if (paymentMethod === "CASH" && paid < total) {
       return toast.error("O valor entregue é inferior ao total.");

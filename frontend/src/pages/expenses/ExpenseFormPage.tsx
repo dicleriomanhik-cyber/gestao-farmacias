@@ -67,6 +67,11 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
     getSettings()
       .then((st) => {
         setAllowCash(st.allowCashExpenses);
+        if (isOperational && !st.allowCashExpenses) {
+          toast.error("Despesas desativadas pelo administrador.");
+          navigate("/pos/despesas", { replace: true });
+          return;
+        }
         if (!st.allowCashExpenses) setPaidFrom((p) => (p === "PHARMACY_CASH" ? "OWNER_CASH" : p));
       })
       .catch(() => {});

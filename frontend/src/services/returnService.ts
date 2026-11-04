@@ -1,5 +1,6 @@
 import { apiClient } from "./api";
 import { createReturnLocal, confirmReturnLocal, inspectReturnLocal, createRefundLocal, cancelReturnLocal } from "../offline/operationsLocal";
+import { getSelectedOperator } from "../offline/operators";
 import type {
   SaleReturn,
   ReturnListParams,
@@ -7,6 +8,11 @@ import type {
   ReturnLineCondition,
   ReturnRefund,
 } from "../types/returns";
+
+function withOperator<T extends object>(d: T): T & { operatorId?: string } {
+  const o = getSelectedOperator();
+  return o ? { ...d, operatorId: o.id } : d;
+}
 
 interface Envelope<T> {
   success: true;
@@ -41,11 +47,11 @@ export async function createReturn(data: {
   lines: { saleLineId: string; quantity: number; lotNumber?: string; expiryDate?: string }[];
 }): Promise<SaleReturn> {
   try {
-    const resp = await apiClient.post<Envelope<SaleReturn>>("/returns", data);
+    const resp = await apiClient.post<Envelope<SaleReturn>>("/returns", withOperator(data));
     return resp.data.data;
   } catch (err: any) {
     if (err?.response) throw err;
-    return (await createReturnLocal(data)) as SaleReturn;
+    return (await createReturnLocal(withOperator(data))) as SaleReturn;
   }
 }
 
