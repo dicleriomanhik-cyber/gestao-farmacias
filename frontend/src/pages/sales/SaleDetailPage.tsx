@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getSaleById, confirmSale, getSalePayments } from "../../services/saleService";
 import { getReturns } from "../../services/returnService";
@@ -31,6 +31,8 @@ function markAsPaid(saleId: string) {
     localStorage.setItem(PAID_KEY, JSON.stringify(ids));
   }
 }
+
+function custoLinha(lots: any[] | undefined): string { const l = lots ?? []; if (l.length === 0 || l.some((x) => x.unitCost == null)) return "custo n\u00e3o registado"; const q = l.reduce((a, x) => a + x.quantity, 0); const c = l.reduce((a, x) => a + x.quantity * parseFloat(x.unitCost), 0); return (c / q).toFixed(2) + " MT"; }
 
 interface Props {
   isOperational?: boolean;
@@ -155,6 +157,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
 
   const canConfirm = hasPermission(user?.permissions, "sales:create");
   const canPay = hasPermission(user?.permissions, "cash:open");
+  const podeVerCustos = !isOperational && hasPermission(user?.permissions, "pharmacy:config:write");
 
   return (
     <div className="card" style={{ padding: "1.5rem", maxWidth: "1000px", margin: "0 auto" }}>
@@ -204,6 +207,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
             <th>Qtd</th>
             <th>Preço Unit.</th>
             <th>Subtotal</th>
+            {podeVerCustos && <th>Custo Unit.</th>}
           </tr>
         </thead>
         <tbody>
@@ -213,6 +217,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
               <td>{line.quantity}</td>
               <td>{parseFloat(line.unitPrice).toFixed(2)} MT</td>
               <td>{parseFloat(line.subtotal).toFixed(2)} MT</td>
+              {podeVerCustos && <td>{sale.status === "DRAFT" ? "\u2014" : custoLinha(line.lots)}</td>}
             </tr>
           ))}
         </tbody>

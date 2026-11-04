@@ -1,4 +1,4 @@
-﻿export type PaymentMethod = "CASH" | "CARD" | "MPESA" | "EMOLA";
+export type PaymentMethod = "CASH" | "CARD" | "MPESA" | "EMOLA";
 export type SaleStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
 export interface SaleLine {
@@ -9,7 +9,7 @@ export interface SaleLine {
   unitPrice: string;
   discount: string;
   subtotal: string;
-  product?: { name: string; salePrice: string; sku: string | null };
+  product?: { name: string; salePrice: string; sku: string | null }; lots?: { id: string; lotId: string; quantity: number; unitCost?: string | null }[];
 }
 
 export interface Sale {
