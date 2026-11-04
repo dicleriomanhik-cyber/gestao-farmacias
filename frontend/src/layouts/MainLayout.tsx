@@ -19,6 +19,7 @@ export default function MainLayout() {
     { path: "/fornecedores", label: "Fornecedores", show: hasPermission(permissions, "pharmacy:config:write") },
     { path: "/despesas", label: "Despesas", show: hasPermission(permissions, "expenses:read") },
     { path: "/devolucoes", label: "Devoluções", show: hasPermission(permissions, "returns:read") },
+    { path: "/financas", label: "Finanças", show: hasPermission(permissions, "reports:financial") },
     { path: "/relatorios", label: "Relatórios", show: hasPermission(permissions, "reports:read") }, { path: "/definicoes", label: "Definições", show: hasPermission(permissions, "pharmacy:config:write") },
     { path: "/utilizadores", label: "Utilizadores", show: hasPermission(permissions, "users:read") },
   ];

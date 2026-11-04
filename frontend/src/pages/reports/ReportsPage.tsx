@@ -38,6 +38,28 @@ const PAID_FROM_LABELS: Record<string, string> = {
 
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
+function rangeFor(f: DateFilter, cs: string, ce: string): { startDate: string; endDate: string } | undefined {
+  if (f === "ALL") return undefined;
+  const now = new Date();
+  let a = new Date(now);
+  a.setHours(0, 0, 0, 0);
+  let b = new Date(now);
+  b.setHours(23, 59, 59, 999);
+  if (f === "WEEKLY") {
+    a.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  } else if (f === "MONTHLY") {
+    a = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (f === "YEARLY") {
+    a = new Date(now.getFullYear(), 0, 1);
+  } else if (f === "CUSTOM") {
+    if (!cs || !ce) return undefined;
+    a = new Date(cs + "T00:00:00");
+    b = new Date(ce + "T23:59:59.999");
+    if (a > b) return undefined;
+  }
+  return { startDate: a.toISOString(), endDate: b.toISOString() };
+}
+
 export default function ReportsPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<ReportSummaryData | null>(null);
@@ -56,12 +78,13 @@ export default function ReportsPage() {
   const [paidFromFilter, setPaidFromFilter] = useState("ALL");
 
   function load() {
+    const rg = rangeFor(dateFilter, customStart, customEnd);
     setLoading(true);
     setError(false);
     Promise.all([
       getReportSummary(),
-      getReportSales(),
-      canFinancial ? getReportExpenses() : Promise.resolve(null),
+      getReportSales(rg),
+      canFinancial ? getReportExpenses(rg) : Promise.resolve(null),
       canFinancial ? getReportCash() : Promise.resolve(null),
       getReportStock(),
       getReturns({ limit: 1000 }),
@@ -80,9 +103,9 @@ export default function ReportsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dateFilter, customStart, customEnd]);
 
-  if (loading) return <LoadingState />;
+  if (loading && !summary) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os relatórios." onRetry={load} />;
 
   const now = new Date();

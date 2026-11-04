@@ -1,4 +1,4 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
 import type {
   ReportSummaryData,
   ReportSalesData,
@@ -18,13 +18,13 @@ export async function getReportSummary(): Promise<ReportSummaryData> {
   return resp.data.data;
 }
 
-export async function getReportSales(): Promise<ReportSalesData> {
-  const resp = await apiClient.get<Envelope<ReportSalesData>>("/reports/sales");
+export async function getReportSales(params?: { startDate: string; endDate: string }): Promise<ReportSalesData> {
+  const resp = await apiClient.get<Envelope<ReportSalesData>>("/reports/sales", { params });
   return resp.data.data;
 }
 
-export async function getReportExpenses(): Promise<ReportExpensesData> {
-  const resp = await apiClient.get<Envelope<ReportExpensesData>>("/reports/expenses");
+export async function getReportExpenses(params?: { startDate: string; endDate: string }): Promise<ReportExpensesData> {
+  const resp = await apiClient.get<Envelope<ReportExpensesData>>("/reports/expenses", { params });
   return resp.data.data;
 }
 

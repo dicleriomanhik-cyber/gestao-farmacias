@@ -31,6 +31,7 @@ import StockCreateFormPage from "../pages/stock/StockCreateFormPage";
 import ExpenseListPage from "../pages/expenses/ExpenseListPage";
 import ExpenseFormPage from "../pages/expenses/ExpenseFormPage";
 import ReportsPage from "../pages/reports/ReportsPage";
+import FinancePage from "../pages/finance/FinancePage";
 import SyncQueuePage from "../pages/sync/SyncQueuePage";
 import CategoryListPage from "../pages/categories/CategoryListPage";
 import CategoryFormPage from "../pages/categories/CategoryFormPage";
@@ -109,6 +110,7 @@ export default function AppRouter() {
           <Route path="despesas" element={<ProtectedRoute requiredPermission="expenses:read"><ExpenseListPage /></ProtectedRoute>} />
           <Route path="despesas/novo" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
           <Route path="despesas/:id/editar" element={<ProtectedRoute requiredPermission="expenses:create"><ExpenseFormPage /></ProtectedRoute>} />
+          <Route path="financas" element={<ProtectedRoute requiredPermission="reports:financial"><FinancePage /></ProtectedRoute>} />
           <Route path="relatorios" element={<ProtectedRoute requiredPermission="reports:read"><ReportsPage /></ProtectedRoute>} />
           <Route path="sincronizacao" element={<ProtectedRoute><SyncQueuePage /></ProtectedRoute>} />
 
