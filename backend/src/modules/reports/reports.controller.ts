@@ -42,6 +42,20 @@ export class ReportsController {
     return this.service.getCashReport(pharmacyId, query);
   }
 
+  @Get('finance')
+  @RequirePermissions(PERMISSIONS.REPORTS_FINANCIAL)
+  @ApiOperation({ summary: 'Finanças: vendas, custo, lucro e comparação com o período anterior' })
+  getFinance(@Tenant() pharmacyId: string, @Query() query: ReportQueryDto) {
+    return this.service.getFinance(pharmacyId, query);
+  }
+
+  @Get('finance/details')
+  @RequirePermissions(PERMISSIONS.REPORTS_FINANCIAL)
+  @ApiOperation({ summary: 'Finanças: detalhe por dia/mês, método, categoria, origem, produtos e stock' })
+  getFinanceDetails(@Tenant() pharmacyId: string, @Query() query: ReportQueryDto) {
+    return this.service.getFinanceDetails(pharmacyId, query);
+  }
+
   @Get('stock')
   @RequirePermissions(PERMISSIONS.REPORTS_READ)
   @ApiOperation({ summary: 'Relatório de stock' })
