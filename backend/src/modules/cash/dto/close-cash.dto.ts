@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CloseCashDto {
@@ -8,4 +8,9 @@ export class CloseCashDto {
   @Min(0)
   @Type(() => Number)
   countedBalance!: number;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  operatorId?: string;
 }

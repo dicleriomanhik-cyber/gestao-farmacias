@@ -173,6 +173,8 @@ model Pharmacy {
   quarantine    QuarantineStock[]
   expenses      Expense[]
 
+  ownerPharmacyId String? @db.Uuid
+  @@index([ownerPharmacyId])
   @@map("pharmacies")
 }
 
@@ -375,6 +377,8 @@ model Sale {
   id            String     @id @default(uuid()) @db.Uuid
   pharmacyId    String     @db.Uuid
   saleNumber    String
+  operatorId    String?   @db.Uuid
+  operatorName  String?
   status        SaleStatus @default(DRAFT)
   subtotal      Decimal    @db.Decimal(12, 2)
   discount      Decimal    @default(0) @db.Decimal(12, 2)
@@ -441,6 +445,10 @@ model CashSession {
   countedBalance  Decimal?          @db.Decimal(12, 2)
   difference      Decimal?          @db.Decimal(12, 2)
   status          CashSessionStatus @default(OPEN)
+  openedByOperatorId   String? @db.Uuid
+  openedByOperatorName String?
+  closedByOperatorId   String? @db.Uuid
+  closedByOperatorName String?
 
   pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
   user            User              @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -504,6 +512,8 @@ model SaleReturn {
   totalRefund     Decimal        @db.Decimal(12, 2)
   userId          String         @db.Uuid
   confirmationKey String?        @unique
+  operatorId      String?        @db.Uuid
+  operatorName    String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -911,4 +921,16 @@ model SyncCheckpoint {
   pharmacy               Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
 
   @@map("sync_checkpoints")
+}
+
+model PharmacyOperator {
+  id         String   @id @default(uuid()) @db.Uuid
+  pharmacyId String   @db.Uuid
+  name       String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([pharmacyId])
+  @@map("pharmacy_operators")
 }

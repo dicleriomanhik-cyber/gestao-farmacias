@@ -23,6 +23,11 @@ export class SyncSaleLineDto {
 
 export class SyncSalePayloadDto {
   @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  operatorId?: string;
+
+  @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   notes?: string;

@@ -57,3 +57,5 @@ PROMPT_RETOMADA*.txt
 backend/permissoes.txt
 backend/backup_*.sql
 backup_*.sql
+
+frontend-fe/

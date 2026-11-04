@@ -21,6 +21,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { OperatorsModule } from './modules/operators/operators.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -54,6 +55,7 @@ import { AppLogger } from './common/logger/logger.service';
     AdminModule,
     SyncModule,
     SettingsModule,
+    OperatorsModule,
   ],
   providers: [
     AppLogger,

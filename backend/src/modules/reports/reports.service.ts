@@ -101,7 +101,7 @@ export class ReportsService {
       return {
         id: s.id, saleNumber: s.saleNumber, status: s.status,
         total: s.total.toFixed(2), paid: paid.toFixed(2), pending: s.total.sub(paid).toFixed(2),
-        createdAt: s.createdAt.toISOString(), user: s.user.fullName,
+        createdAt: s.createdAt.toISOString(), user: s.user.fullName, operatorName: s.operatorName ?? null,
         payments: s.payments.map((p) => ({ method: p.method, amount: p.amount.toFixed(2) })),
       };
     });

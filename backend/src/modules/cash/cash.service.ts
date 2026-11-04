@@ -12,6 +12,18 @@ import { emitOutboxEvent } from '../sync/outbox.helper';
 export class CashService {
   constructor(private prisma: PrismaService) {}
 
+  private async operatorFields(tx: Prisma.TransactionClient, pharmacyId: string, operatorId: string | undefined, required: boolean, kind: 'opened' | 'closed') {
+    if (!operatorId) {
+      if (!required) return {};
+      const n = await tx.pharmacyOperator.count({ where: { pharmacyId, isActive: true } });
+      if (n > 0) throw new BadRequestException('Escolhe o colaborador.');
+      return {};
+    }
+    const op = await tx.pharmacyOperator.findFirst({ where: { id: operatorId, pharmacyId, ...(required ? { isActive: true } : {}) }, select: { id: true, name: true } });
+    if (!op) throw new BadRequestException('Colaborador inv\u00e1lido.');
+    return kind === 'opened' ? { openedByOperatorId: op.id, openedByOperatorName: op.name } : { closedByOperatorId: op.id, closedByOperatorName: op.name };
+  }
+
   async openCash(pharmacyId: string, userId: string, dto: OpenCashDto, outerTx?: Prisma.TransactionClient, returnExisting = false) {
     const run = async (tx: Prisma.TransactionClient) => {
       const existing = await tx.cashSession.findFirst({
@@ -21,7 +33,7 @@ export class CashService {
       if (existing) throw new ConflictException('J� existe uma sess�o de caixa aberta.');
 
       const session = await tx.cashSession.create({
-        data: { pharmacyId, userId, openingBalance: dto.openingBalance, status: 'OPEN' },
+        data: { pharmacyId, userId, openingBalance: dto.openingBalance, status: 'OPEN', ...(await this.operatorFields(tx, pharmacyId, dto.operatorId, !outerTx, 'opened')) },
       });
 
       await tx.auditLog.create({
@@ -43,6 +55,9 @@ export class CashService {
       if (!session) throw new NotFoundException('Sess�o de caixa n�o encontrada.');
       if (session.status !== 'OPEN') throw new BadRequestException('Sess�o j� fechada.');
 
+      const opener: string | null = (session as any).openedByOperatorId ?? null;
+      if (opener && dto.operatorId && dto.operatorId !== opener) throw new BadRequestException('S\u00f3 quem abriu a caixa pode fech\u00e1-la.');
+      const closeOperator = dto.operatorId ?? opener ?? undefined;
       const cashPayments = await tx.salePayment.aggregate({
         where: { cashSessionId: sessionId, method: 'CASH' },
         _sum: { amount: true },
@@ -68,6 +83,7 @@ export class CashService {
         data: {
           status: 'CLOSED',
           closedAt: new Date(),
+          ...(await this.operatorFields(tx, pharmacyId, closeOperator, !outerTx && !opener, 'closed')),
           expectedBalance: expected,
           countedBalance: dto.countedBalance,
           difference,

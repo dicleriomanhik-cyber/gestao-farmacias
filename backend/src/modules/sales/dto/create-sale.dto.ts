@@ -23,6 +23,11 @@ export class SaleLineDto {
 
 export class CreateSaleDto {
   @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  operatorId?: string;
+
+  @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   notes?: string;

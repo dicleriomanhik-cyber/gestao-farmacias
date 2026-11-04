@@ -45,6 +45,7 @@ export class SalesService {
     });
 
     const total = subtotal;
+    const operator = dto.operatorId ? await this.prisma.pharmacyOperator.findFirst({ where: { id: dto.operatorId, pharmacyId }, select: { id: true, name: true } }) : null;
     const count = await this.prisma.sale.count({ where: { pharmacyId } });
     const saleNumber = `VND-${String(count + 1).padStart(6, '0')}`;
 
@@ -59,6 +60,8 @@ export class SalesService {
           discount: discountTotal,
           total,
           notes: dto.notes,
+          operatorId: operator?.id ?? null,
+          operatorName: operator?.name ?? null,
           lines: { create: linesData },
         },
         include: { lines: true },

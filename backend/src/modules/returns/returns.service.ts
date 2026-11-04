@@ -70,6 +70,11 @@ export class ReturnsService {
         });
       }
 
+      let operatorFields: { operatorId?: string; operatorName?: string } = {};
+      if (dto.operatorId) {
+        const op = await tx.pharmacyOperator.findFirst({ where: { id: dto.operatorId, pharmacyId }, select: { id: true, name: true } });
+        if (op) operatorFields = { operatorId: op.id, operatorName: op.name };
+      }
       const count = await tx.saleReturn.count({ where: { pharmacyId } });
       const returnNumber = `DEV-${String(count + 1).padStart(6, '0')}`;
 
@@ -82,6 +87,7 @@ export class ReturnsService {
           reason: dto.reason,
           totalRefund,
           status: 'DRAFT',
+          ...operatorFields,
           lines: { create: linesData },
         },
         include: { lines: true },

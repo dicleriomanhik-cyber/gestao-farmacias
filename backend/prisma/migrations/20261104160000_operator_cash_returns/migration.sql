@@ -1,0 +1,2 @@
+ALTER TABLE "cash_sessions" ADD COLUMN "openedByOperatorId" UUID, ADD COLUMN "openedByOperatorName" TEXT, ADD COLUMN "closedByOperatorId" UUID, ADD COLUMN "closedByOperatorName" TEXT;
+ALTER TABLE "sale_returns" ADD COLUMN "operatorId" UUID, ADD COLUMN "operatorName" TEXT;

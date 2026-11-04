@@ -29,6 +29,11 @@ export class CreateReturnDto {
   @IsUUID()
   saleId!: string;
 
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  operatorId?: string;
+
   @ApiProperty({ example: 'Cliente devolveu por engano' })
   @IsString()
   reason!: string;

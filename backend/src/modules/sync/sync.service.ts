@@ -307,7 +307,7 @@ export class SyncService {
       sessionId = (openOp?.result as any)?.cashSessionId;
     }
     if (!sessionId) throw new BadRequestException('Sessao de caixa nao encontrada para fecho.');
-    await this.cashService.closeCash(pharmacyId, userId, sessionId, { countedBalance: Number(op.payload?.countedBalance) } as any, tx);
+    await this.cashService.closeCash(pharmacyId, userId, sessionId, { countedBalance: Number(op.payload?.countedBalance), operatorId: op.payload?.operatorId || undefined } as any, tx);
     return { cashSessionId: sessionId };
   }
 
@@ -452,7 +452,7 @@ export class SyncService {
             }
             return { idempotencyKey: op.idempotencyKey, status: 'PROCESSED' as const, result: saleResult, rejectionCode: null, rejectionReason: null };
           } else if (op.operationType === 'CASH_OPEN') {
-            const session = await this.cashService.openCash(pharmacyId, userId, { openingBalance: Number(op.payload.openingBalance) } as any, tx, true);
+            const session = await this.cashService.openCash(pharmacyId, userId, { openingBalance: Number(op.payload.openingBalance), operatorId: op.payload.operatorId || undefined } as any, tx, true);
             await tx.syncOperation.updateMany({
               where: { id: operationId!, attemptId, status: 'PENDING' },
               data: { status: 'PROCESSED', result: { cashSessionId: session.id } as Prisma.InputJsonValue, processedAt: new Date() },
