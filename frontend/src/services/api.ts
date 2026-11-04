@@ -1,6 +1,8 @@
-﻿import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { triggerSync } from "../offline/events";
+import { localResponse } from "../offline/readModel";
 
-export const API_BASE_URL = "https://gestao-farmacia-g3vh.onrender.com/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://gestao-farmacia-g3vh.onrender.com/api/v1";
 
 const REFRESH_TOKEN_KEY = "sm.refreshToken";
 
@@ -45,13 +47,22 @@ function flushQueue(token: string | null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const m = (response.config.method ?? "get").toLowerCase();
+    if (m !== "get" && !String(response.config.url).includes("/sync/")) triggerSync();
+    return response;
+  },
   async (error: AxiosError) => {
     const original = error.config as
       | (InternalAxiosRequestConfig & { _retry?: boolean })
       | undefined;
     const status = error.response?.status;
     const isRefreshCall = original?.url?.includes("/auth/refresh");
+
+    if (!error.response && original && (original.method ?? "get").toLowerCase() === "get") {
+      const local = await localResponse(original.url ?? "", (original.params ?? {}) as Record<string, any>);
+      if (local) return { data: local, status: 200, statusText: "OK", headers: {}, config: original };
+    }
 
     if (status !== 401 || !original || original._retry || isRefreshCall) {
       return Promise.reject(error);
@@ -89,12 +100,17 @@ apiClient.interceptors.response.use(
       original.headers = original.headers ?? {};
       (original.headers as Record<string, string>).Authorization = `Bearer ${data.accessToken}`;
       return apiClient(original);
-    } catch (refreshErr) {
+    } catch (refreshErr: any) {
+      flushQueue(null);
+      // Sem rede: mantém a sessão e os tokens. O POS continua a vender offline.
+      if (!refreshErr?.response) {
+        return Promise.reject(refreshErr);
+      }
+      // O servidor recusou a renovação: a sessão terminou.
       accessToken = null;
       setRefreshToken(null);
-      flushQueue(null);
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.assign("/login");
+      if (typeof window !== "undefined" && !["/login", "/pos/login", "/criar-conta", "/esqueci-password", "/redefinir-password"].includes(window.location.pathname) && navigator.onLine) {
+        window.location.assign(window.location.pathname.startsWith("/pos") ? "/pos/login" : "/login");
       }
       return Promise.reject(refreshErr);
     } finally {
@@ -102,3 +118,6 @@ apiClient.interceptors.response.use(
     }
   }
 );
+
+
+

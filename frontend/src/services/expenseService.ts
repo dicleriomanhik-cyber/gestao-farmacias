@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createExpenseLocal, confirmExpenseLocal, cancelExpenseLocal, updateExpenseLocal } from "../offline/operationsLocal";
 import type {
   Expense,
   ExpenseRequest,
@@ -37,16 +38,41 @@ export async function getExpenseById(id: string): Promise<Expense> {
 }
 
 export async function createExpense(data: ExpenseRequest): Promise<Expense> {
-  const resp = await apiClient.post<Envelope<Expense>>("/expenses", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<Expense>>("/expenses", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await createExpenseLocal(data)) as Expense;
+  }
 }
 
 export async function confirmExpense(id: string): Promise<Expense> {
-  const resp = await apiClient.patch<Envelope<Expense>>(`/expenses/${id}/confirm`);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.patch<Envelope<Expense>>(`/expenses/${id}/confirm`);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await confirmExpenseLocal(id)) as Expense;
+  }
 }
 
 export async function cancelExpense(id: string): Promise<Expense> {
-  const resp = await apiClient.patch<Envelope<Expense>>(`/expenses/${id}/cancel`);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.patch<Envelope<Expense>>(`/expenses/${id}/cancel`);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await cancelExpenseLocal(id)) as Expense;
+  }
+}
+
+export async function updateExpense(id: string, data: ExpenseRequest): Promise<Expense> {
+  try {
+    const resp = await apiClient.patch<Envelope<Expense>>(`/expenses/${id}`, data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return (await updateExpenseLocal(id, data)) as Expense;
+  }
 }

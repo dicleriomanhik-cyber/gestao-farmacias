@@ -1,7 +1,8 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
 import type {
   Supplier,
   SupplierRequest,
+  SupplierSummary,
   PaginatedResult,
   ListParams,
 } from "../types/suppliers";
@@ -34,6 +35,11 @@ export async function getSuppliers(params: ListParams = {}): Promise<PaginatedRe
 
 export async function getSupplierById(id: string): Promise<Supplier> {
   const resp = await apiClient.get<Envelope<Supplier>>(`/suppliers/${id}`);
+  return resp.data.data;
+}
+
+export async function getSupplierSummary(id: string): Promise<SupplierSummary> {
+  const resp = await apiClient.get<Envelope<SupplierSummary>>(`/suppliers/${id}/summary`);
   return resp.data.data;
 }
 

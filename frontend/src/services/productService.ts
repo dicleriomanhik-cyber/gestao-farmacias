@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createProductLocal } from "../offline/operationsLocal";
 import type {
   Product,
   Category,
@@ -28,6 +29,7 @@ export async function getProducts(params: ListParams = {}): Promise<PaginatedRes
       page: params.page ?? 1,
       limit: params.limit ?? 20,
       ...(params.search ? { search: params.search } : {}),
+      ...(params.status ? { status: params.status } : {}),
     },
   });
   return resp.data.data;
@@ -46,11 +48,21 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function createProduct(data: ProductRequest): Promise<Product> {
-  const resp = await apiClient.post<Envelope<Product>>("/products", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<Product>>("/products", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await createProductLocal(data);
+  }
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  await apiClient.delete(/products/ + id);
 }
 
 export async function updateProduct(id: string, data: ProductRequest): Promise<Product> {
   const resp = await apiClient.patch<Envelope<Product>>(`/products/${id}`, data);
   return resp.data.data;
 }
+

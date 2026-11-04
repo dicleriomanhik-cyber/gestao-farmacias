@@ -1,17 +1,21 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getPurchases } from "../../services/purchaseService";
+import { getSettings } from "../../services/settingsService";
 import type { Purchase, PurchaseStatus, PaginatedMeta } from "../../types/purchases";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
+import Badge from "../../components/suppliers/Badge";
+import { fmtDate, fmtMt, num } from "../../utils/supplierFormat";
 
 export default function PurchaseListPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<PurchaseStatus | "">("");
+  const [payables, setPayables] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -28,6 +32,12 @@ export default function PurchaseListPage() {
   }
 
   useEffect(() => {
+    getSettings()
+      .then((st) => setPayables(Boolean(st.usePayables)))
+      .catch(() => setPayables(false));
+  }, []);
+
+  useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter]);
@@ -39,22 +49,8 @@ export default function PurchaseListPage() {
       <EmptyState
         message="Nenhuma compra registada."
         actionLabel="Nova Compra"
-        actionLink="/compras/novo"
+        actionLink="/fornecedores/compras/nova"
       />
-    );
-  }
-
-  function statusBadge(status: PurchaseStatus) {
-    const map = {
-      DRAFT: { bg: "#fef08a", color: "#854d0e", label: "Rascunho" },
-      CONFIRMED: { bg: "#dcfce7", color: "#166534", label: "Confirmada" },
-      CANCELLED: { bg: "#fee2e2", color: "#991b1b", label: "Cancelada" },
-    };
-    const cfg = map[status];
-    return (
-      <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: cfg.bg, color: cfg.color }}>
-        {cfg.label}
-      </span>
     );
   }
 
@@ -62,7 +58,7 @@ export default function PurchaseListPage() {
     <div>
       <PageHeader
         title="Compras"
-        actions={<Link to="/compras/novo" className="btn btn-primary">+ Nova Compra</Link>}
+        actions={<Link to="/fornecedores/compras/nova" className="btn btn-primary">+ Nova Compra</Link>}
       />
 
       <div style={{ marginBottom: "1rem" }}>
@@ -88,6 +84,8 @@ export default function PurchaseListPage() {
               <th>Fornecedor</th>
               <th>Data</th>
               <th>Total</th>
+              {payables && <th>Em dívida</th>}
+              {payables && <th>Pagamento</th>}
               <th>Estado</th>
               <th>Ações</th>
             </tr>
@@ -97,11 +95,13 @@ export default function PurchaseListPage() {
               <tr key={p.id}>
                 <td>{p.documentNumber}</td>
                 <td>{p.supplier?.name ?? "—"}</td>
-                <td>{new Date(p.purchaseDate).toLocaleDateString()}</td>
-                <td>{parseFloat(p.totalAmount).toFixed(2)} MT</td>
-                <td>{statusBadge(p.status)}</td>
+                <td>{fmtDate(p.purchaseDate)}</td>
+                <td>{fmtMt(p.dueMzn ?? p.totalAmount)}</td>
+                {payables && <td>{fmtMt(num(p.outstanding))}</td>}
+                {payables && <td><Badge kind="payment" value={p.paymentStatus ?? "PAID"} /></td>}
+                <td><Badge kind="purchase" value={p.status} /></td>
                 <td>
-                  <Link to={`/compras/${p.id}`} style={{ color: "#2563eb", textDecoration: "none" }}>
+                  <Link to={`/fornecedores/compras/${p.id}`} style={{ color: "#2563eb", textDecoration: "none" }}>
                     Ver Detalhe
                   </Link>
                 </td>

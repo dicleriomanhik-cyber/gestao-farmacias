@@ -1,13 +1,17 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getSupplierById,
   createSupplier,
   updateSupplier,
 } from "../../services/supplierService";
+import { getSettings } from "../../services/settingsService";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { apiError } from "../../utils/supplierFormat";
+
+const labelStyle = { display: "block", marginBottom: "0.5rem", fontWeight: 500 } as const;
 
 export default function SupplierFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,29 +22,35 @@ export default function SupplierFormPage() {
   const [name, setName] = useState("");
   const [taxId, setTaxId] = useState("");
   const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
   const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(isEditing);
+  const [extras, setExtras] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
 
   function load() {
-    if (!isEditing || !id) return;
     setLoading(true);
     setError(false);
-    getSupplierById(id)
-      .then((s) => {
-        setName(s.name);
-        setTaxId(s.taxId ?? "");
-        setPhone(s.phone ?? "");
-        setEmail(s.email ?? "");
-        setAddress(s.address ?? "");
-        setCity(s.city ?? "");
-        setProvince(s.province ?? "");
-        setNotes(s.notes ?? "");
+    const supplier = isEditing && id ? getSupplierById(id) : Promise.resolve(null);
+    Promise.all([supplier, getSettings().catch(() => null)])
+      .then(([s, st]) => {
+        setExtras(Boolean(st?.supplierExtraFields));
+        if (s) {
+          setName(s.name);
+          setTaxId(s.taxId ?? "");
+          setPhone(s.phone ?? "");
+          setWhatsapp(s.whatsapp ?? "");
+          setEmail(s.email ?? "");
+          setAddress(s.address ?? "");
+          setCity(s.city ?? "");
+          setProvince(s.province ?? "");
+          setNotes(s.notes ?? "");
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -57,13 +67,13 @@ export default function SupplierFormPage() {
 
     const payload = {
       name: name.trim(),
-      taxId: taxId.trim() || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
       address: address.trim() || null,
       city: city.trim() || null,
       province: province.trim() || null,
       notes: notes.trim() || null,
+      ...(extras ? { taxId: taxId.trim() || null, whatsapp: whatsapp.trim() || null } : {}),
     };
 
     setSubmitting(true);
@@ -77,8 +87,7 @@ export default function SupplierFormPage() {
       }
       navigate("/fornecedores");
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message ?? "Erro ao guardar fornecedor.";
-      toast.error(String(msg));
+      toast.error(apiError(err, "Erro ao guardar fornecedor."));
     } finally {
       setSubmitting(false);
     }
@@ -94,37 +103,47 @@ export default function SupplierFormPage() {
       </h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
+          <label style={labelStyle}>Nome *</label>
           <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>NIF</label>
-          <input type="text" className="input" value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+        {extras && (
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={labelStyle}>NUIT</label>
+            <input type="text" className="input" value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: extras ? "1fr 1fr" : "1fr", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <label style={labelStyle}>Telefone</label>
+            <input type="tel" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          {extras && (
+            <div>
+              <label style={labelStyle}>WhatsApp</label>
+              <input type="tel" className="input" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+            </div>
+          )}
         </div>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Telefone</label>
-          <input type="tel" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email</label>
+          <label style={labelStyle}>Email</label>
           <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Endereço</label>
+          <label style={labelStyle}>Endereço</label>
           <input type="text" className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Cidade</label>
+            <label style={labelStyle}>Cidade</label>
             <input type="text" className="input" value={city} onChange={(e) => setCity(e.target.value)} />
           </div>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Província</label>
+            <label style={labelStyle}>Província</label>
             <input type="text" className="input" value={province} onChange={(e) => setProvince(e.target.value)} />
           </div>
         </div>
         <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Notas</label>
+          <label style={labelStyle}>Notas</label>
           <textarea className="input" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </div>
         <button

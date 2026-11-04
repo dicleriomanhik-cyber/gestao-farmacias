@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext,
   useCallback,
   useEffect,
@@ -15,7 +15,6 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  loginAsDemo: () => void;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -31,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyAuth = (res: AuthResponse) => {
     if (res.user) {
       setUser(res.user);
+      localStorage.setItem("sm.user", JSON.stringify(res.user));
       setAuthenticated(true);
     }
   };
@@ -41,10 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authService.refresh();
         applyAuth(res);
-      } catch {
-        setUser(null);
-        setAuthenticated(false);
-      } finally {
+      } catch (err: any) { const semRede = !err?.response; const cache = localStorage.getItem("sm.user"); if (semRede && cache) { setUser(JSON.parse(cache)); setAuthenticated(true); } else { localStorage.removeItem("sm.user"); setUser(null); setAuthenticated(false); } } finally {
         setLoading(false);
         refreshInFlight.current = null;
       }
@@ -66,38 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyAuth(res);
   }, []);
 
-  const loginAsDemo = useCallback(() => {
-    setUser({
-      id: "demo-123",
-      email: "demo@farmacia.mz",
-      name: "Admin Demo",
-      roles: ["ADMIN"],
-      permissions: [
-        "users:read", "users:write", "roles:read", "roles:write",
-        "pharmacy:config:read", "pharmacy:config:write", "audit:read",
-        "products:read", "products:write",
-        "suppliers:read", "suppliers:write",
-        "purchases:read", "purchases:write",
-        "stock:read", "stock:write", "stock:adjust",
-        "sales:read", "sales:create", "sales:void",
-        "cash:open", "cash:close",
-        "returns:read", "returns:create", "returns:confirm", "returns:inspect", "returns:release", "returns:refund",
-        "expenses:read", "expenses:create", "expenses:confirm", "expenses:cancel",
-        "reports:read", "reports:financial",
-      ],
-    });
-    setAuthenticated(true);
-  }, []);
-
   const logout = useCallback(async () => {
     await authService.logout();
+    localStorage.removeItem("sm.user");
     setUser(null);
     setAuthenticated(false);
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated, isLoading, login, loginAsDemo, logout, refreshSession }}
+      value={{ user, isAuthenticated, isLoading, login, logout, refreshSession }}
     >
       {children}
     </AuthContext.Provider>

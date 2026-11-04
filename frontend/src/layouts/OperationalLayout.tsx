@@ -1,39 +1,52 @@
-﻿import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
+import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { isCollaborator } from "../utils/permissions";
+import { useEffect, useState } from "react";
+import { getSettings } from "../services/settingsService";
+import SyncStatusBadge from "../components/offline/SyncStatusBadge";
 
 export default function OperationalLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [hideExpenses, setHideExpenses] = useState(false);
+
+  useEffect(() => {
+    if (!isCollaborator(user)) return;
+    const load = () => getSettings().then((st) => setHideExpenses(!st.collaboratorExpenses)).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [user]);
 
   async function onLogout() {
     await logout();
-    navigate("/login", { replace: true });
+    navigate(isCollaborator(user) ? "/pos/login" : "/login", { replace: true });
   }
 
   const navItems = [
     { path: "/pos", label: "Nova Venda", end: true },
-    { path: "/pos/historico", label: "Histórico" },
-    { path: "/pos/stock", label: "Stock" },
     { path: "/pos/caixa", label: "Caixa" },
-    { path: "/pos/caixa/historico", label: "Histórico Caixa" },
+    { path: "/pos/despesas", label: "Despesas" },
+    { path: "/pos/stock", label: "Stock" },
     { path: "/pos/devolucoes", label: "Devoluções" },
+    { path: "/pos/historico", label: "Histórico" },
+    { path: "/pos/movimentos", label: "Movimentos" },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "#f1f5f9" }}>
-      <header style={{ backgroundColor: "#1e293b", color: "white", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "bold" }}>Sistema de Gestão</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <span style={{ fontSize: "0.875rem" }}>{user?.name || user?.email}</span>
-          <Link to="/" style={{ color: "#94a3b8", textDecoration: "none", fontSize: "0.875rem" }}>Sair do POS</Link>
-          <button onClick={onLogout} style={{ background: "none", border: "1px solid #475569", color: "white", padding: "0.4rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
-            Sair
-          </button>
+      <header className="app-header">
+        <h2 className="app-brand">Sistema de Gestão</h2>
+        <div className="app-actions">
+          <SyncStatusBadge />
+          <span className="app-user header-user-name">{user?.name || user?.email}</span>
+          {!isCollaborator(user) && <Link to="/" className="app-link-exit">Sair do POS</Link>}
+          <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>
       </header>
 
       <nav style={{ backgroundColor: "#334155", display: "flex", overflowX: "auto", padding: "0 1.5rem", flexShrink: 0 }}>
-        {navItems.map((item) => (
+        {navItems.filter((item) => item.path !== "/pos/despesas" || !hideExpenses).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -52,8 +65,10 @@ export default function OperationalLayout() {
         ))}
       </nav>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", width: "100%", boxSizing: "border-box" }}>
-        <Outlet />
+      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Outlet />
+        </div>
       </div>
     </div>
   );

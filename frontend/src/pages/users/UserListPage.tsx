@@ -1,13 +1,17 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getUsers } from "../../services/userService";
 import { ROLE_LABELS, type ManagedUser, type UserRole, type PaginatedMeta } from "../../types/users";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
-import PageHeader from "../../components/ui/PageHeader";
+
 import { useAuth } from "../../hooks/useAuth";
 import { hasPermission } from "../../utils/permissions";
+
+function isAdminUser(u: ManagedUser): boolean {
+  return ((u.roles as any[]) ?? []).some((r: any) => (typeof r === "string" ? r : r?.role?.name ?? r?.role ?? r?.name) === "ADMIN");
+}
 
 export default function UserListPage() {
   const { user } = useAuth();
@@ -22,7 +26,7 @@ export default function UserListPage() {
     setError(false);
     getUsers({ page, limit: 20 })
       .then((res) => {
-        setUsers(res.data);
+        setUsers(res.data.filter((u) => !isAdminUser(u)));
         setMeta(res.meta);
       })
       .catch(() => setError(true))
@@ -37,22 +41,23 @@ export default function UserListPage() {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState onRetry={load} />;
   if (users.length === 0 && page === 1) {
-    return <EmptyState message="Nenhum utilizador registado." />;
+    return <EmptyState message="Ainda não criaste nenhuma conta de colaborador." actionLabel="Criar conta de colaborador" actionLink="/utilizadores/novo" />;
   }
 
   function primaryRole(u: ManagedUser): string {
-    const role = u.roles?.[0] as UserRole | undefined;
-    return role ? ROLE_LABELS[role] ?? role : "—";
+    const bruto: any = (u.roles as any)?.[0];
+    // A API pode devolver o papel como texto ("ADMIN") ou como objeto { userId, roleId, role }
+    const nome: string | undefined =
+      typeof bruto === "string" ? bruto : bruto?.role?.name ?? bruto?.role ?? bruto?.name;
+    if (!nome || typeof nome !== "string") return "—";
+    return ROLE_LABELS[nome as UserRole] ?? nome;
   }
 
   const canWrite = hasPermission(user?.permissions, "users:write");
 
   return (
     <div>
-      <PageHeader
-        title="Utilizadores"
-        actions={canWrite ? <Link to="/utilizadores/novo" className="btn btn-primary">+ Novo Utilizador</Link> : null}
-      />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? <Link to="/utilizadores/novo" className="btn btn-primary">+ Nova conta de colaborador</Link> : null}</div>
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">

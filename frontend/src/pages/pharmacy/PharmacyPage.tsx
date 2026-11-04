@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getPharmacy, updatePharmacy } from "../../services/pharmacyService";
 import type { Pharmacy, PharmacyUpdateRequest } from "../../types/pharmacy";
 import { useToast } from "../../contexts/ToastContext";
@@ -143,7 +143,7 @@ export default function PharmacyPage() {
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>NIF</label>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>NUIT</label>
               <input
                 type="text"
                 className="input"

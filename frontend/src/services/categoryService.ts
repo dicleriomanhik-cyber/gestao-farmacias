@@ -1,4 +1,5 @@
-﻿import { apiClient } from "./api";
+import { apiClient } from "./api";
+import { createCategoryLocal, updateCategoryLocal } from "../offline/operationsLocal";
 import type { Category, PaginatedResult, ListParams } from "../types/products";
 
 interface Envelope<T> {
@@ -38,11 +39,21 @@ export async function getCategoryById(id: string): Promise<Category> {
 }
 
 export async function createCategory(data: CategoryRequest): Promise<Category> {
-  const resp = await apiClient.post<Envelope<Category>>("/categories", data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.post<Envelope<Category>>("/categories", data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await createCategoryLocal(data);
+  }
 }
 
 export async function updateCategory(id: string, data: Partial<CategoryRequest>): Promise<Category> {
-  const resp = await apiClient.patch<Envelope<Category>>(`/categories/${id}`, data);
-  return resp.data.data;
+  try {
+    const resp = await apiClient.patch<Envelope<Category>>(`/categories/${id}`, data);
+    return resp.data.data;
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await updateCategoryLocal(id, data);
+  }
 }

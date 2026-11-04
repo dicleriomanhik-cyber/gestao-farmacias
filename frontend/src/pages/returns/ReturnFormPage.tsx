@@ -1,82 +1,79 @@
 ﻿import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import { getSaleById, getSales } from "../../services/saleService";
-import { createReturn } from "../../services/returnService";
+import { Link } from "react-router-dom";
+import { getSales } from "../../services/saleService";
+import { getReturns } from "../../services/returnService";
+import { formatDateTime } from "../../utils/formatDate";
 import type { Sale } from "../../types/sales";
-import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
+import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
-import EmptyState from "../../components/ui/EmptyState";
 
 export default function ReturnFormPage() {
-  const { saleId } = useParams<{ saleId: string }>();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const [sale, setSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [reason, setReason] = useState("");
-  const [lines, setLines] = useState<{ saleLineId: string; quantity: number }[]>([]);
+  const [returnedSaleIds, setReturnedSaleIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  
+  const [dateFilter, setDateFilter] = useState<"ALL" | "DAILY">("DAILY");
+
+  function load() {
+    setLoading(true);
+    setError(false);
+    Promise.all([
+      getSales({ page: 1, limit: 100 }),
+      getReturns({ page: 1, limit: 100 })
+    ])
+      .then(([salesRes, returnsRes]) => {
+        setSales(salesRes.data);
+        const ids = new Set<string>();
+        returnsRes.data.forEach((r) => {
+          if (r.status === "CONFIRMED" || r.status === "COMPLETED" || r.status === "DRAFT") {
+            ids.add(r.saleId);
+          }
+        });
+        setReturnedSaleIds(ids);
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    if (saleId) {
-      setLoading(true);
-      getSaleById(saleId)
-        .then((s) => {
-          setSale(s);
-          setLines((s.lines ?? []).map((l) => ({ saleLineId: l.id, quantity: 1 })));
-        })
-        .catch(() => setError(true))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(true);
-      getSales({ limit: 50, status: "CONFIRMED" })
-        .then((res) => setSales(res.data))
-        .catch(() => setError(true))
-        .finally(() => setLoading(false));
-    }
-  }, [saleId]);
-
-  function updateLineQty(saleLineId: string, qty: number) {
-    setLines((prev) => prev.map((l) => l.saleLineId === saleLineId ? { ...l, quantity: Math.max(1, qty) } : l));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!saleId || !reason.trim()) return toast.error("Motivo é obrigatório.");
-    setSubmitting(true);
-    try {
-      await createReturn({
-        saleId,
-        reason: reason.trim(),
-        lines: lines.filter((l) => l.quantity > 0),
-      });
-      toast.success("Devolução criada. Aguarda confirmação.");
-      navigate("/devolucoes");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? "Erro ao criar devolução.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    load();
+  }, []);
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Erro ao carregar dados." onRetry={() => window.location.reload()} />;
+  if (error) return <ErrorState onRetry={load} />;
 
-  if (!saleId) {
-    if (sales.length === 0) {
-      return <EmptyState message="Nenhuma venda confirmada para devolver." />;
-    }
-    return (
-      <div>
-        <PageHeader title="Nova Devolução" />
+  // 1. Filtrar por data
+  let filteredSales = sales;
+  if (dateFilter === "DAILY") {
+    const todayStr = new Date().toLocaleDateString("pt-PT");
+    filteredSales = filteredSales.filter(s => new Date(s.createdAt).toLocaleDateString("pt-PT") === todayStr);
+  }
+
+  // 2. Remover vendas que já têm devolução
+  filteredSales = filteredSales.filter(s => !returnedSaleIds.has(s.id));
+
+  return (
+    <div>
+      <PageHeader
+        title="Nova Devolução"
+        actions={
+          <button
+            onClick={() => setDateFilter(dateFilter === "DAILY" ? "ALL" : "DAILY")}
+            className="btn btn-secondary"
+          >
+            {dateFilter === "DAILY" ? "Ver Tudo" : "Ver Hoje"}
+          </button>
+        }
+      />
+
+      {filteredSales.length === 0 ? (
+        <EmptyState message={dateFilter === "DAILY" ? "Nenhuma venda disponível para devolução hoje." : "Nenhuma venda disponível para devolução."} />
+      ) : (
         <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-          <p style={{ marginBottom: "1rem", color: "#64748b" }}>
-            Selecione a venda que deseja devolver:
-          </p>
+          <p style={{ marginBottom: "1rem", color: "#475569" }}>Selecione a venda que deseja devolver:</p>
           <table className="table">
             <thead>
               <tr>
@@ -88,14 +85,20 @@ export default function ReturnFormPage() {
               </tr>
             </thead>
             <tbody>
-              {sales.map((s) => (
+              {filteredSales.map((s) => (
                 <tr key={s.id}>
                   <td>{s.saleNumber}</td>
-                  <td>{(s.lines ?? []).map((l) => l.product?.name ?? "").join(", ")}</td>
-                  <td>{new Date(s.createdAt).toLocaleString()}</td>
+                  <td>
+                    {s.lines?.map((l) => l.product?.name ?? l.productId).join(", ") ?? "—"}
+                  </td>
+                  <td>{formatDateTime(s.createdAt)}</td>
                   <td>{parseFloat(s.total).toFixed(2)} MT</td>
                   <td>
-                    <Link to={`/devolucoes/nova/${s.id}`} className="btn btn-primary" style={{ padding: "0.25rem 0.75rem" }}>
+                    <Link
+                      to={`/pos/devolucoes/nova/${s.id}`}
+                      className="btn btn-primary"
+                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
+                    >
                       Selecionar
                     </Link>
                   </td>
@@ -104,40 +107,7 @@ export default function ReturnFormPage() {
             </tbody>
           </table>
         </div>
-      </div>
-    );
-  }
-
-  if (!sale) return <ErrorState message="Venda não encontrada." onRetry={() => navigate("/devolucoes/nova")} />;
-
-  return (
-    <div>
-      <PageHeader title={`Nova Devolução — ${sale.saleNumber}`} />
-      <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "800px", margin: "0 auto" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Motivo *</label>
-        <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1.5rem" }} />
-
-        <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Linhas a devolver</h3>
-        {(sale.lines ?? []).map((line) => (
-          <div key={line.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #e2e8f0" }}>
-            <span>{line.product?.name ?? line.productId.substring(0, 8)}</span>
-            <span>{line.quantity} x {parseFloat(line.unitPrice).toFixed(2)} MT</span>
-            <input
-              type="number"
-              min="1"
-              max={line.quantity}
-              value={lines.find((l) => l.saleLineId === line.id)?.quantity ?? 1}
-              onChange={(e) => updateLineQty(line.id, parseInt(e.target.value, 10))}
-              className="input"
-              style={{ width: "80px", textAlign: "center" }}
-            />
-          </div>
-        ))}
-
-        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem", marginTop: "1.5rem" }}>
-          {submitting ? "A guardar…" : "Criar Devolução"}
-        </button>
-      </form>
+      )}
     </div>
   );
 }

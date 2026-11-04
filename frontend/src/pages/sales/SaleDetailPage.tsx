@@ -1,9 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getSaleById, confirmSale, getSalePayments } from "../../services/saleService";
+import { getReturns } from "../../services/returnService";
 import { formatDateTime } from "../../utils/formatDate";
+import { newIdempotencyKey } from "../../utils/idempotencyKey";
 import { registerPayment } from "../../services/cashService";
 import type { Sale, SaleStatus, PaymentMethod, Payment } from "../../types/sales";
+import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
@@ -40,6 +43,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   const { user } = useAuth();
   const [sale, setSale] = useState<Sale | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [saleReturn, setSaleReturn] = useState<SaleReturn | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -51,11 +55,24 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     if (!id) return;
     setLoading(true);
     setError(false);
-    Promise.all([getSaleById(id), getSalePayments(id)])
-      .then(([s, p]) => {
+    
+    Promise.all([
+      getSaleById(id),
+      getSalePayments(id),
+      getReturns({ page: 1, limit: 100 })
+    ])
+      .then(([s, p, retsRes]) => {
         setSale(s);
         setPayments(p);
         setIsPaid(getPaidSaleIds().includes(id) || p.length > 0);
+        
+        // Encontrar devolução associada a esta venda
+        const ret = retsRes.data.find(r => r.saleId === id && (r.status === "CONFIRMED" || r.status === "COMPLETED"));
+        if (ret) {
+          setSaleReturn(ret);
+        } else {
+          setSaleReturn(null);
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -99,7 +116,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     setActionLoading(true);
     try {
       const amount = parseFloat(sale.total);
-      await registerPayment({ saleId: sale.id, amount, method: paymentMethod });
+      await registerPayment({ saleId: sale.id, amount, method: paymentMethod, idempotencyKey: newIdempotencyKey() });
       toast.success("Pagamento registado.");
       markAsPaid(sale.id);
       setIsPaid(true);
@@ -130,7 +147,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   }
 
   const backLink = isOperational ? "/pos/historico" : "/vendas";
-  const backLabel = isOperational ? "Voltar ao Histórico" : "← Voltar às Vendas";
+  const backLabel = isOperational ? "Voltar ao Histórico" : "Voltar às Vendas";
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
@@ -140,7 +157,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   const canPay = hasPermission(user?.permissions, "cash:open");
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
+    <div className="card" style={{ padding: "1.5rem", maxWidth: "1000px", margin: "0 auto" }}>
       <div style={{ marginBottom: "1rem" }}>
         <Link to={backLink} style={{ color: "#2563eb", textDecoration: "none", fontWeight: 500 }}>
           {backLabel}
@@ -148,8 +165,16 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Venda {sale.saleNumber}</h1>
-        {statusBadge(sale.status)}
+        <h1 style={{ fontSize: "1.3rem", fontWeight: "bold", margin: 0 }}>Venda {sale.saleNumber}</h1>
+        
+        {/* Mostrar badge de Reembolsada se aplicável */}
+        {saleReturn ? (
+          <span style={{ padding: "0.25rem 0.75rem", borderRadius: "4px", backgroundColor: "#fef3c7", color: "#92400e", fontWeight: 500 }}>
+            Reembolsada
+          </span>
+        ) : (
+          statusBadge(sale.status)
+        )}
       </div>
 
       <p><strong>Data:</strong> {formatDateTime(sale.createdAt)}</p>
@@ -161,8 +186,18 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
         <p><strong>Método de Pagamento:</strong> {payments.map((p) => ({ CASH: "Dinheiro", CARD: "Cartão", MPESA: "M-Pesa", EMOLA: "e-Mola" }[p.method] ?? p.method)).join(", ")}</p>
       )}
 
+      {/* Caixa com Informação de Reembolso */}
+      {saleReturn && (
+        <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#fef3c7", border: "1px solid #fde68a", borderRadius: "8px", color: "#92400e" }}>
+          <h4 style={{ margin: "0 0 0.5rem", fontWeight: "bold" }}>Informação de Devolução</h4>
+          <p style={{ margin: "0 0 0.25rem" }}><strong>Devolução Nº:</strong> {saleReturn.returnNumber}</p>
+          <p style={{ margin: "0 0 0.25rem" }}><strong>Valor Reembolsado:</strong> {parseFloat(saleReturn.totalRefund).toFixed(2)} MT</p>
+          <p style={{ margin: 0 }}><strong>Motivo:</strong> {saleReturn.reason}</p>
+        </div>
+      )}
+
       <h3 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Linhas</h3>
-      <table className="table">
+      <div style={{ maxHeight: "200px", overflowY: "auto", borderRadius: "8px", border: "1px solid #e2e8f0" }}><table className="table" style={{ margin: 0 }}>
         <thead>
           <tr>
             <th>Produto</th>
@@ -181,7 +216,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       {!isOperational && sale.status === "DRAFT" && canConfirm && (
         <button
@@ -194,13 +229,19 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
         </button>
       )}
 
-      {!isOperational && sale.status === "CONFIRMED" && isPaid && (
+      {!isOperational && sale.status === "CONFIRMED" && isPaid && !saleReturn && (
         <div style={{ marginTop: "1.5rem", padding: "0.75rem", backgroundColor: "#dcfce7", color: "#166534", borderRadius: "4px", textAlign: "center", fontWeight: 500 }}>
-          ✅ Venda paga
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            Venda paga
+          </div>
         </div>
       )}
 
-      {!isOperational && sale.status === "CONFIRMED" && !isPaid && canPay && (
+      {!isOperational && sale.status === "CONFIRMED" && !isPaid && !saleReturn && canPay && (
         <div style={{ marginTop: "1.5rem" }}>
           {!showPayment ? (
             <button onClick={() => setShowPayment(true)} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
@@ -231,3 +272,5 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
     </div>
   );
 }
+
+

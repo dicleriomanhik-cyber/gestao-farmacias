@@ -1,31 +1,34 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPurchase } from "../../services/purchaseService";
 import { getSuppliers } from "../../services/supplierService";
-import { getProducts } from "../../services/productService";
+import { getSettings } from "../../services/settingsService";
 import type { Supplier } from "../../types/suppliers";
-import type { Product } from "../../types/products";
-import type { PurchaseLineRequest } from "../../types/purchases";
+import type { PharmacySettings } from "../../types/settings";
+import type { PurchaseRequest } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { apiError } from "../../utils/supplierFormat";
 
-interface LineItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitCost: number;
-}
+const labelStyle = { display: "block", marginBottom: "0.5rem", fontWeight: 500 } as const;
 
 export default function PurchaseFormPage() {
   const navigate = useNavigate();
   const toast = useToast();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<PharmacySettings | null>(null);
   const [supplierId, setSupplierId] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
-  const [items, setItems] = useState<LineItem[]>([]);
+  const [transportCost, setTransportCost] = useState("");
+  const [otherCosts, setOtherCosts] = useState("");
+  const [invoiceTotal, setInvoiceTotal] = useState("");
+  const [currency, setCurrency] = useState("MZN");
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<"PAID" | "CREDIT">("PAID");
+  const [dueDate, setDueDate] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
@@ -33,13 +36,10 @@ export default function PurchaseFormPage() {
   function load() {
     setLoading(true);
     setError(false);
-    Promise.all([
-      getSuppliers({ page: 1, limit: 100 }),
-      getProducts({ page: 1, limit: 100 }),
-    ])
-      .then(([s, p]) => {
-        setSuppliers(s.data);
-        setProducts(p.data);
+    Promise.all([getSuppliers({ page: 1, limit: 100 }), getSettings().catch(() => null)])
+      .then(([s, st]) => {
+        setSuppliers(s.data.filter((x) => x.status === "ACTIVE"));
+        setSettings(st);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -49,139 +49,122 @@ export default function PurchaseFormPage() {
     load();
   }, []);
 
-  function addItem(product: Product) {
-    setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
-      if (existing) {
-        return prev.map((i) => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, {
-        productId: product.id,
-        productName: product.name,
-        quantity: 1,
-        unitCost: parseFloat(product.salePrice),
-      }];
-    });
-  }
-
-  function updateQuantity(productId: string, qty: number) {
-    if (isNaN(qty) || qty < 1) return;
-    setItems((prev) => prev.map((i) => i.productId === productId ? { ...i, quantity: qty } : i));
-  }
-
-  function updateUnitCost(productId: string, cost: number) {
-    if (isNaN(cost) || cost < 0) return;
-    setItems((prev) => prev.map((i) => i.productId === productId ? { ...i, unitCost: cost } : i));
-  }
-
-  function removeItem(productId: string) {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
-  }
-
-  const total = items.reduce((acc, i) => acc + i.unitCost * i.quantity, 0);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!supplierId) return toast.error("Seleciona um fornecedor.");
-    if (!documentNumber.trim()) return toast.error("Número de documento é obrigatório.");
-    if (items.length === 0) return toast.error("Adiciona pelo menos um produto.");
+    if (!documentNumber.trim()) return toast.error("Número da fatura é obrigatório.");
 
-    const lines: PurchaseLineRequest[] = items.map((i) => ({
-      productId: i.productId,
-      quantity: i.quantity,
-      unitCost: i.unitCost,
-    }));
+    const body: PurchaseRequest = { supplierId, documentNumber: documentNumber.trim() };
+    if (notes.trim()) body.notes = notes.trim();
+    const t = parseFloat(transportCost);
+    if (!isNaN(t) && t > 0) body.transportCost = t;
+    const o = parseFloat(otherCosts);
+    if (!isNaN(o) && o > 0) body.otherCosts = o;
+    const inv = parseFloat(invoiceTotal);
+    if (!isNaN(inv) && inv >= 0 && invoiceTotal.trim() !== "") body.invoiceTotal = inv;
+
+    if (settings?.multiCurrency && currency.trim().toUpperCase() !== "MZN") {
+      const rate = parseFloat(exchangeRate);
+      if (isNaN(rate) || rate <= 0) return toast.error("Indica o câmbio para metical.");
+      body.currency = currency.trim().toUpperCase();
+      body.exchangeRate = rate;
+    }
+
+    if (settings?.usePayables) {
+      body.paymentStatus = paymentStatus;
+      if (paymentStatus === "CREDIT" && dueDate) body.dueDate = dueDate;
+    }
 
     setSubmitting(true);
     try {
-      await createPurchase({ supplierId, documentNumber: documentNumber.trim(), lines });
-      toast.success("Compra criada como rascunho.");
-      navigate("/compras");
+      const created = await createPurchase(body);
+      toast.success("Compra criada em rascunho. Regista agora as caixas.");
+      navigate(`/fornecedores/compras/${created.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message ?? "Erro ao criar compra.";
-      toast.error(String(msg));
+      toast.error(apiError(err, "Erro ao criar compra."));
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) return <LoadingState message="A carregar dados…" />;
-  if (error) return <ErrorState message="Não foi possível carregar fornecedores e produtos." onRetry={load} />;
+  if (error) return <ErrorState message="Não foi possível carregar os fornecedores." onRetry={load} />;
+
+  const foreign = Boolean(settings?.multiCurrency) && currency.trim().toUpperCase() !== "MZN";
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
+    <div className="card" style={{ padding: "2rem", maxWidth: "760px", margin: "0 auto" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Nova Compra</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Fornecedor *</label>
+            <label style={labelStyle}>Fornecedor *</label>
             <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required className="input">
               <option value="">Seleciona um fornecedor</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nº Documento *</label>
-            <input type="text" className="input" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="COMPRA-2026-XXX" required />
+            <label style={labelStyle}>Nº da fatura *</label>
+            <input type="text" className="input" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} required />
           </div>
         </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Produtos</label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-            {products.map((p) => (
-              <button key={p.id} type="button" onClick={() => addItem(p)} className="btn btn-secondary">
-                + {p.name} ({parseFloat(p.salePrice).toFixed(2)} MT)
-              </button>
-            ))}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <label style={labelStyle}>Transporte (MT)</label>
+            <input type="number" min="0" step="0.01" className="input" value={transportCost} onChange={(e) => setTransportCost(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Outros custos (MT)</label>
+            <input type="number" min="0" step="0.01" className="input" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Total da fatura (conferência)</label>
+            <input type="number" min="0" step="0.01" className="input" value={invoiceTotal} onChange={(e) => setInvoiceTotal(e.target.value)} />
           </div>
         </div>
 
-        {items.length > 0 && (
-          <div style={{ marginBottom: "1rem" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th>Qtd</th>
-                  <th>Custo Unit.</th>
-                  <th>Subtotal</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.productId}>
-                    <td>{item.productName}</td>
-                    <td>
-                      <input
-                        type="number" min="1" value={item.quantity}
-                        onChange={(e) => { const v = parseInt(e.target.value, 10); updateQuantity(item.productId, isNaN(v) ? 1 : v); }}
-                        style={{ width: "70px", padding: "0.25rem" }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number" min="0" step="0.01" value={item.unitCost}
-                        onChange={(e) => { const v = parseFloat(e.target.value); updateUnitCost(item.productId, isNaN(v) ? 0 : v); }}
-                        style={{ width: "100px", padding: "0.25rem" }}
-                      />
-                    </td>
-                    <td>{(item.unitCost * item.quantity).toFixed(2)} MT</td>
-                    <td>
-                      <button type="button" onClick={() => removeItem(item.productId)} style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer" }}>Remover</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {settings?.multiCurrency && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+            <div>
+              <label style={labelStyle}>Moeda</label>
+              <input type="text" className="input" maxLength={3} value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            </div>
+            {foreign && (
+              <div>
+                <label style={labelStyle}>Câmbio (1 {currency || "—"} = ? MT)</label>
+                <input type="number" min="0" step="0.0001" className="input" value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)} />
+              </div>
+            )}
           </div>
         )}
 
-        <h2 style={{ textAlign: "right", marginBottom: "1rem" }}>Total: {total.toFixed(2)} MT</h2>
+        {settings?.usePayables && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+            <div>
+              <label style={labelStyle}>Pagamento</label>
+              <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as "PAID" | "CREDIT")}>
+                <option value="PAID">Pago na confirmação</option>
+                <option value="CREDIT">A prazo</option>
+              </select>
+            </div>
+            {paymentStatus === "CREDIT" && (
+              <div>
+                <label style={labelStyle}>Data limite</label>
+                <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </div>
+            )}
+          </div>
+        )}
 
-        <button type="submit" disabled={submitting || items.length === 0} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A criar…" : "Criar Compra (Rascunho)"}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <label style={labelStyle}>Notas</label>
+          <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+
+        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+          {submitting ? "A criar…" : "Criar compra (rascunho)"}
         </button>
       </form>
     </div>
