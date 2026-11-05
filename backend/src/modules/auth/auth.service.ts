@@ -117,7 +117,7 @@ export class AuthService {
     if (sha256(rawRefresh) !== existing.tokenHash) {
       throw new UnauthorizedException('Refresh token inválido.');
     }
-    if (existing.revokedAt) {
+    if (existing.revokedAt && !(existing.replacedById && Date.now() - existing.revokedAt.getTime() < 120000)) {
       // Reutilização → revoga a família inteira.
       await this.prisma.refreshToken.updateMany({
         where: { familyId: existing.familyId, revokedAt: null },
@@ -146,10 +146,12 @@ export class AuthService {
           userAgent: meta.userAgent ?? null,
         },
       });
-      await tx.refreshToken.update({
-        where: { jti: existing.jti },
-        data: { revokedAt: new Date(), replacedById: created.id },
-      });
+      if (!existing.revokedAt) {
+        await tx.refreshToken.update({
+          where: { jti: existing.jti },
+          data: { revokedAt: new Date(), replacedById: created.id },
+        });
+      }
     });
 
     return {

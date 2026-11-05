@@ -132,7 +132,14 @@ export class CashService {
     return { session, payments, totalsByMethod };
   }
 
-  async getMovements(pharmacyId: string, userId: string) {
+  async getMovements(pharmacyId: string, userId: string, all = false) {
+    if (all) {
+      return this.prisma.cashMovement.findMany({
+        where: { cashSession: { pharmacyId } },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+      });
+    }
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
