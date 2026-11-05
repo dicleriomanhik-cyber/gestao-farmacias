@@ -13,6 +13,7 @@ import { canAccessCash } from "../../utils/permissions";
 import { useToast } from "../../contexts/ToastContext";
 import { formatDateTime } from "../../utils/formatDate";
 import { useOperators, setSessionOperator } from "../../offline/operators";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -182,19 +183,14 @@ export default function CashSessionPage() {
         <div className="card" style={{ padding: "1rem" }}>
           <p style={{ color: "#b91c1c", marginBottom: "0.75rem", fontWeight: 500 }}>A caixa está fechada.</p>
           {allowed ? (
-            <form onSubmit={handleOpen} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+            <form onSubmit={handleOpen} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
               {needOperator && (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 140px" }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador *</label>
-                  <select className="input" value={chosenOperator} onChange={(e) => setOperatorId(e.target.value)} required style={{ width: "100%" }}>
-                    {!chosenOperator && <option value="">Escolher colaborador</option>}
-                    {ops.operators.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect value={chosenOperator} onChange={setOperatorId} placeholder="Escolher colaborador" options={ops.operators.map((o) => ({ value: o.id, label: o.name }))} />
                 </div>
               )}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: "1 1 140px" }}>
                 <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Valor Inicial (MT)</label>
                 <input type="number" step="0.01" min="0" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ex: 1000.00" required style={{ width: "100%" }} />
               </div>
@@ -264,24 +260,19 @@ export default function CashSessionPage() {
             {session.openedByOperatorName && <p style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}><strong>Aberta por:</strong> {session.openedByOperatorName}</p>}
 
             {allowed ? (
-              <form onSubmit={handleClose} style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+              <form onSubmit={handleClose} style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
               {session.openedByOperatorId ? (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 140px" }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador</label>
                   <input className="input" value={session.openedByOperatorName ?? ""} readOnly disabled style={{ width: "100%" }} />
                 </div>
               ) : needOperator ? (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 140px" }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador *</label>
-                  <select className="input" value={chosenOperator} onChange={(e) => setOperatorId(e.target.value)} required style={{ width: "100%" }}>
-                    {!chosenOperator && <option value="">Escolher colaborador</option>}
-                    {ops.operators.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect value={chosenOperator} onChange={setOperatorId} placeholder="Escolher colaborador" options={ops.operators.map((o) => ({ value: o.id, label: o.name }))} />
                 </div>
               ) : null}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 140px" }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Valor Contado (MT)</label>
                   <input type="number" step="0.01" min="0" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ex: 1050.00" required style={{ width: "100%" }} />
                 </div>
