@@ -42,7 +42,9 @@ export default function UserListPage() {
     setError(false);
     Promise.all([getUsers({ page, limit: 20 }), getPharmacyAccounts()])
       .then(([res, acc]) => {
-        setUsers(res.data.filter((u) => !isAdminUser(u)));
+        const admins = res.data.filter(isAdminUser);
+        const meus = admins.filter((a) => a.id === user?.id);
+        setUsers(meus.length > 0 ? meus : admins.slice(0, 1));
         setMeta(res.meta);
         setAccounts(acc);
       })
@@ -125,7 +127,7 @@ export default function UserListPage() {
                 <tr key={u.id}>
                   <td>{u.fullName}</td>
                   <td>{u.email}</td>
-                  <td>{primaryRole(u)}</td>
+                  <td>{isAdminUser(u) ? "Administrador" : primaryRole(u)}</td>
                   <td>{badge(u.status === "ACTIVE", "Ativo", "Inativo")}</td>
                   <td>
                     {canWrite ? (
