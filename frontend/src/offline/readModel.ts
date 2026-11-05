@@ -103,7 +103,7 @@ export async function localCashMovements() {
     if (o.operationType === "EXPENSE_CONFIRM") {
       const e = exps.find((x) => matches(x, p, targetId(p, createdIds)));
       if (e && (e.paidFrom ?? "PHARMACY_CASH") === "PHARMACY_CASH") derived.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", amount: String(e.amount), reason: "Despesa: " + e.description, createdAt: o.createdAt });
-    } else if (o.operationType === "REFUND") {
+    } else if (o.operationType === "EXPENSE" && p.confirm === true && (p.paidFrom ?? "PHARMACY_CASH") === "PHARMACY_CASH") { derived.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", amount: String(p.amount), reason: "Despesa: " + (p.description ?? ""), createdAt: o.createdAt }); } else if (o.operationType === "REFUND") {
       const r = rets.find((x) => matches(x, p, targetId(p, createdIds)));
       derived.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", method: p.method ?? "CASH", amount: String(p.amount), reason: "Reembolso devolução " + (r?.returnNumber ?? ""), createdAt: o.createdAt });
     }

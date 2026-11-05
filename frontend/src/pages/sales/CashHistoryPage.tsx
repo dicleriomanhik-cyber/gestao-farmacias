@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";import { useDataChanged } from "../../offline/dataChanged";
 import { apiClient } from "../../services/api";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -22,16 +22,16 @@ export default function CashHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  function load() {
-    setLoading(true);
+  function load(silent: boolean = false) {
+    if (silent !== true) setLoading(true);
     setError(false);
     apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements")
       .then((res) => setMovements(res.data.data ?? []))
-      .catch(() => setError(true))
+      .catch(() => { if (silent !== true) setError(true); })
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); useDataChanged(() => load(true));
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os movimentos." onRetry={load} />;
