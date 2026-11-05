@@ -21,6 +21,7 @@ export default function UserFormPage() {
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   function load() {
     if (!isEditing || !id) return;
@@ -29,6 +30,7 @@ export default function UserFormPage() {
     getUserById(id)
       .then((u) => {
         setEmail(u.email);
+        setIsAdmin(((u.roles as any[]) ?? []).some((r: any) => (typeof r === "string" ? r : r?.role?.name ?? r?.name) === "ADMIN"));
         setFullName(u.fullName);
         setStatus(u.status === "ACTIVE" ? "ACTIVE" : "INACTIVE");
       })
@@ -80,11 +82,11 @@ export default function UserFormPage() {
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto" }}><div className="card" style={{ padding: "2rem" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
-        {isEditing ? "Editar conta de colaborador" : "Nova conta de colaborador"}
+        {isEditing ? (isAdmin ? "Editar conta de administrador" : "Editar conta de colaborador") : "Nova conta de colaborador"}
       </h1>
       <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
         {isEditing
-          ? "O email não pode ser alterado. Podes redefinir a password ou desativar a conta."
+          ? (isAdmin ? "O email n\u00e3o pode ser alterado. Podes redefinir a palavra-passe." : "O email não pode ser alterado. Podes redefinir a password ou desativar a conta.")
           : "O colaborador entra no painel dele com este email e esta password. Entrega-lhe estas credenciais."}
       </p>
 
@@ -137,7 +139,7 @@ export default function UserFormPage() {
           />
         </div>
 
-        {isEditing && (
+        {isEditing && !isAdmin && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Estado da conta</label>
             <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
@@ -148,7 +150,7 @@ export default function UserFormPage() {
         )}
 
         <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", fontSize: "0.875rem" }}>
-          <strong>Função:</strong> Colaborador
+          <strong>Função:</strong> {isAdmin ? "Administrador" : "Colaborador"}
         </div>
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
@@ -156,7 +158,7 @@ export default function UserFormPage() {
         </button>
       </form>
       </div>
-      {isEditing && <OperatorsPanel />}
+      {isEditing && !isAdmin && <OperatorsPanel />}
     </div>
   );
 }
