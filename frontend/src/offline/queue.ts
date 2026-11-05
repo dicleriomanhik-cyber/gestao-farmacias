@@ -1,5 +1,6 @@
 import { openDb, getMeta, setMeta, type OutboxOperation } from "./db";
 import { triggerSync } from "./events";
+import { notifyDataChanged } from "./dataChanged";
 
 export function generateUuid(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -38,7 +39,7 @@ export async function enqueueOperation(
   return new Promise((resolve, reject) => {
     const tx = db.transaction("outbox", "readwrite");
     tx.objectStore("outbox").add(op);
-    tx.oncomplete = () => { triggerSync(); resolve(op); };
+    tx.oncomplete = () => { notifyDataChanged(); triggerSync(); resolve(op); };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -70,7 +71,7 @@ export async function updateOperation(
       if (!existing) return reject(new Error("Operation not found"));
       store.put({ ...existing, ...updates });
     };
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => { notifyDataChanged(); resolve(); };
     tx.onerror = () => reject(tx.error);
   });
 }

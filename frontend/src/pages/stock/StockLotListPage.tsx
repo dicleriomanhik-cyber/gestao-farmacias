@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getStockLots } from "../../services/stockService";
 import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
+import { useDataChanged } from "../../offline/dataChanged";
 
 interface Props {
   hideAdminActions?: boolean;
@@ -47,18 +48,20 @@ export default function StockLotListPage(_props: Props) {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
 
-  function load() {
-    setLoading(true);
+  function load(silent: boolean = false) {
+    if (silent !== true) setLoading(true);
     setError(false);
     getStockLots()
       .then(setLots)
-      .catch(() => setError(true))
+      .catch(() => { if (silent !== true) setError(true); })
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  useDataChanged(() => load(true));
 
   function isExpiringSoon(dateStr: string) {
     const expiry = new Date(dateStr).getTime();

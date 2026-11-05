@@ -7,6 +7,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
 import CustomSelect from "../../components/ui/CustomSelect";
+import { useDataChanged } from "../../offline/dataChanged";
 
 const STATE_LABEL: Record<StockBoxState, string> = {
   NEW: "Nova",
@@ -45,18 +46,20 @@ export default function StockBoxListPage() {
     return () => window.removeEventListener("resize", ajustar);
   }, [loading, error, boxes.length]);
 
-  function load() {
-    setLoading(true);
+  function load(silent: boolean = false) {
+    if (silent !== true) setLoading(true);
     setError(false);
     getStockBoxes({ limit: 100, state: state || undefined })
       .then((res) => setBoxes(Array.isArray(res?.data) ? res.data : []))
-      .catch(() => setError(true))
+      .catch(() => { if (silent !== true) setError(true); })
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     load();
   }, [state]);
+
+  useDataChanged(() => load(true));
 
   const filtered = boxes.filter((b) =>
     `${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())

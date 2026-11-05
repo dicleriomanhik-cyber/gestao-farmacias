@@ -1,4 +1,5 @@
 import { isApiOnline } from "../../offline/connectivity";
+import { useDataChanged } from "../../offline/dataChanged";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createSale, confirmSale, createSaleOffline } from '../../services/saleService';
 import { getProducts } from "../../services/productService";
@@ -105,6 +106,8 @@ export default function PosPage() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  useDataChanged(() => { void loadStock(); });
 
   function addItem(product: Product) {
     setCart((prev) => {

@@ -1,4 +1,5 @@
 import { openDb } from "./db";
+import { notifyDataChanged } from "./dataChanged";
 
 function uid(): string {
   return "LOCAL-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -13,6 +14,7 @@ function getAll(db: IDBDatabase, store: string): Promise<any[]> {
 }
 
 const money = (n: number) => n.toFixed(2);
+const expTime = (l: any): number => (l.expiryDate ? new Date(l.expiryDate).getTime() : 8.64e15);
 
 export async function saveLocalSale(
   lines: { productId: string; quantity: number }[],
@@ -50,9 +52,9 @@ export async function saveLocalSale(
           l.productId === line.productId &&
           l.status === "ACTIVE" &&
           Number(l.quantityAvailable) > 0 &&
-          new Date(l.expiryDate).getTime() > agora
+          expTime(l) > agora
       )
-      .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+      .sort((a, b) => expTime(a) - expTime(b));
 
     for (const lote of candidatos) {
       if (falta <= 0) break;
@@ -126,6 +128,7 @@ export async function saveLocalSale(
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  notifyDataChanged();
   return { saleId, saleNumber, total, faltas };
 }
 

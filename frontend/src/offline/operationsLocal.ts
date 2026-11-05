@@ -1,4 +1,15 @@
-import { openDb, putRecords, deleteRecord } from "./db";
+import { openDb, putRecords as putRecordsRaw, deleteRecord as deleteRecordRaw } from "./db";
+import { notifyDataChanged } from "./dataChanged";
+
+async function putRecords(store: string, records: any[]): Promise<void> {
+  await putRecordsRaw(store, records);
+  notifyDataChanged();
+}
+
+async function deleteRecord(store: string, id: string): Promise<void> {
+  await deleteRecordRaw(store, id);
+  notifyDataChanged();
+}
 import { enqueueOperation, generateUuid } from "./queue";
 import { localActiveCashSession } from "./readModel";
 import { findOperator, getSelectedOperator } from "./operators";

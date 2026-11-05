@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getStockMovements } from "../../services/stockService";
 import type { StockMovement } from "../../types/stock";
@@ -6,6 +6,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
+import { useDataChanged } from "../../offline/dataChanged";
 
 function typeLabel(type: string): { label: string; bg: string; color: string } {
   const map: Record<string, { label: string; bg: string; color: string }> = {
@@ -23,18 +24,20 @@ export default function StockMovementListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  function load() {
-    setLoading(true);
+  function load(silent: boolean = false) {
+    if (silent !== true) setLoading(true);
     setError(false);
     getStockMovements()
       .then(setMovements)
-      .catch(() => setError(true))
+      .catch(() => { if (silent !== true) setError(true); })
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  useDataChanged(() => load(true));
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar os movimentos." onRetry={load} />;

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { openDb } from "../../offline/db";
 import { visibleOperations, buildGroups } from "../../offline/outboxAdmin";
 import { useApiOnline } from "../../offline/connectivity";
+import { subscribeDataChanged } from "../../offline/dataChanged";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function SyncStatusBadge() {
@@ -34,8 +35,8 @@ export default function SyncStatusBadge() {
       }
     }
     refresh();
-    const interval = setInterval(refresh, 2000);
-    return () => clearInterval(interval);
+    const interval = setInterval(refresh, 2000); const unsub = subscribeDataChanged(() => void refresh());
+    return () => { clearInterval(interval); unsub(); };
   }, []);
 
   const dotColor = online ? "#22c55e" : "#ef4444";

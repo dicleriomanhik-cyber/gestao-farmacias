@@ -10,6 +10,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../contexts/ToastContext";
 import { getCatalogProducts, getCatalogLots } from "../../offline/catalog";
+import { useDataChanged } from "../../offline/dataChanged";
 
 const PAGE_SIZE = 20;
 
@@ -60,8 +61,8 @@ export default function StockProductListPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-  function load(targetPage: number = page, term: string = search) {
-    setLoading(true);
+  function load(targetPage: number = page, term: string = search, silent: boolean = false) {
+    if (!silent) setLoading(true);
     setError(false);
     Promise.all([getProducts({ page: targetPage, limit: PAGE_SIZE, search: term, status: "ACTIVE" }), getStockLots()])
       .then(([prodRes, lotsRes]) => {
@@ -87,6 +88,8 @@ export default function StockProductListPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useDataChanged(() => load(page, search, true));
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import { isApiOnline } from "./connectivity";
+import { isApiOnline, startConnectivityProbe, subscribeApiOnline } from "./connectivity";
 import { getPendingOperations, updateOperation, getClientId } from "./queue";
 import { getMeta, setMeta, applyChanges, openDb, deleteRecord, type OutboxOperation } from "./db";
 import { pushOperations, pullChanges } from "../services/syncService";
@@ -297,6 +297,8 @@ export function startSyncEngine(): void {
   });
   void cycle();
   setInterval(() => void cycle(), 1000);
+  startConnectivityProbe();
+  subscribeApiOnline((on) => { if (on) void cycle(); });
   window.addEventListener("online", () => void cycle());
 }
 

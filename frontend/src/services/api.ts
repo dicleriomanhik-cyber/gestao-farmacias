@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { triggerSync } from "../offline/events";
 import { localResponse } from "../offline/readModel";
+import { markApiOnline, markApiOffline } from "../offline/connectivity";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://gestao-farmacia-g3vh.onrender.com/api/v1";
 
@@ -48,6 +49,7 @@ function flushQueue(token: string | null) {
 
 apiClient.interceptors.response.use(
   (response) => {
+    markApiOnline();
     const m = (response.config.method ?? "get").toLowerCase();
     if (m !== "get" && !String(response.config.url).includes("/sync/")) triggerSync();
     return response;
@@ -59,6 +61,7 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
     const isRefreshCall = original?.url?.includes("/auth/refresh");
 
+    if (!error.response && error.code !== "ERR_CANCELED") markApiOffline();
     if (!error.response && original && (original.method ?? "get").toLowerCase() === "get") {
       const local = await localResponse(original.url ?? "", (original.params ?? {}) as Record<string, any>);
       if (local) return { data: local, status: 200, statusText: "OK", headers: {}, config: original };

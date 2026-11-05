@@ -7,6 +7,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { useAuth } from "../../hooks/useAuth";
 import { hasPermission } from "../../utils/permissions";
+import { useDataChanged } from "../../offline/dataChanged";
 
 const C = {
   border: "#e5e7eb",
@@ -78,13 +79,13 @@ export default function StockBoxDetailPage() {
   const { user } = useAuth();
   const podeVerCustos = hasPermission(user?.permissions, "pharmacy:config:write");
 
-  function load() {
+  function load(silent: boolean = false) {
     if (!id) return;
-    setLoading(true);
+    if (silent !== true) setLoading(true);
     setError(false);
     getStockBox(id)
       .then(setBox)
-      .catch(() => setError(true))
+      .catch(() => { if (silent !== true) setError(true); })
       .finally(() => setLoading(false));
   }
 
@@ -95,6 +96,11 @@ export default function StockBoxDetailPage() {
       .then((res) => setTodas(res.data ?? []))
       .catch(() => setTodas([]));
   }, []);
+
+  useDataChanged(() => {
+    load(true);
+    getStockBoxes({ limit: 100 }).then((res) => setTodas(res.data ?? [])).catch(() => undefined);
+  });
 
   if (loading) return <LoadingState />;
   if (error || !box) return <ErrorState onRetry={load} />;
