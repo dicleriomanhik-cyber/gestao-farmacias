@@ -27,7 +27,7 @@ export function setRefreshToken(token: string | null): void {
 }
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL, timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -106,7 +106,7 @@ apiClient.interceptors.response.use(
     } catch (refreshErr: any) {
       flushQueue(null);
       // Sem rede: mantém a sessão e os tokens. O POS continua a vender offline.
-      if (!refreshErr?.response) {
+      if (![400, 401, 403].includes(refreshErr?.response?.status)) {
         return Promise.reject(refreshErr);
       }
       // O servidor recusou a renovação: a sessão terminou.

@@ -250,7 +250,7 @@ async function cycle(): Promise<void> {
       try {
         await refresh();
       } catch (e: any) {
-        if (e?.response) setRefreshToken(null);
+        if ([400, 401, 403].includes(e?.response?.status)) setRefreshToken(null);
         return;
       }
     }
@@ -296,7 +296,7 @@ export function startSyncEngine(): void {
     void cycle();
   });
   void cycle();
-  setInterval(() => void cycle(), 1000);
+  setInterval(() => void cycle(), 5000);
   startConnectivityProbe();
   subscribeApiOnline((on) => { if (on) void cycle(); });
   window.addEventListener("online", () => void cycle());

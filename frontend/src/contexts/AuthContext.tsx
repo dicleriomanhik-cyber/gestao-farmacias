@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authService.refresh();
         applyAuth(res);
-      } catch (err: any) { const semRede = !err?.response; const cache = localStorage.getItem("sm.user"); if (semRede && cache) { setUser(JSON.parse(cache)); setAuthenticated(true); } else { localStorage.removeItem("sm.user"); setUser(null); setAuthenticated(false); } } finally {
+      } catch (err: any) { const semRede = ![400, 401, 403].includes(err?.response?.status); const cache = localStorage.getItem("sm.user"); if (semRede && cache) { setUser(JSON.parse(cache)); setAuthenticated(true); } else { localStorage.removeItem("sm.user"); setUser(null); setAuthenticated(false); } } finally {
         setLoading(false);
         refreshInFlight.current = null;
       }

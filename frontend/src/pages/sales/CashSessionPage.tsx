@@ -42,13 +42,13 @@ export default function CashSessionPage() {
   const [operatorId, setOperatorId] = useState("");
   const needOperator = ops.operators.length > 0;
   const chosenOperator = operatorId || (ops.operators.length === 1 ? ops.operators[0].id : "");
-  const sessionRef = useRef<CashSession | null>(null);
+  const sessionRef = useRef<CashSession | null>(null); const loadingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = session; }, [session]);
   const [submitting, setSubmitting] = useState(false);
   const allowed = canAccessCash(user?.permissions);
 
-  async function load(silent = false) {
+  async function load(silent = false) { if (silent && loadingRef.current) return; loadingRef.current = true;
     if (!silent) setLoading(true);
     setError(false);
     try {
@@ -95,15 +95,15 @@ export default function CashSessionPage() {
         setAmount("");
       }
     } catch {
-      setError(true);
+      if (!silent) setError(true);
     } finally {
-      setLoading(false);
+      setLoading(false); loadingRef.current = false;
     }
   }
 
   useEffect(() => {
     load();
-    const interval = setInterval(() => { if (!sessionRef.current) return; load(true); }, 1000);
+    const interval = setInterval(() => { if (!sessionRef.current || document.hidden) return; load(true); }, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -152,7 +152,7 @@ export default function CashSessionPage() {
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={load} />;
+  if (error) return <ErrorState message="Não foi possível carregar a caixa." onRetry={() => load()} />;
 
   const totalOut = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN").reduce((acc, m) => acc + parseFloat(m.amount), 0);

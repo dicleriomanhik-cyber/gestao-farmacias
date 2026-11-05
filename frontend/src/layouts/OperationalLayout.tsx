@@ -17,7 +17,7 @@ export default function OperationalLayout() {
     let alive = true;
     const sync = () => getActiveCashSession().then((s: any) => { if (alive) setSessionOperator(s?.openedByOperatorId ?? null, s?.openedByOperatorName ?? null); }).catch(() => undefined);
     void sync();
-    const t = setInterval(() => void sync(), 2000);
+    const t = setInterval(() => void sync(), 20000);
     return () => { alive = false; clearInterval(t); };
   }, []);
 
