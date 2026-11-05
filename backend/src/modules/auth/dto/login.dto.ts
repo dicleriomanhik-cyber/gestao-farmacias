@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@farmacia.co.mz' })
@@ -10,4 +10,9 @@ export class LoginDto {
   @IsString()
   @MinLength(8, { message: 'A palavra-passe deve ter pelo menos 8 caracteres.' })
   password!: string;
+
+  @ApiPropertyOptional({ enum: ['ADMIN', 'COLLABORATOR'] })
+  @IsOptional()
+  @IsIn(['ADMIN', 'COLLABORATOR'])
+  accessType?: 'ADMIN' | 'COLLABORATOR';
 }

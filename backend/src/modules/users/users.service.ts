@@ -34,8 +34,12 @@ export class UsersService {
     return bcrypt.hash(plain, rounds);
   }
 
-  async validateCredentials(email: string, password: string): Promise<AuthenticatedUser> {
-    const record = await this.repo.findByEmailWithAuth(email);
+  async validateCredentials(email: string, password: string, accessType?: string): Promise<AuthenticatedUser> {
+    const candidates = await this.repo.findManyByEmailWithAuth(email, accessType);
+    let record: (typeof candidates)[number] | undefined;
+    for (const c of candidates) {
+      if (await bcrypt.compare(password, c.passwordHash)) { record = c; break; }
+    }
     if (!record) throw new InvalidCredentialsError();
     if (record.pharmacy?.status !== 'ACTIVE') throw new AccountDisabledError();
     if (record.status !== 'ACTIVE') throw new AccountDisabledError();

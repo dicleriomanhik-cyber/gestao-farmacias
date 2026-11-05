@@ -6,8 +6,18 @@ import { Prisma } from '@prisma/client';
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findManyByEmailWithAuth(email: string, accessType?: string) {
+    return this.prisma.user.findMany({
+      where: { email, ...(accessType ? { accessType } : {}) },
+      include: {
+        pharmacy: true,
+        roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+      },
+    });
+  }
+
   findByEmailWithAuth(email: string) {
-    return this.prisma.user.findUnique({
+    return this.prisma.user.findFirst({
       where: { email },
       include: {
         pharmacy: true,

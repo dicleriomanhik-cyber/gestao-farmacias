@@ -127,7 +127,7 @@ describe('Sales & POS (e2e)', () => {
     const passwordHash = await bcryptLib.hash('admin_b_pass_123456', 12);
     const roleAdmin = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
     const userB = await prisma.user.upsert({
-      where: { email: 'admin@farmaciab.com' },
+      where: { email_accessType: { email: 'admin@farmaciab.com', accessType: 'ADMIN' } },
       update: { pharmacyId: phB.id, passwordHash },
       create: { email: 'admin@farmaciab.com', passwordHash, fullName: 'Admin B', pharmacyId: phB.id, status: 'ACTIVE' },
     });

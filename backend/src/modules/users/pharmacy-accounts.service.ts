@@ -16,8 +16,8 @@ export class PharmacyAccountsService {
   ) {}
 
   private async owned(ownerId: string, id: string) {
-    const p = await this.prisma.pharmacy.findFirst({ where: { id, ownerPharmacyId: ownerId } });
-    if (!p) throw new NotFoundException('Farmácia não encontrada.');
+    const p = await this.prisma.pharmacy.findFirst({ where: { id: ownerId } });
+    if (!p || id !== ownerId) throw new NotFoundException('Farmácia não encontrada.');
     return p;
   }
 
@@ -27,7 +27,7 @@ export class PharmacyAccountsService {
     const users = await this.prisma.user.findMany({
       where: { pharmacyId: { in: ids } },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, email: true, status: true, pharmacyId: true },
+      select: { id: true, email: true, status: true, pharmacyId: true, roles: { select: { role: { select: { name: true } } } } },
     });
     const ops = await this.prisma.pharmacyOperator.findMany({
       where: { pharmacyId: { in: ids } },
@@ -35,7 +35,7 @@ export class PharmacyAccountsService {
       select: { id: true, name: true, isActive: true, pharmacyId: true },
     });
     return pharmacies.map((p) => {
-      const u = users.find((x) => x.pharmacyId === p.id);
+      const u = users.find((x) => x.pharmacyId === p.id && x.roles.some((r) => r.role.name === 'COLLABORATOR'));
       return {
         id: p.id,
         name: p.tradeName || p.name,
@@ -50,11 +50,11 @@ export class PharmacyAccountsService {
 
   async list(ownerId: string) {
     const rows = await this.prisma.pharmacy.findMany({
-      where: { ownerPharmacyId: ownerId },
+      where: { id: ownerId },
       orderBy: { createdAt: 'desc' },
       select: { id: true, name: true, tradeName: true, createdAt: true },
     });
-    return this.build(rows);
+    return (await this.build(rows)).filter((r) => r.userId);
   }
 
   async get(ownerId: string, id: string) {
@@ -67,8 +67,10 @@ export class PharmacyAccountsService {
     const name = dto.pharmacyName.trim();
     if (name.length < 2) throw new BadRequestException('Indica o nome da farmácia.');
     const email = dto.email.trim();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
+    const existing = await this.prisma.user.findFirst({ where: { email, accessType: 'COLLABORATOR' } });
     if (existing) throw new ConflictException('Email já registado.');
+    const hasPos = await this.prisma.user.findFirst({ where: { pharmacyId: ownerId, roles: { some: { role: { name: 'COLLABORATOR' } } } } });
+    if (hasPos) throw new ConflictException('Esta farmácia já tem conta de POS.');
     const names: string[] = [];
     for (const raw of dto.operatorNames) {
       const n = raw.trim();
@@ -80,11 +82,11 @@ export class PharmacyAccountsService {
     const id = await this.prisma.$transaction(async (tx) => {
       const role = await tx.role.findUnique({ where: { name: 'COLLABORATOR' } });
       if (!role) throw new BadRequestException('Função inválida.');
-      const pharmacy = await tx.pharmacy.create({
-        data: { name, tradeName: name, status: 'ACTIVE', ownerPharmacyId: ownerId },
+      const pharmacy = await tx.pharmacy.update({ where: { id: ownerId },
+        data: { name, tradeName: name },
       });
       const user = await tx.user.create({
-        data: { pharmacyId: pharmacy.id, email, passwordHash, fullName: name, status: UserStatus.ACTIVE },
+        data: { pharmacyId: pharmacy.id, email, passwordHash, fullName: name, status: UserStatus.ACTIVE, accessType: 'COLLABORATOR' },
       });
       await tx.userRole.create({ data: { userId: user.id, roleId: role.id } });
       await tx.pharmacyOperator.createMany({ data: names.map((n) => ({ pharmacyId: pharmacy.id, name: n })) });
@@ -98,7 +100,7 @@ export class PharmacyAccountsService {
 
   async update(ownerId: string, actorId: string, id: string, dto: UpdatePharmacyAccountDto) {
     await this.owned(ownerId, id);
-    const user = await this.prisma.user.findFirst({ where: { pharmacyId: id }, orderBy: { createdAt: 'asc' } });
+    const user = await this.prisma.user.findFirst({ where: { pharmacyId: id, roles: { some: { role: { name: 'COLLABORATOR' } } } }, orderBy: { createdAt: 'asc' } });
     if (!user) throw new NotFoundException('Conta de acesso não encontrada.');
     const userData: { passwordHash?: string; status?: UserStatus } = {};
     if (dto.password) userData.passwordHash = await this.users.hashPassword(dto.password);

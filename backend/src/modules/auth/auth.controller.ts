@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 
@@ -64,6 +65,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Pedir recuperação de password' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('verify-reset-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirmar código de recuperação' })
+  verifyResetCode(@Body() dto: VerifyResetCodeDto) {
+    return this.auth.verifyResetCode(dto.email, dto.code);
   }
 
   @Public()

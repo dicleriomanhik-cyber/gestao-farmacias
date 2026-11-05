@@ -17,13 +17,13 @@ export class MailService {
     });
   }
 
-  async sendPasswordReset(to: string, link: string): Promise<void> {
+  async sendPasswordReset(to: string, code: string): Promise<void> {
     const t = this.transporter();
     if (!t) {
       if (process.env.NODE_ENV === 'production') {
         this.logger.warn('Email de recuperacao nao enviado: SMTP nao configurado.');
       } else {
-        this.logger.log('[DEV] Ligacao de recuperacao para ' + to + ': ' + link);
+        this.logger.log('[DEV] Codigo de recuperacao para ' + to + ': ' + code);
       }
       return;
     }
@@ -34,12 +34,12 @@ export class MailService {
         subject: 'Recuperação da palavra-passe',
         text:
           'Recebemos um pedido para redefinir a palavra-passe da sua conta.\n\n' +
-          'Abra esta ligação para escolher uma nova palavra-passe (válida durante 1 hora):\n' +
-          link +
+          'O seu código de confirmação (válido durante 15 minutos):\n' +
+          code +
           '\n\nSe não fez este pedido, ignore este email.',
         html:
           '<p>Recebemos um pedido para redefinir a palavra-passe da sua conta.</p>' +
-          '<p><a href="' + link + '">Escolher nova palavra-passe</a> (válida durante 1 hora).</p>' +
+          '<p>O seu código de confirmação: <strong>' + code + '</strong> (válido durante 15 minutos).</p>' +
           '<p>Se não fez este pedido, ignore este email.</p>',
       });
     } catch (e) {

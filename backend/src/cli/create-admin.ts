@@ -46,7 +46,7 @@ async function main(): Promise<void> {
     const role = await tx.role.findUnique({ where: { name: 'ADMIN' } });
     if (!role) throw new Error('Role ADMIN não existe. Execute `npm run prisma:seed` primeiro.');
     const user = await tx.user.upsert({
-      where: { email },
+      where: { email_accessType: { email, accessType: 'ADMIN' } },
       update: { pharmacyId: pharmacy.id, passwordHash, fullName: name },
       create: { email, passwordHash, fullName: name, pharmacyId: pharmacy.id },
     });

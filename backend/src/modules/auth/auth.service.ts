@@ -63,7 +63,7 @@ export class AuthService {
   async login(dto: LoginDto, meta: { ip?: string; userAgent?: string }): Promise<LoginResult> {
     let user: AuthenticatedUser;
     try {
-      user = await this.users.validateCredentials(dto.email, dto.password);
+      user = await this.users.validateCredentials(dto.email, dto.password, dto.accessType);
     } catch (err) {
       await this.prisma.loginAttempt.create({
         data: { email: dto.email, ipAddress: meta.ip ?? 'unknown', success: false },
@@ -183,37 +183,63 @@ export class AuthService {
     return new Date(Date.now() + n * ms);
   }
   async register(dto: any) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findFirst({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email já registado.');
     if (dto.pharmacyNif) {
       const nifExists = await this.prisma.pharmacy.findUnique({ where: { nif: dto.pharmacyNif } });
       if (nifExists) throw new ConflictException('NIF já registado.');
     }
+    if (dto.password === dto.posPassword) throw new BadRequestException('A palavra-passe do colaborador deve ser diferente da do administrador.');
     const passwordHash = await bcrypt.hash(dto.password, this.config.get<number>('bcryptSaltRounds') ?? 12);
+    const posHash = await bcrypt.hash(dto.posPassword, this.config.get<number>('bcryptSaltRounds') ?? 12);
     return this.prisma.$transaction(async (tx) => {
       const pharmacy = await tx.pharmacy.create({ data: { name: dto.pharmacyName, nif: dto.pharmacyNif ?? null, status: 'ACTIVE' } });
       const roleAdmin = await tx.role.findUnique({ where: { name: 'ADMIN' } });
       if (!roleAdmin) throw new UnauthorizedException('Role ADMIN não configurada.');
-      const user = await tx.user.create({ data: { pharmacyId: pharmacy.id, email: dto.email, passwordHash, fullName: dto.adminName, status: 'ACTIVE' } });
+      const user = await tx.user.create({ data: { pharmacyId: pharmacy.id, email: dto.email, passwordHash, fullName: dto.adminName || dto.pharmacyName, status: 'ACTIVE', accessType: 'ADMIN' } });
       await tx.userRole.create({ data: { userId: user.id, roleId: roleAdmin.id } });
+      const roleCollab = await tx.role.findUnique({ where: { name: 'COLLABORATOR' } });
+      if (!roleCollab) throw new UnauthorizedException('Role COLLABORATOR não configurada.');
+      const pos = await tx.user.create({ data: { pharmacyId: pharmacy.id, email: dto.email, passwordHash: posHash, fullName: dto.pharmacyName, status: 'ACTIVE', accessType: 'COLLABORATOR' } });
+      await tx.userRole.create({ data: { userId: pos.id, roleId: roleCollab.id } });
       return { message: 'Conta criada com sucesso.' };
     });
   }
 
+  private readonly resetAttempts = new Map<string, number>();
+
   async forgotPassword(email: string) {
-    const generic = { message: 'Se o email existir, enviámos uma ligação para redefinir a palavra-passe.' };
-    const user = await this.prisma.user.findUnique({ where: { email }, include: { roles: { include: { role: true } } } });
+    const generic = { message: 'Se o email existir, enviámos um código de confirmação.' };
+    const user = await this.prisma.user.findFirst({ where: { email, accessType: 'ADMIN' }, include: { roles: { include: { role: true } } } });
     if (!user || user.status !== 'ACTIVE') return generic;
     if (!user.roles.some((ur) => ur.role.name === 'ADMIN')) return generic;
-    const token = randomBytes(32).toString('hex');
-    const tokenHash = sha256(token);
-    const expiresAt = new Date(Date.now() + 3600_000);
+    const code = String(randomBytes(4).readUInt32BE(0) % 1000000).padStart(6, '0');
+    const tokenHash = sha256('code:' + user.id + ':' + code);
+    const expiresAt = new Date(Date.now() + 900_000);
     await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
-    const base = process.env.FRONTEND_URL ?? 'http://localhost:4173';
-    const root = base.endsWith('/') ? base.slice(0, -1) : base;
-    await this.mail.sendPasswordReset(user.email, root + '/redefinir-password?token=' + token);
+    
+    
+    this.resetAttempts.delete(email); await this.mail.sendPasswordReset(user.email, code);
     return generic;
+  }
+
+    async verifyResetCode(email: string, code: string) {
+    const invalid = new BadRequestException('Código inválido ou expirado.');
+    const user = await this.prisma.user.findFirst({ where: { email, accessType: 'ADMIN' } });
+    if (!user) throw invalid;
+    const tries = (this.resetAttempts.get(email) ?? 0) + 1;
+    this.resetAttempts.set(email, tries);
+    if (tries > 5) {
+      await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+      throw invalid;
+    }
+    const rec = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: sha256('code:' + user.id + ':' + code) } });
+    if (!rec || rec.userId !== user.id || rec.expiresAt < new Date()) throw invalid;
+    const token = randomBytes(32).toString('hex');
+    await this.prisma.passwordResetToken.update({ where: { id: rec.id }, data: { tokenHash: sha256(token), expiresAt: new Date(Date.now() + 900_000) } });
+    this.resetAttempts.delete(email);
+    return { token };
   }
 
   async resetPassword(dto: any) {

@@ -11,9 +11,10 @@ export class RegisterDto {
   @IsOptional()
   pharmacyNif?: string;
 
-  @ApiProperty({ example: 'Admin' })
+  @ApiPropertyOptional({ example: 'Admin' })
+  @IsOptional()
   @IsString()
-  adminName!: string;
+  adminName?: string;
 
   @ApiProperty({ example: 'admin@farmacia.mz' })
   @IsEmail()
@@ -23,4 +24,9 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   password!: string;
+
+  @ApiProperty({ example: 'password456' })
+  @IsString()
+  @MinLength(8)
+  posPassword!: string;
 }
