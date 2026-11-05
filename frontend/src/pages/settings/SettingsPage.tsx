@@ -5,6 +5,7 @@ import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import CustomSelect from "../../components/ui/CustomSelect";
+import DeleteAccountSection from "./DeleteAccountSection";
 
 type BoolKey =
   | "allowCashExpenses"
@@ -148,6 +149,7 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+      <DeleteAccountSection />
     </div>
   );
 }

@@ -16,3 +16,7 @@ export async function updateSettings(data: PharmacySettingsUpdate): Promise<Phar
   const resp = await apiClient.patch<Envelope<PharmacySettings>>("/settings", data);
   return resp.data.data;
 }
+
+export async function deleteAccount(password: string): Promise<void> {
+  await apiClient.post("/account/delete", { password });
+}
