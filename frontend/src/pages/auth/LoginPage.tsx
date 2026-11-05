@@ -35,7 +35,7 @@ export default function LoginPage({ variant = "admin" }: { variant?: "admin" | "
 
     setLoading(true);
     try {
-      await login({ email, password });
+      await login({ email, password, accessType: variant === "pos" ? "COLLABORATOR" : "ADMIN" });
       toast.success("Sessão iniciada com sucesso.");
       const to = location.state?.from?.pathname ?? (variant === "pos" ? "/pos" : "/");
       navigate(to, { replace: true });
@@ -73,6 +73,10 @@ export default function LoginPage({ variant = "admin" }: { variant?: "admin" | "
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f3f4f6", padding: "1rem" }}>
       <div className="card" style={{ width: "100%", maxWidth: "400px" }}>
         <h1 className="card-title" style={{ textAlign: "center", marginBottom: "1.5rem" }}>Entrar</h1>
+<div style={{ display: "flex", marginBottom: "1.25rem", border: "1px solid #d1d5db", borderRadius: "6px", overflow: "hidden" }}>
+<Link to="/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "admin" ? "#2563eb" : "white", color: variant === "admin" ? "white" : "#475569" }}>Administrador</Link>
+<Link to="/pos/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "pos" ? "#2563eb" : "white", color: variant === "pos" ? "white" : "#475569" }}>POS</Link>
+</div>
         <form onSubmit={onSubmit}>
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email</label>

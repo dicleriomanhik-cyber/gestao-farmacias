@@ -1,4 +1,4 @@
-﻿export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER";
+export type UserRole = "ADMIN" | "PHARMACIST" | "CASHIER" | "STOCK_MANAGER";
 
 export interface User {
   id: string;
@@ -9,6 +9,7 @@ export interface User {
 }
 
 export interface LoginRequest {
+  accessType?: "ADMIN" | "COLLABORATOR";
   email: string;
   password: string;
 }

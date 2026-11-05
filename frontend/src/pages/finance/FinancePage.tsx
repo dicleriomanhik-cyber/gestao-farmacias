@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
 import { getFinance, getFinanceDetails } from "../../services/financeService";
 import type { FinanceData, FinanceDetails } from "../../types/finance";
+import InventoryTab from "./InventoryTab";
 
 type Filter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM";
 
@@ -151,7 +152,7 @@ function Bars({ series, granularity }: { series: FinanceDetails["series"]; granu
   );
 }
 
-export default function FinancePage() {
+function FinanceSummary() {
   const [filter, setFilter] = useState<Filter>("MONTHLY");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -387,6 +388,43 @@ export default function FinancePage() {
               </table>
             )}
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function FinancePage() {
+  const [tab, setTab] = useState<"SUMMARY" | "INVENTORY">("SUMMARY");
+  const tabBtn = (k: "SUMMARY" | "INVENTORY", label: string) => (
+    <button
+      onClick={() => setTab(k)}
+      style={{
+        padding: "0.6rem 1.25rem",
+        border: "none",
+        background: "none",
+        cursor: "pointer",
+        fontWeight: 600,
+        color: tab === k ? "#2563eb" : "#64748b",
+        borderBottom: tab === k ? "2px solid #2563eb" : "2px solid transparent",
+        marginBottom: "-1px",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div style={{ display: "flex", gap: "0.25rem", borderBottom: "1px solid #e2e8f0" }}>
+        {tabBtn("SUMMARY", "Resumo")}
+        {tabBtn("INVENTORY", "Inventário")}
+      </div>
+      {tab === "SUMMARY" ? (
+        <FinanceSummary />
+      ) : (
+        <>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Inventário</h1>
+          <InventoryTab />
         </>
       )}
     </div>

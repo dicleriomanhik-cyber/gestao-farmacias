@@ -24,10 +24,10 @@ export function authButton(loading: boolean): CSSProperties {
 
 export const authLabel: CSSProperties = { display: "block", marginBottom: "0.5rem", fontWeight: 500 };
 
-export default function AuthCard({ title, children }: { title: string; children: ReactNode }) {
+export default function AuthCard({ title, children, maxWidth = "400px" }: { title: string; children: ReactNode; maxWidth?: string }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f3f4f6", padding: "1rem" }}>
-      <div className="card" style={{ width: "100%", maxWidth: "400px" }}>
+      <div className="card" style={{ width: "100%", maxWidth }}>
         <h1 className="card-title" style={{ textAlign: "center", marginBottom: "1.5rem" }}>{title}</h1>
         {children}
       </div>
