@@ -1,6 +1,7 @@
 import {
   apiClient,
   getRefreshToken,
+  refreshTokens,
   setAccessToken,
   setRefreshToken,
 } from "./api";
@@ -19,15 +20,7 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 }
 
 export async function refresh(): Promise<AuthResponse> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) throw new Error("Sem refresh token");
-  const resp = await apiClient.post<ApiSuccessEnvelope<AuthResponse>>("/auth/refresh", {
-    refreshToken,
-  });
-  const result = unwrap(resp.data);
-  setAccessToken(result.accessToken);
-  setRefreshToken(result.refreshToken);
-  return result;
+  return (await refreshTokens()) as AuthResponse;
 }
 
 export async function logout(): Promise<void> {

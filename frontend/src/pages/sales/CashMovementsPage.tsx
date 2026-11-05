@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDataChanged } from "../../offline/dataChanged";
+import { putRecords } from "../../offline/db";
+import { localCashMovements } from "../../offline/readModel";
 import { apiClient } from "../../services/api";
 import { formatDateTime } from "../../utils/formatDate";
 import LoadingState from "../../components/ui/LoadingState";
@@ -24,9 +26,9 @@ export default function CashMovementsPage() {
   const [selectedMovement, setSelectedMovement] = useState<CashMovement | null>(null);
 
   function load() {
-    apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements")
-      .then((resp) => setMovements(resp.data.data ?? []))
-      .catch(() => setMovements([]))
+    apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements", { params: { all: true } })
+      .then((resp) => { const rows = resp.data.data ?? []; setMovements(rows); putRecords("cash_movements", rows.filter((m) => !String(m.id).startsWith("LOCAL-"))).catch(() => undefined); })
+      .catch(() => localCashMovements().then((rows) => setMovements(rows as CashMovement[])).catch(() => setMovements([])))
       .finally(() => setLoading(false));
   }
 

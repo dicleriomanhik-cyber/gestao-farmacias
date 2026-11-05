@@ -152,7 +152,13 @@ export async function localResponse(path: string, params: Record<string, any> = 
   }
   if (p === "/cash/active") return envelope(await localActiveCashSession());
   if (p === "/cash/payments") return envelope(await localCashPayments());
-  if (p === "/cash/movements") return envelope(await localCashMovements());
+  if (p === "/cash/movements") {
+    const todos = params.all === true || params.all === "true";
+    const movs = await localCashMovements();
+    if (todos) return envelope(movs);
+    const activeId = (await localActiveCashSession())?.id;
+    return envelope(movs.filter((m: any) => (m.cashSessionId ? m.cashSessionId === activeId : true)));
+  }
   if (p === "/stock/lots") return envelope(await localStockLots());
   if (p === "/stock/movements") return envelope(await localStockMovements());
   if (p === "/stock/boxes") return envelope(await localStockBoxes(params));

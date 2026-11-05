@@ -38,6 +38,33 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+let refreshPromise: Promise<any> | null = null;
+
+export function refreshTokens(): Promise<any> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const refresh = getRefreshToken();
+    if (!refresh) throw new Error("Sem refresh token");
+    let lastErr: any;
+    for (let i = 0; i < 4; i++) {
+      try {
+        const resp = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken: refresh }, { timeout: 40000 });
+        const data = resp.data?.data;
+        if (!data?.accessToken || !data?.refreshToken) throw new Error("Resposta de refresh invalida");
+        accessToken = data.accessToken;
+        setRefreshToken(data.refreshToken);
+        return data;
+      } catch (e: any) {
+        lastErr = e;
+        if (e?.response && [400, 401, 403].includes(e.response.status)) throw e;
+        await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+      }
+    }
+    throw lastErr;
+  })().finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
 type PendingResolver = (token: string | null) => void;
 let isRefreshing = false;
 let pendingQueue: PendingResolver[] = [];
@@ -88,10 +115,7 @@ apiClient.interceptors.response.use(
       const refresh = getRefreshToken();
       if (!refresh) throw new Error("Sem refresh token");
 
-      const resp = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-        refreshToken: refresh,
-      });
-      const data = resp.data?.data;
+      const data = await refreshTokens();
       if (!data?.accessToken || !data?.refreshToken) {
         throw new Error("Resposta de refresh invÃ¡lida");
       }

@@ -49,7 +49,7 @@ export default function CashSessionPage() {
   const [submitting, setSubmitting] = useState(false);
   const allowed = canAccessCash(user?.permissions);
 
-  async function load(silent = false) { if (silent && loadingRef.current) return; loadingRef.current = true;
+  async function load(silent = false, tentativa = 0) { if (silent && loadingRef.current) return; loadingRef.current = true;
     if (!silent) setLoading(true);
     setError(false);
     try {
@@ -96,6 +96,7 @@ export default function CashSessionPage() {
         setAmount("");
       }
     } catch {
+      if (!silent && tentativa < 2) { await new Promise((r) => setTimeout(r, 3000)); return await load(silent, tentativa + 1); }
       if (!silent) setError(true);
     } finally {
       setLoading(false); loadingRef.current = false;

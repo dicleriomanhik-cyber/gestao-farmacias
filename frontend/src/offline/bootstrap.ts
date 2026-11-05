@@ -77,7 +77,7 @@ async function reapplyPendingExpenses(): Promise<void> {
 }
 
 async function refreshCashMovements(): Promise<void> {
-  const rows = ((await apiClient.get("/cash/movements")).data.data as any[]) ?? [];
+  const rows = ((await apiClient.get("/cash/movements", { params: { all: true } })).data.data as any[]) ?? [];
   await replaceStore("cash_movements", rows.filter((m) => !String(m.id).startsWith("LOCAL-")));
 }
 
