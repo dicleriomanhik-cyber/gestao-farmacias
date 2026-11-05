@@ -55,7 +55,6 @@ export default function OperationalLayout() {
         </div>
         <div className="app-actions">
           <SyncStatusBadge />
-          <span className="app-user header-user-name">{user?.name || user?.email}</span>
           {!isCollaborator(user) && <Link to="/" className="app-link-exit">Sair do POS</Link>}
           <button type="button" onClick={onLogout} className="app-logout">Sair</button>
         </div>
