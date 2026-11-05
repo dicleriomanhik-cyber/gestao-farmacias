@@ -2,7 +2,8 @@ import { isApiOnline } from "../../offline/connectivity";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createSale, confirmSale, createSaleOffline } from '../../services/saleService';
 import { getProducts } from "../../services/productService";
-import { getCatalogProducts, refreshCatalog } from "../../offline/catalog";
+import { getStockLots } from "../../services/stockService";
+import { getCatalogProducts, getCatalogLots, refreshCatalog } from "../../offline/catalog";
 import { registerPayment, getActiveCashSession, openCash } from "../../services/cashService";
 import type { Product } from "../../types/products";
 import type { SaleLineRequest, PaymentMethod } from "../../types/sales";
@@ -30,6 +31,7 @@ export default function PosPage() {
   const toast = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockMap, setStockMap] = useState<Record<string, number> | null>(null);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,14 @@ export default function PosPage() {
     return () => window.removeEventListener("resize", measure);
   }, [loading, completedSale]);
 
+  async function loadStock() {
+    let lots: any[] = [];
+    try { lots = await getStockLots(); } catch { try { lots = await getCatalogLots(); } catch { lots = []; } }
+    const m: Record<string, number> = {};
+    for (const l of lots) { m[l.productId] = (m[l.productId] ?? 0) + (Number(l.quantityAvailable) || 0); }
+    setStockMap(m);
+  }
+
   function load(query: string = "") {
     setLoading(true);
     setError(false);
@@ -65,11 +75,12 @@ export default function PosPage() {
       .then((res) => {
         const lista = Array.isArray(res?.data) ? res.data : [];
         setProducts(lista);
+        void loadStock();
         void refreshCatalog().catch(() => undefined);
       })
       .catch(async () => {
         const local = await getCatalogProducts(query);
-        if (local.length > 0) setProducts(local);
+        if (local.length > 0) { setProducts(local); void loadStock(); }
         else setError(true);
       })
       .finally(() => setLoading(false));
@@ -296,20 +307,18 @@ export default function PosPage() {
           />
         </div>
 
-        <div style={{ flex: isMobile ? "none" : 1, minHeight: 0, maxHeight: isMobile ? "50vh" : undefined, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem", paddingRight: "0.5rem" }}>
+        <div style={{ flex: isMobile ? "none" : 1, minHeight: 0, maxHeight: isMobile ? "50vh" : undefined, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem", paddingRight: "0.5rem" }}>
           {loading ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>A pesquisar…</p>
           ) : products.length === 0 ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>Nenhum produto encontrado.</p>
           ) : (
             products.map((p) => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc", flexShrink: 0 }}>
-                <div style={{ fontWeight: "normal", flex: 1 }}>
-                  {p.name}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc", flexShrink: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: "normal", lineHeight: 1.2 }}>{p.name}</div>{stockMap && (<div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.2, marginTop: "0.1rem" }}>{stockMap[p.id] ?? 0} {p.type === "MEDICINE" ? "carteiras" : "unidades"} disponíveis</div>)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <span style={{ fontWeight: "bold", color: "#1e293b" }}>{parseFloat(p.salePrice).toFixed(2)} MT</span>
-                  <button onClick={() => addItem(p)} style={{ padding: "0.4rem 0.8rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>Adicionar</button>
+                  <button onClick={() => addItem(p)} style={{ padding: "0.3rem 0.7rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>Adicionar</button>
                 </div>
               </div>
             ))
