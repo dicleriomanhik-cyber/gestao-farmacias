@@ -14,6 +14,8 @@ export interface PurchaseProductRef {
   name: string;
   salePrice: string;
   sku: string | null;
+  type?: "MEDICINE" | "PRODUCT";
+  strength?: string | null;
 }
 
 export interface PurchaseLine {
@@ -24,6 +26,11 @@ export interface PurchaseLine {
   unitCost: string;
   discount: string;
   subtotal: string;
+  innerCount?: number | null;
+  unitsPerInner?: number | null;
+  unitsPerBox?: number | null;
+  unitPrice?: number | null;
+  received?: number;
   product?: PurchaseProductRef;
 }
 
@@ -52,6 +59,14 @@ export interface PurchaseConference {
   boxCount: number;
 }
 
+export interface PurchaseTotals {
+  goods: number;
+  transport: number;
+  other: number;
+  grand: number;
+  currency: string;
+}
+
 export interface Purchase {
   id: string;
   pharmacyId: string;
@@ -78,12 +93,20 @@ export interface Purchase {
   boxes?: PurchaseBox[];
   supplierPayments?: PurchasePaymentRow[];
   conference?: PurchaseConference;
+  totals?: PurchaseTotals;
 }
 
 export interface PurchaseLineRequest {
-  productId: string;
+  productId?: string;
+  productName?: string;
+  type?: "MEDICINE" | "PRODUCT";
+  strength?: string;
   quantity: number;
   unitCost: number;
+  discount?: number;
+  innerCount?: number;
+  unitsPerInner?: number;
+  unitsPerBox?: number;
 }
 
 export interface PurchaseRequest {

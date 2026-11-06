@@ -1,36 +1,43 @@
-﻿import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { receiveStock } from "../../services/stockService";
+import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { getPurchases, getPurchaseById } from "../../services/purchaseService";
-import type { Purchase, PurchaseLine } from "../../types/purchases";
+import { createStockBoxesBatch } from "../../services/stockService";
+import type { Purchase } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { MonthField } from "./StockBoxFormPage";
+import { fmtMoney } from "../../utils/supplierFormat";
+
+const monthEnd = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0, 23, 59, 59)).toISOString();
+};
+
+const inputStyle: CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, font: "inherit", boxSizing: "border-box" };
+const lab: CSSProperties = { display: "block", marginBottom: 4, fontSize: "0.85rem", color: "#5b6478", fontWeight: 500 };
+const box: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 8, padding: "1rem", marginBottom: "1rem", background: "#fff" };
 
 export default function StockReceiveFormPage() {
-  const navigate = useNavigate();
   const toast = useToast();
-
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
-  const [lines, setLines] = useState<PurchaseLine[]>([]);
+  const [supplierId, setSupplierId] = useState("");
   const [purchaseId, setPurchaseId] = useState("");
-  const [purchaseLineId, setPurchaseLineId] = useState("");
-  const [lotNumber, setLotNumber] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [unitCost, setUnitCost] = useState("");
+  const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [lineId, setLineId] = useState("");
+  const [qrText, setQrText] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [noExpiry, setNoExpiry] = useState(false);
+  const [salePrice, setSalePrice] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingLines, setLoadingLines] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  // Carregar compras CONFIRMED
   function load() {
     setLoading(true);
     setError(false);
     getPurchases({ status: "CONFIRMED", limit: 100 })
-      .then((res) => setPurchases(res.data))
+      .then((r) => setPurchases(r.data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
@@ -39,135 +46,160 @@ export default function StockReceiveFormPage() {
     load();
   }, []);
 
-  // Ao escolher compra, carregar linhas
   useEffect(() => {
+    setLineId("");
+    setQrText("");
     if (!purchaseId) {
-      setSelectedPurchase(null);
-      setLines([]);
-      setPurchaseLineId("");
+      setPurchase(null);
       return;
     }
-    setLoadingLines(true);
     getPurchaseById(purchaseId)
-      .then((p) => {
-        setSelectedPurchase(p);
-        setLines(p.lines ?? []);
-      })
-      .catch(() => toast.error("Erro ao carregar linhas da compra."))
-      .finally(() => setLoadingLines(false));
-  }, [purchaseId, toast]);
+      .then(setPurchase)
+      .catch(() => toast.error("Erro ao carregar a fatura."));
+  }, [purchaseId]);
 
-  // Ao escolher linha, pré-preencher
-  const selectedLine = lines.find((l) => l.id === purchaseLineId);
-  useEffect(() => {
-    if (selectedLine) {
-      setQuantity(String(selectedLine.quantity));
-      setUnitCost(selectedLine.unitCost);
+  const suppliers = useMemo(() => {
+    const m = new Map<string, string>();
+    purchases.forEach((p) => m.set(p.supplierId, p.supplier?.name ?? "?"));
+    return Array.from(m.entries());
+  }, [purchases]);
+
+  const invoices = purchases.filter((p) => p.supplierId === supplierId);
+  const lines = purchase?.lines ?? [];
+  const line = lines.find((l) => l.id === lineId);
+  const falta = line ? line.quantity - (line.received ?? 0) : 0;
+  const qrs = qrText.split(/[\r\n,;]+/).map((s) => s.trim()).filter(Boolean);
+  const medicine = line?.product?.type === "MEDICINE";
+  const cur = purchase?.currency ?? "MZN";
+
+  async function confirmar() {
+    if (!line) return toast.error("Escolhe a linha que chegou.");
+    if (qrs.length === 0) return toast.error("Lê pelo menos um QR.");
+    if (new Set(qrs).size !== qrs.length) return toast.error("Há QR repetidos na lista.");
+    if (qrs.length > falta) return toast.error("Só faltam " + falta + " caixas nesta linha.");
+    if (!noExpiry) {
+      if (!expiry) return toast.error("Indica a validade ou marca que não tem validade.");
+      if (new Date(monthEnd(expiry)) <= new Date()) return toast.error("A validade deve ser no futuro.");
     }
-  }, [selectedLine]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!purchaseLineId) return toast.error("Seleciona uma linha de compra.");
-    if (!lotNumber.trim()) return toast.error("Número de lote é obrigatório.");
-    const qtyNum = parseInt(quantity, 10);
-    if (isNaN(qtyNum) || qtyNum <= 0) return toast.error("Quantidade deve ser maior que zero.");
-    if (!expiryDate) return toast.error("Data de validade é obrigatória.");
-    if (new Date(expiryDate) <= new Date()) return toast.error("Data de validade deve ser no futuro.");
-    const costNum = parseFloat(unitCost);
-    if (isNaN(costNum) || costNum < 0) return toast.error("Custo unitário deve ser maior ou igual a zero.");
-
-    setSubmitting(true);
+    const price = parseFloat(salePrice.replace(",", "."));
+    if (isNaN(price) || price < 0) return toast.error("Indica o preço de venda por unidade.");
+    setBusy(true);
     try {
-      await receiveStock({
-        purchaseLineId,
-        lotNumber: lotNumber.trim(),
-        quantity: qtyNum,
-        expiryDate: new Date(expiryDate).toISOString(),
-        unitCost: costNum,
+      await createStockBoxesBatch({
+        purchaseLineId: line.id,
+        qrCodes: qrs,
+        ...(noExpiry ? {} : { expiryDate: monthEnd(expiry) }),
+        salePrice: price,
       });
-      toast.success("Stock recebido com sucesso.");
-      navigate("/stock/lotes");
+      toast.success(qrs.length + " caixa(s) recebida(s).");
+      const p = await getPurchaseById(purchaseId);
+      setPurchase(p);
+      setQrText("");
+      const l = p.lines?.find((x) => x.id === line.id);
+      if (l && l.quantity - (l.received ?? 0) <= 0) setLineId("");
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message ?? "Erro ao receber stock.";
-      toast.error(String(msg));
+      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao receber a mercadoria."));
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar as compras." onRetry={load} />;
-
-  if (purchases.length === 0) {
-    return (
-      <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
-        <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
-          Não há compras confirmadas para receber. Cria uma compra e confirma-a primeiro.
-        </p>
-        <button onClick={() => navigate("/compras")} className="btn btn-primary">Ir para Compras</button>
-      </div>
-    );
-  }
+  if (error) return <ErrorState message="Não foi possível carregar as faturas." onRetry={load} />;
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Receber Stock</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Compra *</label>
-          <select value={purchaseId} onChange={(e) => setPurchaseId(e.target.value)} required className="input">
-            <option value="">Seleciona uma compra</option>
-            {purchases.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.documentNumber} — {p.supplier?.name ?? "?"} ({parseFloat(p.totalAmount).toFixed(2)} MT)
-              </option>
-            ))}
-          </select>
-        </div>
+    <div style={{ maxWidth: 850, width: "100%", margin: "0 auto", overflowY: "auto", paddingBottom: "2rem" }}>
+      <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginTop: 0 }}>Receber mercadoria</h2>
 
-        {loadingLines && <p style={{ color: "#6b7280" }}>A carregar linhas…</p>}
-
-        {selectedPurchase && lines.length > 0 && (
-          <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Linha *</label>
-            <select value={purchaseLineId} onChange={(e) => setPurchaseLineId(e.target.value)} required className="input">
-              <option value="">Seleciona uma linha</option>
-              {lines.map((line) => (
-                <option key={line.id} value={line.id}>
-                  {line.product?.name ?? "?"} — Qtd: {line.quantity}, Custo: {line.unitCost} MT
-                </option>
+      {purchases.length === 0 ? (
+        <div style={box}>Não há faturas confirmadas. Cria e confirma uma fatura em Fornecedores.</div>
+      ) : (
+        <div style={{ ...box, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div>
+            <label style={lab}>Fornecedor</label>
+            <select style={inputStyle} value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseId(""); }}>
+              <option value="">Escolhe o fornecedor</option>
+              {suppliers.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
               ))}
             </select>
           </div>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número de Lote *</label>
-            <input type="text" className="input" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} placeholder="Ex: LOT-2026-X" required />
-          </div>
-          <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade *</label>
-            <input type="number" min="1" className="input" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            <label style={lab}>Fatura</label>
+            <select style={inputStyle} value={purchaseId} disabled={!supplierId} onChange={(e) => setPurchaseId(e.target.value)}>
+              <option value="">Escolhe a fatura</option>
+              {invoices.map((p) => (
+                <option key={p.id} value={p.id}>{p.documentNumber}</option>
+              ))}
+            </select>
           </div>
         </div>
+      )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
-          <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Data de Validade *</label>
-            <input type="date" className="input" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required />
-          </div>
-          <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Custo Unitário (MT) *</label>
-            <input type="number" step="0.01" min="0" className="input" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} required />
-          </div>
+      {purchase && (
+        <div style={box}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Recebido</th>
+                <th>Preço por caixa</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) => {
+                const r = l.received ?? 0;
+                const done = r >= l.quantity;
+                return (
+                  <tr key={l.id} style={l.id === lineId ? { background: "#e8efff" } : undefined}>
+                    <td>{l.product?.name ?? "?"}{l.product?.strength ? " " + l.product.strength : ""}</td>
+                    <td>{done ? "Completo — " : ""}recebido {r} de {l.quantity}</td>
+                    <td>{fmtMoney(l.unitCost, cur)}</td>
+                    <td>
+                      <button type="button" className="btn btn-secondary" disabled={done} onClick={() => { setLineId(l.id); setQrText(""); }}>
+                        Receber
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+      )}
 
-        <button type="submit" disabled={submitting || !purchaseLineId} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A processar…" : "Confirmar Receção"}
-        </button>
-      </form>
+      {line && (
+        <div style={box}>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>
+            {line.product?.name}{line.product?.strength ? " " + line.product.strength : ""} — faltam {falta} caixas
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div>
+              <label style={lab}>QR de cada caixa (um por linha ou separados por vírgula) — {qrs.length} lida(s)</label>
+              <textarea style={{ ...inputStyle, minHeight: 140 }} value={qrText} onChange={(e) => setQrText(e.target.value)} placeholder="Lê o QR de cada caixa" />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={lab}>Validade</label>
+                  <label style={{ fontSize: "0.8rem", color: "#5b6478", cursor: "pointer" }}>
+                    <input type="checkbox" checked={noExpiry} onChange={(e) => setNoExpiry(e.target.checked)} /> Sem validade
+                  </label>
+                </div>
+                <MonthField value={expiry} onChange={setExpiry} disabled={noExpiry} style={{ ...inputStyle, opacity: noExpiry ? 0.6 : 1 }} />
+              </div>
+              <div>
+                <label style={lab}>{medicine ? "Preço de venda por carteira (MT)" : "Preço de venda por unidade (MT)"}</label>
+                <input type="number" min="0" step="0.01" style={inputStyle} value={salePrice} onChange={(e) => setSalePrice(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <button type="button" className="btn btn-primary" disabled={busy} style={{ marginTop: "1rem" }} onClick={confirmar}>
+            {busy ? "A guardar..." : "Confirmar receção"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

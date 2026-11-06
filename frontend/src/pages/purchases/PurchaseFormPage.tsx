@@ -9,7 +9,9 @@ import type { PurchaseRequest } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import { apiError } from "../../utils/supplierFormat";
+import InvoiceLinesEditor, { linesTotal, newLine, toLineRequests } from "../../components/suppliers/InvoiceLinesEditor";
+import type { LineDraft } from "../../components/suppliers/InvoiceLinesEditor";
+import { apiError, fmtMoney } from "../../utils/supplierFormat";
 
 const labelStyle = { display: "block", marginBottom: "0.5rem", fontWeight: 500 } as const;
 
@@ -23,12 +25,11 @@ export default function PurchaseFormPage() {
   const [documentNumber, setDocumentNumber] = useState("");
   const [transportCost, setTransportCost] = useState("");
   const [otherCosts, setOtherCosts] = useState("");
-  const [invoiceTotal, setInvoiceTotal] = useState("");
   const [currency, setCurrency] = useState("MZN");
   const [exchangeRate, setExchangeRate] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"PAID" | "CREDIT">("PAID");
   const [dueDate, setDueDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [lines, setLines] = useState<LineDraft[]>(() => [newLine()]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
@@ -53,15 +54,14 @@ export default function PurchaseFormPage() {
     e.preventDefault();
     if (!supplierId) return toast.error("Seleciona um fornecedor.");
     if (!documentNumber.trim()) return toast.error("Número da fatura é obrigatório.");
+    const r = toLineRequests(lines);
+    if (!r.ok) return toast.error(r.error);
 
-    const body: PurchaseRequest = { supplierId, documentNumber: documentNumber.trim() };
-    if (notes.trim()) body.notes = notes.trim();
+    const body: PurchaseRequest = { supplierId, documentNumber: documentNumber.trim(), lines: r.lines };
     const t = parseFloat(transportCost);
     if (!isNaN(t) && t > 0) body.transportCost = t;
     const o = parseFloat(otherCosts);
     if (!isNaN(o) && o > 0) body.otherCosts = o;
-    const inv = parseFloat(invoiceTotal);
-    if (!isNaN(inv) && inv >= 0 && invoiceTotal.trim() !== "") body.invoiceTotal = inv;
 
     if (settings?.multiCurrency && currency.trim().toUpperCase() !== "MZN") {
       const rate = parseFloat(exchangeRate);
@@ -78,23 +78,27 @@ export default function PurchaseFormPage() {
     setSubmitting(true);
     try {
       const created = await createPurchase(body);
-      toast.success("Compra criada em rascunho. Regista agora as caixas.");
+      toast.success("Fatura criada em rascunho.");
       navigate(`/fornecedores/compras/${created.id}`);
     } catch (err: any) {
-      toast.error(apiError(err, "Erro ao criar compra."));
+      toast.error(apiError(err, "Erro ao criar a fatura."));
     } finally {
       setSubmitting(false);
     }
   }
-
   if (loading) return <LoadingState message="A carregar dados…" />;
   if (error) return <ErrorState message="Não foi possível carregar os fornecedores." onRetry={load} />;
 
   const foreign = Boolean(settings?.multiCurrency) && currency.trim().toUpperCase() !== "MZN";
+  const cur = foreign ? currency.trim().toUpperCase() : "MZN";
+  const goods = linesTotal(lines);
+  const tv = parseFloat(transportCost);
+  const ov = parseFloat(otherCosts);
+  const grand = goods + (isNaN(tv) ? 0 : tv) + (isNaN(ov) ? 0 : ov);
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "760px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Nova Compra</h1>
+    <div className="card" style={{ padding: "2rem", maxWidth: "960px", margin: "0 auto" }}>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Nova fatura de fornecedor</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
@@ -107,21 +111,6 @@ export default function PurchaseFormPage() {
           <div>
             <label style={labelStyle}>Nº da fatura *</label>
             <input type="text" className="input" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} required />
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-          <div>
-            <label style={labelStyle}>Transporte (MT)</label>
-            <input type="number" min="0" step="0.01" className="input" value={transportCost} onChange={(e) => setTransportCost(e.target.value)} />
-          </div>
-          <div>
-            <label style={labelStyle}>Outros custos (MT)</label>
-            <input type="number" min="0" step="0.01" className="input" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} />
-          </div>
-          <div>
-            <label style={labelStyle}>Total da fatura (conferência)</label>
-            <input type="number" min="0" step="0.01" className="input" value={invoiceTotal} onChange={(e) => setInvoiceTotal(e.target.value)} />
           </div>
         </div>
 
@@ -139,6 +128,20 @@ export default function PurchaseFormPage() {
             )}
           </div>
         )}
+
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "1.25rem 0 0.75rem" }}>Linhas da fatura</h2>
+        <InvoiceLinesEditor lines={lines} onChange={setLines} currency={cur} />
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", margin: "1.25rem 0 1rem" }}>
+          <div>
+            <label style={labelStyle}>Transporte</label>
+            <input type="number" min="0" step="0.01" className="input" value={transportCost} onChange={(e) => setTransportCost(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Outros custos</label>
+            <input type="number" min="0" step="0.01" className="input" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} />
+          </div>
+        </div>
 
         {settings?.usePayables && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
@@ -158,13 +161,10 @@ export default function PurchaseFormPage() {
           </div>
         )}
 
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label style={labelStyle}>Notas</label>
-          <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </div>
+        <div style={{ fontSize: "1.1rem", fontWeight: 600, margin: "1rem 0 1.5rem" }}>Total da fatura: {fmtMoney(grand, cur)}</div>
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A criar…" : "Criar compra (rascunho)"}
+          {submitting ? "A criar…" : "Criar fatura (rascunho)"}
         </button>
       </form>
     </div>

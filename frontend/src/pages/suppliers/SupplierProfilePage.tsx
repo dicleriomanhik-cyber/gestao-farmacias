@@ -85,7 +85,7 @@ export default function SupplierProfilePage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Documento</th>
+                <th>Nº da fatura</th>
                 <th>Data</th>
                 <th>Total</th>
                 {payables && <th>Pago</th>}

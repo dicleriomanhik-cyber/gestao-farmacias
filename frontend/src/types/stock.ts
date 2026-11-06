@@ -114,6 +114,13 @@ export interface StockBoxListParams {
   state?: StockBoxState;
 }
 
+export interface StockBoxBatchRequest {
+  purchaseLineId: string;
+  qrCodes: string[];
+  expiryDate?: string;
+  salePrice?: number;
+}
+
 export interface StockBoxCreateRequest {
   purchaseId?: string;
   acquisitionCost?: number;

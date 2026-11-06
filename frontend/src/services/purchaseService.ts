@@ -3,6 +3,7 @@ import type {
   Purchase,
   PurchaseRequest,
   PurchaseUpdateRequest,
+  PurchaseLineRequest,
   PaginatedResult,
   ListParams,
 } from "../types/purchases";
@@ -46,6 +47,11 @@ export async function createPurchase(data: PurchaseRequest): Promise<Purchase> {
 
 export async function updatePurchase(id: string, data: PurchaseUpdateRequest): Promise<Purchase> {
   const resp = await apiClient.patch<Envelope<Purchase>>(`/purchases/${id}`, data);
+  return resp.data.data;
+}
+
+export async function replacePurchaseLines(id: string, lines: PurchaseLineRequest[]): Promise<Purchase> {
+  const resp = await apiClient.put<Envelope<Purchase>>(`/purchases/${id}/lines`, { lines });
   return resp.data.data;
 }
 

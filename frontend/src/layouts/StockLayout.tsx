@@ -38,7 +38,8 @@ export default function StockLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0, marginBottom: 16 }}>
-        <NavLink to="/stock/caixas/nova" end style={({ isActive }) => tab(isActive)}>Registar caixa</NavLink>
+        <NavLink to="/stock/receber" end style={({ isActive }) => tab(isActive)}>Receber mercadoria</NavLink>
+        <NavLink to="/stock/caixas/nova" end style={({ isActive }) => tab(isActive)}>Registo sem fatura</NavLink>
         <NavLink to="/stock/caixas" end style={({ isActive }) => tab(isActive)}>Caixas em stock</NavLink>
         {id ? (
           <span style={tab(true)}>Detalhe da caixa</span>

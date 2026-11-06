@@ -80,7 +80,7 @@ export default function PurchaseListPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Documento</th>
+              <th>Nº da fatura</th>
               <th>Fornecedor</th>
               <th>Data</th>
               <th>Total</th>

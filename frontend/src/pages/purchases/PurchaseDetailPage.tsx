@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { cancelPurchase, confirmPurchase, getPurchaseById, updatePurchase } from "../../services/purchaseService";
+import { cancelPurchase, confirmPurchase, getPurchaseById, replacePurchaseLines, updatePurchase } from "../../services/purchaseService";
 import { createSupplierPayment } from "../../services/supplierPaymentService";
 import { getSettings } from "../../services/settingsService";
 import type { Purchase } from "../../types/purchases";
@@ -9,6 +9,8 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import Badge from "../../components/suppliers/Badge";
 import PaidFromFields from "../../components/suppliers/PaidFromFields";
+import InvoiceLinesEditor, { fromPurchaseLines, toLineRequests } from "../../components/suppliers/InvoiceLinesEditor";
+import type { LineDraft } from "../../components/suppliers/InvoiceLinesEditor";
 import { useToast } from "../../contexts/ToastContext";
 import { METHOD_LABEL, PAID_FROM_LABEL, apiError, fmtDate, fmtMoney, fmtMt, num } from "../../utils/supplierFormat";
 
@@ -34,14 +36,14 @@ export default function PurchaseDetailPage() {
   const [others, setOthers] = useState("");
   const [invoice, setInvoice] = useState("");
   const [due, setDue] = useState("");
-  const [notes, setNotes] = useState("");
+  const [draft, setDraft] = useState<LineDraft[]>([]);
 
   function fill(p: Purchase) {
     setTransport(String(num(p.transportCost)));
     setOthers(String(num(p.otherCosts)));
     setInvoice(p.invoiceTotal === null || p.invoiceTotal === undefined ? "" : String(num(p.invoiceTotal)));
     setDue(p.dueDate ? p.dueDate.slice(0, 10) : "");
-    setNotes(p.notes ?? "");
+    setDraft(fromPurchaseLines(p.lines ?? []));
     setPayAmount(String(num(p.outstanding)));
   }
 
@@ -95,6 +97,22 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  async function saveLines() {
+    if (!purchaseId) return;
+    const r = toLineRequests(draft);
+    if (!r.ok) return toast.error(r.error);
+    setBusy(true);
+    try {
+      await replacePurchaseLines(purchaseId, r.lines);
+      toast.success("Linhas guardadas.");
+      load(true);
+    } catch (err: any) {
+      toast.error(apiError(err, "Erro ao guardar as linhas."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveCosts() {
     if (!purchaseId) return;
     setBusy(true);
@@ -103,7 +121,6 @@ export default function PurchaseDetailPage() {
         transportCost: parseFloat(transport) || 0,
         otherCosts: parseFloat(others) || 0,
         invoiceTotal: invoice.trim() === "" ? null : parseFloat(invoice),
-        notes: notes.trim() === "" ? null : notes.trim(),
         ...(settings?.usePayables ? { dueDate: due || null } : {}),
       });
       toast.success("Custos guardados.");
@@ -142,6 +159,7 @@ export default function PurchaseDetailPage() {
   const conf = purchase.conference;
   const boxes = purchase.boxes ?? [];
   const lines = purchase.lines ?? [];
+  const editable = purchase.status === "DRAFT" && boxes.length === 0;
   const payments = purchase.supplierPayments ?? [];
   const allowCash = settings?.allowCashExpenses ?? true;
   const outstanding = num(purchase.outstanding);
@@ -168,12 +186,12 @@ export default function PurchaseDetailPage() {
 
       {conf && conf.invoiceTotal !== null && conf.matches === false && (
         <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", color: "#78350f", borderRadius: 8, padding: "0.75rem 1rem", margin: "1rem 0" }}>
-          A soma das caixas ({fmtMoney(conf.goodsTotal, cur)}) não bate com o total da fatura ({fmtMoney(conf.invoiceTotal, cur)}). Diferença: {fmtMoney(conf.diff, cur)}.
+          A soma das linhas ({fmtMoney(conf.goodsTotal, cur)}) não bate com o total da fatura ({fmtMoney(conf.invoiceTotal, cur)}). Diferença: {fmtMoney(conf.diff, cur)}.
         </div>
       )}
       {conf && conf.invoiceTotal !== null && conf.matches === true && (
         <div style={{ background: "#dcfce7", border: "1px solid #86efac", color: "#166534", borderRadius: 8, padding: "0.75rem 1rem", margin: "1rem 0" }}>
-          A soma das caixas bate com o total da fatura.
+          A soma das linhas bate com o total da fatura.
         </div>
       )}
 
@@ -215,30 +233,46 @@ export default function PurchaseDetailPage() {
           </tbody>
         </table>
       )}
-      {purchase.status === "DRAFT" && (
+      {purchase.status === "DRAFT" && lines.length === 0 && (
         <button type="button" className="btn btn-secondary" style={{ marginTop: "0.75rem" }} onClick={() => navigate(`/stock/caixas/nova?compra=${purchase.id}`)}>
           + Registar caixa nesta compra
         </button>
       )}
 
-      {lines.length > 0 && (
+      {purchase.status === "CONFIRMED" && lines.length > 0 && (
+        <button type="button" className="btn btn-primary" style={{ marginTop: "0.75rem" }} onClick={() => navigate("/stock/receber")}>
+          Receber mercadoria
+        </button>
+      )}
+
+      {editable && (
+        <div style={boxStyle}>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Linhas da fatura</div>
+          <InvoiceLinesEditor lines={draft} onChange={setDraft} currency={cur} />
+          <button type="button" className="btn btn-secondary" disabled={busy} style={{ marginTop: "0.75rem" }} onClick={saveLines}>Guardar linhas</button>
+        </div>
+      )}
+
+      {lines.length > 0 && !editable && (
         <>
           <h2 style={sectionTitle}>Linhas</h2>
           <table className="table">
             <thead>
               <tr>
                 <th>Produto</th>
-                <th>Qtd</th>
-                <th>Custo Unit.</th>
+                <th>Caixas</th>
+                <th>Preço por caixa</th>
+                <th>Preço unitário</th>
                 <th>Subtotal</th>
               </tr>
             </thead>
             <tbody>
               {lines.map((line) => (
                 <tr key={line.id}>
-                  <td>{line.product?.name ?? "—"}</td>
+                  <td>{line.product?.name ?? "—"}{line.product?.strength ? " " + line.product.strength : ""}</td>
                   <td>{line.quantity}</td>
                   <td>{fmtMoney(line.unitCost, cur)}</td>
+                  <td>{line.unitPrice == null ? "—" : fmtMoney(line.unitPrice, cur)}</td>
                   <td>{fmtMoney(line.subtotal, cur)}</td>
                 </tr>
               ))}
@@ -270,10 +304,7 @@ export default function PurchaseDetailPage() {
               <input type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
           )}
-          <div style={{ marginBottom: "1rem" }}>
-            <label style={labelStyle}>Notas</label>
-            <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
+
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={saveCosts}>Guardar custos</button>
         </div>
       )}
@@ -295,7 +326,7 @@ export default function PurchaseDetailPage() {
             <div style={{ color: "#64748b" }}>Compra a prazo: o pagamento regista-se depois da confirmação.</div>
           )}
           {num(purchase.totalAmount) <= 0 && (
-            <div style={{ color: "#b91c1c", marginTop: "0.75rem" }}>Regista pelo menos uma caixa antes de confirmar.</div>
+            <div style={{ color: "#b91c1c", marginTop: "0.75rem" }}>Acrescenta pelo menos uma linha antes de confirmar.</div>
           )}
           <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
             <button onClick={handleConfirm} disabled={busy || num(purchase.totalAmount) <= 0} className="btn btn-success" style={{ flex: 1, padding: "0.75rem" }}>

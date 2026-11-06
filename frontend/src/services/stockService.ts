@@ -9,6 +9,7 @@ import type {
   StockBoxDetail,
   StockBoxListParams,
   StockBoxCreateRequest,
+  StockBoxBatchRequest,
 } from "../types/stock";
 
 interface Envelope<T> {
@@ -56,6 +57,11 @@ export async function getStockBoxes(params?: StockBoxListParams): Promise<{ data
 
 export async function getStockBox(id: string): Promise<StockBoxDetail> {
   const resp = await apiClient.get<any>(`/stock/boxes/${id}`);
+  return resp.data.data;
+}
+
+export async function createStockBoxesBatch(data: StockBoxBatchRequest): Promise<StockBox[]> {
+  const resp = await apiClient.post<any>("/stock/boxes/batch", data);
   return resp.data.data;
 }
 
