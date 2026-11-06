@@ -37,10 +37,6 @@ export class CreatePurchaseDto {
   @IsString()
   documentNumber!: string;
 
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  notes?: string;
 
   @ApiPropertyOptional({ example: 150 })
   @IsNumber()

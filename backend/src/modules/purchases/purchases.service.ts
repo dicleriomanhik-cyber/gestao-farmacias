@@ -51,7 +51,6 @@ export class PurchasesService {
           pharmacyId,
           supplierId: dto.supplierId,
           documentNumber: dto.documentNumber,
-          notes: dto.notes,
           totalAmount,
           transportCost: dto.transportCost ?? 0,
           otherCosts: dto.otherCosts ?? 0,
@@ -170,7 +169,7 @@ export class PurchasesService {
     const lockedKeys = ['supplierId', 'documentNumber', 'currency', 'exchangeRate'];
     if (!draft && lockedKeys.some((k) => rest[k] !== undefined)) throw new BadRequestException('Fornecedor, documento e moeda só se alteram em rascunho.');
     const data: any = {};
-    for (const k of ['transportCost', 'otherCosts', 'invoiceTotal', 'notes', ...lockedKeys]) if (rest[k] !== undefined) data[k] = rest[k];
+    for (const k of ['transportCost', 'otherCosts', 'invoiceTotal', ...lockedKeys]) if (rest[k] !== undefined) data[k] = rest[k];
     if (rest.dueDate !== undefined) data.dueDate = rest.dueDate ? new Date(rest.dueDate) : null;
     if (data.supplierId && !(await this.prisma.supplier.findFirst({ where: { id: data.supplierId, pharmacyId } }))) throw new BadRequestException('Fornecedor inválido.');
 
