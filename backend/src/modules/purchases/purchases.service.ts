@@ -1,3 +1,4 @@
+import { lockReceiptLine } from './receipt-line';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
@@ -115,12 +116,7 @@ export class PurchasesService {
   }
 
   private async lockLine(tx: any, pharmacyId: string, lineId: string) {
-    await tx.$queryRaw`SELECT id FROM "purchase_lines" WHERE id = ${lineId}::uuid FOR UPDATE`;
-    const line = await tx.purchaseLine.findUnique({ where: { id: lineId }, include: { purchase: { select: { pharmacyId: true, status: true } } } });
-    if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
-    if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada.');
-    if (line.closed) throw new BadRequestException('Esta linha ja esta fechada.');
-    return line;
+    return lockReceiptLine(tx, pharmacyId, lineId);
   }
 
   async registerDamaged(pharmacyId: string, actorId: string, lineId: string, quantity: number, note?: string) {
