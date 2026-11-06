@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { InvoiceLineDto } from './invoice-line.dto';
 
 export class PurchaseLineDto {
   @ApiProperty()
@@ -84,10 +85,10 @@ export class CreatePurchaseDto {
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ type: [PurchaseLineDto] })
+  @ApiPropertyOptional({ type: [InvoiceLineDto] })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PurchaseLineDto)
-  lines?: PurchaseLineDto[];
+  @Type(() => InvoiceLineDto)
+  lines?: InvoiceLineDto[];
 }

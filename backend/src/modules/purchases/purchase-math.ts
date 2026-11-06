@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 export async function recomputePurchaseTotal(tx: Prisma.TransactionClient, purchaseId: string): Promise<number> {
   const lines = await tx.purchaseLine.aggregate({ where: { purchaseId }, _sum: { subtotal: true } });
-  const lots = await tx.stockLot.aggregate({ where: { purchaseId }, _sum: { acquisitionCost: true } });
+  const lots = await tx.stockLot.aggregate({ where: { purchaseId, purchaseLineId: null }, _sum: { acquisitionCost: true } });
   const total = round2(Number(lines._sum.subtotal ?? 0) + Number(lots._sum.acquisitionCost ?? 0));
   await tx.purchase.update({ where: { id: purchaseId }, data: { totalAmount: total } });
   return total;

@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 import { SupplierPaymentsService } from './supplier-payments.service';
 import { paidSum, purchaseDueMzn, round2, statusFor } from './purchase-math';
 import { recomputeLotCosts } from './purchase-costs';
+import { resolveLineProducts, lineInput } from './purchase-lines';
+import { InvoiceLineDto } from './dto/invoice-line.dto';
 
 @Injectable()
 export class PurchasesService {
@@ -24,9 +26,9 @@ export class PurchasesService {
     const dueDate = paymentStatus === 'CREDIT' && dto.dueDate ? new Date(dto.dueDate) : null;
 
     const lineList = dto.lines ?? [];
-    const productIds = lineList.map(l => l.productId);
+    const productIds = lineList.map(l => l.productId).filter((x): x is string => !!x);
     const products = await this.prisma.product.findMany({ where: { id: { in: productIds }, pharmacyId } });
-    if (products.length !== productIds.length) throw new BadRequestException('Um ou mais produtos são inválidos.');
+    if (products.length !== new Set(productIds).size) throw new BadRequestException('Um ou mais produtos são inválidos.');
 
     let totalAmount = 0;
     const linesData = lineList.map(line => {
@@ -34,7 +36,7 @@ export class PurchasesService {
       if (subtotal < 0) throw new BadRequestException('Desconto superior ao valor da linha.');
       totalAmount += subtotal;
       return {
-        productId: line.productId,
+        productId: line.productId, productName: line.productName, type: line.type, strength: line.strength, innerCount: line.innerCount, unitsPerInner: line.unitsPerInner, unitsPerBox: line.unitsPerBox,
         quantity: line.quantity,
         unitCost: line.unitCost,
         discount: line.discount || 0,
@@ -58,7 +60,7 @@ export class PurchasesService {
           paymentStatus: paymentStatus as any,
           dueDate,
           status: 'DRAFT',
-          lines: { create: linesData },
+          lines: { create: await resolveLineProducts(tx, pharmacyId, actorId, linesData) },
         },
         include: { lines: true },
       });
@@ -106,7 +108,10 @@ export class PurchasesService {
       matches: inv === null ? null : Math.abs(goods - inv) < 0.005,
       boxCount: base.stockLots.length,
     };
-    return { ...base, boxes: base.stockLots, conference };
+    const lines = base.lines.map((l) => ({ ...l, received: base.stockLots.filter((x) => x.purchaseLineId === l.id).length, unitPrice: l.unitsPerBox ? Math.round((Number(l.unitCost) / l.unitsPerBox) * 10000) / 10000 : null }));
+    const costs = { transport: Number(base.transportCost), other: Number(base.otherCosts) };
+    const totals = { goods, ...costs, grand: round2(goods + costs.transport + costs.other), currency: base.currency };
+    return { ...base, lines, boxes: base.stockLots, conference, totals };
   }
 
   async findOneBase(pharmacyId: string, id: string) {
@@ -119,7 +124,7 @@ export class PurchasesService {
   private async findOneRaw(pharmacyId: string, id: string) {
     const purchase = await this.prisma.purchase.findFirst({
       where: { id, pharmacyId },
-      include: { lines: { include: { product: true } }, supplier: true, supplierPayments: { orderBy: { paidAt: 'desc' } }, stockLots: { select: { id: true, qrCode: true, totalUnits: true, acquisitionCost: true, product: { select: { name: true } } }, orderBy: { createdAt: 'asc' } } },
+      include: { lines: { include: { product: true } }, supplier: true, supplierPayments: { orderBy: { paidAt: 'desc' } }, stockLots: { select: { id: true, purchaseLineId: true, qrCode: true, totalUnits: true, acquisitionCost: true, product: { select: { name: true } } }, orderBy: { createdAt: 'asc' } } },
     });
     if (!purchase) throw new NotFoundException('Compra não encontrada.');
     return purchase;
@@ -151,10 +156,28 @@ export class PurchasesService {
     });
   }
 
+  async replaceLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[]) {
+    const purchase = await this.findOne(pharmacyId, id);
+    if (purchase.status !== 'DRAFT') throw new BadRequestException('S\u00f3 se alteram as linhas de uma fatura em rascunho.');
+    if (purchase.stockLots.length > 0) throw new BadRequestException('Esta fatura j\u00e1 tem caixas registadas.');
+    const inputs = lines.map((l) => lineInput(l));
+    await this.prisma.$transaction(async (tx) => {
+      const resolved = await resolveLineProducts(tx, pharmacyId, actorId, inputs);
+      await tx.purchaseLine.deleteMany({ where: { purchaseId: id } });
+      if (resolved.length > 0) await tx.purchaseLine.createMany({ data: resolved.map((l) => ({ ...l, purchaseId: id })) });
+      const total = round2(resolved.reduce((s, l) => s + l.subtotal, 0));
+      await tx.purchase.update({ where: { id }, data: { totalAmount: total } });
+      await tx.auditLog.create({
+        data: { pharmacyId, userId: actorId, action: 'purchase.lines', entity: 'Purchase', entityId: id },
+      });
+    });
+    return this.findOne(pharmacyId, id);
+  }
+
   async confirm(pharmacyId: string, actorId: string, id: string, pay?: { paidFrom: string; method: string }) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
-    if (Number(purchase.totalAmount) <= 0) throw new BadRequestException('Regista pelo menos uma caixa antes de confirmar a compra.');
+    if (Number(purchase.totalAmount) <= 0) throw new BadRequestException('Acrescenta pelo menos uma linha antes de confirmar a compra.');
 
     return this.prisma.$transaction(async (tx) => {
       const updated: any = await tx.purchase.update({ where: { id }, data: { status: 'CONFIRMED' } }); updated.conference = purchase.conference;

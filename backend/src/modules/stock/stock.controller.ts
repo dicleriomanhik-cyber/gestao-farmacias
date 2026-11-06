@@ -5,6 +5,7 @@ import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { CreateLotDto } from './dto/create-lot.dto';
 import { CreateBoxDto } from './dto/create-box.dto';
+import { CreateBoxesBatchDto } from './dto/create-boxes-batch.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions';
 import { Tenant } from '../../common/decorators/tenant.decorator';
@@ -65,6 +66,13 @@ export class StockController {
   @ApiOperation({ summary: 'Registar caixa fisica (QR Code)' })
   createBox(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBoxDto) {
     return this.service.createBox(pharmacyId, user.id, dto);
+  }
+
+  @Post('boxes/batch')
+  @RequirePermissions(PERMISSIONS.STOCK_WRITE)
+  @ApiOperation({ summary: 'Receber varias caixas iguais de uma linha da fatura (lista de QR)' })
+  createBoxesBatch(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBoxesBatchDto) {
+    return this.service.createBoxesBatch(pharmacyId, user.id, dto);
   }
 
   @Get('boxes')

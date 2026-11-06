@@ -6,9 +6,10 @@ import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { CreateLotDto } from './dto/create-lot.dto';
 import { CreateBoxDto } from './dto/create-box.dto';
+import { CreateBoxesBatchDto } from './dto/create-boxes-batch.dto';
 import { derivePackState } from './pack-state.helper';
 import { saleUnitLabel } from '../products/sale-unit.helper';
-import { recomputePurchaseTotal } from '../purchases/purchase-math';
+import { recomputePurchaseTotal, round2 } from '../purchases/purchase-math';
 import { recomputeLotCosts } from '../purchases/purchase-costs';
 
 @Injectable()
@@ -246,117 +247,187 @@ export class StockService {
 
   async createBox(pharmacyId: string, actorId: string, dto: CreateBoxDto) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-      let product: { id: string; type: string; hasExpiry: boolean } | null = null;
-      if (dto.productId) {
-        product = await tx.product.findFirst({
-          where: { id: dto.productId, pharmacyId },
-          select: { id: true, type: true, hasExpiry: true },
-        });
-      } else if (dto.productName) {
-        const matches = await tx.product.findMany({
-          where: { pharmacyId, name: { equals: dto.productName.trim(), mode: 'insensitive' }, status: 'ACTIVE' },
-          select: { id: true, type: true, hasExpiry: true },
-          take: 2,
-        });
-        if (matches.length > 1) throw new BadRequestException('Existe mais de um produto com este nome. Use o produto correto.');
-        product = matches[0] ?? null;
-      }
-      if (!product) throw new NotFoundException('Produto nao encontrado.');
-      if (dto.purchaseId) {
-        const pur = await tx.purchase.findFirst({ where: { id: dto.purchaseId, pharmacyId }, select: { status: true } });
-        if (!pur) throw new BadRequestException('Compra inválida.');
-        if (pur.status !== 'DRAFT') throw new BadRequestException('Só se juntam caixas a compras em rascunho.');
-        if (dto.acquisitionCost === undefined) throw new BadRequestException('Indica o custo de aquisição da caixa.');
-      }
-      if (dto.expiryDate && product.hasExpiry === false) {
-        throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
-      }
-      if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) {
-        throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
-      }
-      if (product.hasExpiry && !dto.expiryDate) {
-        throw new BadRequestException('expiryDate obrigatoria para este produto.');
-      }
-
-      let innerCount: number | null = null;
-      let unitsPerInner: number | null = null;
-      let totalUnits: number;
-
-      if (product.type === 'MEDICINE') {
-        if (!dto.innerCount || !dto.unitsPerInner) {
-          throw new BadRequestException('MEDICINE requer innerCount e unitsPerInner.');
-        }
-        if (dto.totalUnits !== undefined && dto.totalUnits !== dto.innerCount * dto.unitsPerInner) {
-          throw new BadRequestException('totalUnits deve ser innerCount * unitsPerInner.');
-        }
-        innerCount = dto.innerCount;
-        unitsPerInner = dto.unitsPerInner;
-        totalUnits = innerCount * unitsPerInner;
-      } else {
-        if (!dto.totalUnits) {
-          throw new BadRequestException('PRODUCT requer totalUnits.');
-        }
-        totalUnits = dto.totalUnits;
-      }
-
-      const lotNumber = dto.lotNumber ?? dto.qrCode;
-
-      const lot = await tx.stockLot.create({
-        data: {
-          pharmacyId,
-          productId: product.id,
-          lotNumber,
-          qrCode: dto.qrCode,
-          expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
-          quantityReceived: totalUnits,
-          quantityReceivedFromLine: 0,
-          quantityAvailable: totalUnits,
-          innerCount,
-          unitsPerInner,
-          totalUnits,
-          unitCost: dto.unitCost ?? 0,
-          purchaseId: dto.purchaseId ?? null,
-          acquisitionCost: dto.acquisitionCost ?? null,
-          status: 'ACTIVE',
-        },
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          pharmacyId,
-          productId: product.id,
-          lotId: lot.id,
-          type: 'DIRECT_ENTRY',
-          quantity: totalUnits,
-          referenceId: lot.id,
-          referenceType: 'StockLot',
-          userId: actorId,
-          notes: 'Entrada directa de caixa (createBox)',
-        },
-      });
-
-      await tx.auditLog.create({
-        data: { pharmacyId, userId: actorId, action: 'stock.box.create', entity: 'StockLot', entityId: lot.id },
-      });
-      if (dto.purchaseId) {
-        await recomputePurchaseTotal(tx, dto.purchaseId);
-        await recomputeLotCosts(tx, dto.purchaseId);
-      } else if (dto.acquisitionCost != null && totalUnits > 0) {
-        await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: Math.round((dto.acquisitionCost / totalUnits) * 1e6) / 1e6 } });
-      } else if (dto.unitCost && dto.unitCost > 0) {
-        await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: dto.unitCost } });
-      }
-      await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
-
-      return lot;
-      });
+      return await this.prisma.$transaction(async (tx) => this.createBoxTx(tx, pharmacyId, actorId, dto, true));
     } catch (e: any) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         throw new BadRequestException('QR Code ou lotNumber duplicado nesta farmacia.');
       }
       throw e;
     }
+  }
+
+  async createBoxesBatch(pharmacyId: string, actorId: string, dto: CreateBoxesBatchDto) {
+    const codes = dto.qrCodes.map((s) => s.trim());
+    if (codes.some((c) => !c) || new Set(codes).size !== codes.length) {
+      throw new BadRequestException('Lista de QR com codigos vazios ou repetidos.');
+    }
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const lots: any[] = [];
+          let purchaseId: string | null = null;
+          for (const qrCode of codes) {
+            const lot: any = await this.createBoxTx(
+              tx, pharmacyId, actorId,
+              { purchaseLineId: dto.purchaseLineId, expiryDate: dto.expiryDate, salePrice: dto.salePrice, qrCode } as CreateBoxDto,
+              false,
+            );
+            purchaseId = lot.purchaseId;
+            lots.push(lot);
+          }
+          if (purchaseId) await recomputeLotCosts(tx, purchaseId);
+          return lots;
+        },
+        { timeout: 60000, maxWait: 10000 },
+      );
+    } catch (e: any) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BadRequestException('QR Code ou lotNumber duplicado nesta farmacia.');
+      }
+      throw e;
+    }
+  }
+
+  private async createBoxTx(tx: Prisma.TransactionClient, pharmacyId: string, actorId: string, input: CreateBoxDto, recompute: boolean) {
+    const dto: CreateBoxDto = { ...input };
+    let line: any = null;
+
+    if (dto.purchaseLineId) {
+      await tx.$queryRaw`SELECT id FROM "purchase_lines" WHERE id = ${dto.purchaseLineId}::uuid FOR UPDATE`;
+      line = await tx.purchaseLine.findUnique({
+        where: { id: dto.purchaseLineId },
+        include: { purchase: { select: { pharmacyId: true, status: true } } },
+      });
+      if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
+      if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada para receber mercadoria.');
+      const received = await tx.stockLot.count({ where: { purchaseLineId: line.id } });
+      if (received >= line.quantity) {
+        throw new BadRequestException(`Linha ja recebida por completo (${received} de ${line.quantity} caixas).`);
+      }
+      dto.productId = line.productId;
+      dto.productName = undefined;
+      dto.purchaseId = line.purchaseId;
+      dto.acquisitionCost = round2(Number(line.subtotal) / line.quantity);
+      if (dto.innerCount === undefined && line.innerCount) dto.innerCount = line.innerCount;
+      if (dto.unitsPerInner === undefined && line.unitsPerInner) dto.unitsPerInner = line.unitsPerInner;
+    }
+
+    let product: { id: string; type: string; hasExpiry: boolean } | null = null;
+    if (dto.productId) {
+      product = await tx.product.findFirst({
+        where: { id: dto.productId, pharmacyId },
+        select: { id: true, type: true, hasExpiry: true },
+      });
+    } else if (dto.productName) {
+      const matches = await tx.product.findMany({
+        where: { pharmacyId, name: { equals: dto.productName.trim(), mode: 'insensitive' }, status: 'ACTIVE' },
+        select: { id: true, type: true, hasExpiry: true },
+        take: 2,
+      });
+      if (matches.length > 1) throw new BadRequestException('Existe mais de um produto com este nome. Use o produto correto.');
+      product = matches[0] ?? null;
+    }
+    if (!product) throw new NotFoundException('Produto nao encontrado.');
+
+    if (dto.purchaseId && !line) {
+      const pur = await tx.purchase.findFirst({ where: { id: dto.purchaseId, pharmacyId }, select: { status: true } });
+      if (!pur) throw new BadRequestException('Compra inválida.');
+      if (pur.status !== 'DRAFT') throw new BadRequestException('Só se juntam caixas a compras em rascunho.');
+      if (dto.acquisitionCost === undefined) throw new BadRequestException('Indica o custo de aquisição da caixa.');
+    }
+    if (dto.expiryDate && product.hasExpiry === false) {
+      throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
+    }
+    if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) {
+      throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
+    }
+    if (product.hasExpiry && !dto.expiryDate) {
+      throw new BadRequestException('expiryDate obrigatoria para este produto.');
+    }
+    if (line && product.type !== 'MEDICINE' && dto.totalUnits === undefined && line.unitsPerBox) {
+      dto.totalUnits = line.unitsPerBox;
+    }
+
+    let innerCount: number | null = null;
+    let unitsPerInner: number | null = null;
+    let totalUnits: number;
+
+    if (product.type === 'MEDICINE') {
+      if (!dto.innerCount || !dto.unitsPerInner) {
+        throw new BadRequestException('MEDICINE requer innerCount e unitsPerInner.');
+      }
+      if (dto.totalUnits !== undefined && dto.totalUnits !== dto.innerCount * dto.unitsPerInner) {
+        throw new BadRequestException('totalUnits deve ser innerCount * unitsPerInner.');
+      }
+      innerCount = dto.innerCount;
+      unitsPerInner = dto.unitsPerInner;
+      totalUnits = innerCount * unitsPerInner;
+    } else {
+      if (!dto.totalUnits) {
+        throw new BadRequestException('PRODUCT requer totalUnits.');
+      }
+      totalUnits = dto.totalUnits;
+    }
+
+    const lotNumber = dto.lotNumber ?? dto.qrCode;
+
+    const lot = await tx.stockLot.create({
+      data: {
+        pharmacyId,
+        productId: product.id,
+        purchaseLineId: line ? line.id : null,
+        lotNumber,
+        qrCode: dto.qrCode,
+        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+        quantityReceived: totalUnits,
+        quantityReceivedFromLine: 0,
+        quantityAvailable: totalUnits,
+        innerCount,
+        unitsPerInner,
+        totalUnits,
+        unitCost: line ? round2(Number(dto.acquisitionCost) / totalUnits) : (dto.unitCost ?? 0),
+        purchaseId: dto.purchaseId ?? null,
+        acquisitionCost: dto.acquisitionCost ?? null,
+        status: 'ACTIVE',
+      },
+    });
+
+    await tx.stockMovement.create({
+      data: {
+        pharmacyId,
+        productId: product.id,
+        lotId: lot.id,
+        type: line ? 'PURCHASE_ENTRY' : 'DIRECT_ENTRY',
+        quantity: totalUnits,
+        referenceId: line ? line.purchaseId : lot.id,
+        referenceType: line ? 'Purchase' : 'StockLot',
+        userId: actorId,
+        notes: line ? 'Receção de fatura (caixa)' : 'Entrada directa de caixa (createBox)',
+      },
+    });
+
+    await tx.auditLog.create({
+      data: { pharmacyId, userId: actorId, action: line ? 'stock.box.receive' : 'stock.box.create', entity: 'StockLot', entityId: lot.id },
+    });
+
+    if (dto.salePrice !== undefined) {
+      const up = await tx.product.update({ where: { id: product.id }, data: { salePrice: dto.salePrice } });
+      await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', up.id, 'UPDATED', up as any);
+    }
+
+    if (dto.purchaseId) {
+      if (recompute) {
+        if (!line) await recomputePurchaseTotal(tx, dto.purchaseId);
+        await recomputeLotCosts(tx, dto.purchaseId);
+      }
+    } else if (dto.acquisitionCost != null && totalUnits > 0) {
+      await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: Math.round((dto.acquisitionCost / totalUnits) * 1e6) / 1e6 } });
+    } else if (dto.unitCost && dto.unitCost > 0) {
+      await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: dto.unitCost } });
+    }
+    await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
+
+    return lot;
   }
 
   async getBoxes(

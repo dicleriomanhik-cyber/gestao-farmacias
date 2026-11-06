@@ -299,6 +299,9 @@ model PurchaseLine {
   unitCost      Decimal   @db.Decimal(10, 2)
   discount      Decimal   @default(0) @db.Decimal(10, 2)
   subtotal      Decimal   @db.Decimal(10, 2)
+  innerCount    Int?
+  unitsPerInner Int?
+  unitsPerBox   Int?
 
   purchase      Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
