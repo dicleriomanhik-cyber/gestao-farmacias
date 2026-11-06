@@ -425,6 +425,7 @@ export class StockService {
     } else if (dto.unitCost && dto.unitCost > 0) {
       await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: dto.unitCost } });
     }
+    if (line) await tx.purchase.update({ where: { id: line.purchaseId }, data: { updatedAt: new Date() } });
     await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
 
     return lot;

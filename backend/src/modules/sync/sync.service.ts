@@ -20,7 +20,7 @@ import { validateOrReject } from 'class-validator';
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const PENDING_ABANDON_MS = 5 * 60 * 1000;
-const ADMIN_OPS = ['EXPENSE', 'RETURN', 'CASH_CLOSE', 'EXPENSE_CONFIRM', 'EXPENSE_CANCEL', 'EXPENSE_UPDATE', 'RETURN_CONFIRM', 'RETURN_INSPECT', 'RETURN_CANCEL', 'REFUND', 'CATEGORY_CREATE', 'CATEGORY_UPDATE', 'PRODUCT_CREATE', 'STOCK_BOX_CREATE'];
+const ADMIN_OPS = ['EXPENSE', 'RETURN', 'CASH_CLOSE', 'EXPENSE_CONFIRM', 'EXPENSE_CANCEL', 'EXPENSE_UPDATE', 'RETURN_CONFIRM', 'RETURN_INSPECT', 'RETURN_CANCEL', 'REFUND', 'CATEGORY_CREATE', 'CATEGORY_UPDATE', 'PRODUCT_CREATE', 'STOCK_BOX_CREATE', 'PURCHASE_LINE_DAMAGED', 'PURCHASE_LINE_CLOSE'];
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -39,8 +39,19 @@ function hashPayload(payload: unknown): string {
   return createHash('sha256').update(JSON.stringify(canonicalize(payload))).digest('hex');
 }
 
+async function loadReceiptLine(tx: Prisma.TransactionClient, pharmacyId: string, lineId: string) {
+  if (!lineId) throw new BadRequestException('Linha da fatura em falta.');
+  await tx.$queryRaw`SELECT id FROM "purchase_lines" WHERE id = ${lineId}::uuid FOR UPDATE`;
+  const line = await tx.purchaseLine.findUnique({ where: { id: lineId }, include: { purchase: { select: { pharmacyId: true, status: true } } } });
+  if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
+  if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada.');
+  if (line.closed) throw new BadRequestException('Esta linha ja esta fechada.');
+  const received = await tx.stockLot.count({ where: { purchaseLineId: lineId } });
+  return { ...line, received };
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const UUID_FIELDS = ['saleId', 'saleLineId', 'salePaymentId', 'returnId', 'expenseId', 'cashSessionId', 'sessionId', 'categoryId', 'productId', 'purchaseId'];
+const UUID_FIELDS = ['saleId', 'saleLineId', 'salePaymentId', 'returnId', 'expenseId', 'cashSessionId', 'sessionId', 'categoryId', 'productId', 'purchaseId', 'purchaseLineId', 'lineId'];
 
 function findInvalidId(payload: any): string | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -144,7 +155,9 @@ export class SyncService {
     }
     if (op.operationType === 'STOCK_BOX_CREATE') {
       const d = op.payload ?? {};
-      let productId: string | undefined = d.productId;
+      const rline = d.purchaseLineId ? await loadReceiptLine(tx, pharmacyId, String(d.purchaseLineId)) : null;
+      if (rline && rline.received + rline.quantityDamaged >= rline.quantity) throw new BadRequestException(`Linha ja recebida por completo (${rline.received} de ${rline.quantity} caixas).`);
+      let productId: string | undefined = rline ? rline.productId : d.productId;
       if (!productId) {
         if (!d.createKey) throw new BadRequestException('Chave do produto em falta.');
         const createOp = await tx.syncOperation.findFirst({ where: { pharmacyId, idempotencyKey: d.createKey, operationType: 'PRODUCT_CREATE', status: 'PROCESSED' } });
@@ -164,19 +177,19 @@ export class SyncService {
       let unitsPerInner: number | null = null;
       let totalUnits: number;
       if (product.type === 'MEDICINE') {
-        innerCount = Number(d.innerCount);
-        unitsPerInner = Number(d.unitsPerInner);
+        innerCount = Number(d.innerCount ?? rline?.innerCount);
+        unitsPerInner = Number(d.unitsPerInner ?? rline?.unitsPerInner);
         if (!(innerCount > 0) || !(unitsPerInner > 0)) throw new BadRequestException('MEDICINE requer caixinhas e carteiras por caixinha.');
         totalUnits = innerCount * unitsPerInner;
       } else {
-        totalUnits = Number(d.totalUnits);
+        totalUnits = Number(d.totalUnits ?? rline?.unitsPerBox);
         if (!(totalUnits > 0)) throw new BadRequestException('Total de unidades invalido.');
       }
-      const acqRaw = d.acquisitionCost;
+      const acqRaw = rline ? Math.round((Number(rline.subtotal) / rline.quantity + Number.EPSILON) * 100) / 100 : d.acquisitionCost;
       const acquisitionCost: number | null = acqRaw === undefined || acqRaw === null ? null : Number(acqRaw);
       if (acquisitionCost !== null && (!Number.isFinite(acquisitionCost) || acquisitionCost < 0)) throw new BadRequestException('Custo de aquisição inválido.');
-      let purchaseId: string | null = null;
-      if (d.purchaseId) {
+      let purchaseId: string | null = rline ? rline.purchaseId : null;
+      if (!rline && d.purchaseId) {
         const pur = await tx.purchase.findFirst({ where: { id: d.purchaseId, pharmacyId }, select: { status: true } });
         if (!pur || pur.status !== 'DRAFT') throw new BadRequestException('Compra inválida ou já confirmada.');
         if (acquisitionCost === null) throw new BadRequestException('Indica o custo de aquisição da caixa.');
@@ -189,6 +202,7 @@ export class SyncService {
           pharmacyId,
           productId: product.id,
           lotNumber: qrCode,
+          purchaseLineId: rline ? rline.id : null,
           qrCode,
           expiryDate,
           quantityReceived: totalUnits,
@@ -197,25 +211,50 @@ export class SyncService {
           innerCount,
           unitsPerInner,
           totalUnits,
-          unitCost: Number(d.unitCost ?? 0) || 0,
+          unitCost: rline ? Math.round((Number(acquisitionCost) / totalUnits + Number.EPSILON) * 100) / 100 : Number(d.unitCost ?? 0) || 0,
           purchaseId,
           acquisitionCost,
           status: 'ACTIVE',
         },
       });
       await tx.stockMovement.create({
-        data: { pharmacyId, productId: product.id, lotId: lot.id, type: 'DIRECT_ENTRY', quantity: totalUnits, referenceId: lot.id, referenceType: 'StockLot', userId, notes: 'Entrada directa de caixa (createBox)' },
+        data: { pharmacyId, productId: product.id, lotId: lot.id, type: rline ? 'PURCHASE_ENTRY' : 'DIRECT_ENTRY', quantity: totalUnits, referenceId: rline ? rline.purchaseId : lot.id, referenceType: rline ? 'Purchase' : 'StockLot', userId, notes: rline ? 'Receção de fatura (caixa)' : 'Entrada directa de caixa (createBox)' },
       });
-      await tx.auditLog.create({ data: { pharmacyId, userId, action: 'stock.box.create', entity: 'StockLot', entityId: lot.id } });
+      await tx.auditLog.create({ data: { pharmacyId, userId, action: rline ? 'stock.box.receive' : 'stock.box.create', entity: 'StockLot', entityId: lot.id } });
       if (purchaseId) {
-        await recomputePurchaseTotal(tx, purchaseId);
+        if (!rline) await recomputePurchaseTotal(tx, purchaseId);
         await recomputeLotCosts(tx, purchaseId);
       } else {
         const rc = acquisitionCost !== null ? acquisitionCost / totalUnits : Number(d.unitCost) > 0 ? Number(d.unitCost) : null;
         if (rc !== null) await tx.stockLot.update({ where: { id: lot.id }, data: { realUnitCost: Math.round((rc + Number.EPSILON) * 1e6) / 1e6 } });
       }
+      if (rline && d.salePrice !== undefined && d.salePrice !== null && d.salePrice !== '') {
+        const sp = Number(d.salePrice);
+        if (!Number.isFinite(sp) || sp < 0) throw new BadRequestException('Preco de venda invalido.');
+        const upProd = await tx.product.update({ where: { id: product.id }, data: { salePrice: sp } });
+        await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', upProd.id, 'UPDATED', upProd as any);
+      }
       await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
       return { lotId: lot.id };
+    }
+    if (op.operationType === 'PURCHASE_LINE_DAMAGED') {
+      const d = op.payload ?? {};
+      const qty = Number(d.quantity);
+      if (!Number.isInteger(qty) || qty < 1) throw new BadRequestException('Quantidade invalida.');
+      const line = await loadReceiptLine(tx, pharmacyId, String(d.lineId ?? ''));
+      if (line.received + line.quantityDamaged + qty > line.quantity) throw new BadRequestException(`So faltam ${line.quantity - line.received - line.quantityDamaged} caixas nesta linha.`);
+      const note = typeof d.note === 'string' && d.note.trim() ? d.note.trim().slice(0, 500) : undefined;
+      await tx.purchaseLine.update({ where: { id: line.id }, data: { quantityDamaged: { increment: qty }, ...(note ? { damageNote: note } : {}) } });
+      await tx.purchase.update({ where: { id: line.purchaseId }, data: { updatedAt: new Date() } });
+      await tx.auditLog.create({ data: { pharmacyId, userId, action: 'purchase.line.damaged', entity: 'PurchaseLine', entityId: line.id } });
+      return { lineId: line.id };
+    }
+    if (op.operationType === 'PURCHASE_LINE_CLOSE') {
+      const line = await loadReceiptLine(tx, pharmacyId, String(op.payload?.lineId ?? ''));
+      await tx.purchaseLine.update({ where: { id: line.id }, data: { closed: true } });
+      await tx.purchase.update({ where: { id: line.purchaseId }, data: { updatedAt: new Date() } });
+      await tx.auditLog.create({ data: { pharmacyId, userId, action: 'purchase.line.closed', entity: 'PurchaseLine', entityId: line.id } });
+      return { lineId: line.id };
     }
     if (op.operationType === 'CATEGORY_CREATE') {
       const name = String(op.payload?.name ?? '').trim();

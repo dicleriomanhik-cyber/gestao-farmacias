@@ -134,6 +134,7 @@ export class PurchasesService {
         where: { id: lineId },
         data: { quantityDamaged: { increment: quantity }, ...(note ? { damageNote: note } : {}) },
       });
+      await tx.purchase.update({ where: { id: line.purchaseId }, data: { updatedAt: new Date() } });
       await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.line.damaged', entity: 'PurchaseLine', entityId: lineId } });
       return updated;
     });
@@ -143,6 +144,7 @@ export class PurchasesService {
     return this.prisma.$transaction(async (tx) => {
       await this.lockLine(tx, pharmacyId, lineId);
       const updated = await tx.purchaseLine.update({ where: { id: lineId }, data: { closed: true } });
+      await tx.purchase.update({ where: { id: updated.purchaseId }, data: { updatedAt: new Date() } });
       await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.line.closed', entity: 'PurchaseLine', entityId: lineId } });
       return updated;
     });
