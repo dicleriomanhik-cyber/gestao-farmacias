@@ -427,7 +427,10 @@ async function enrichPurchase(pu: any, suppliers: Map<string, any>, prods: Map<s
   const out: any = { ...pu };
   if (sup) out.supplier = { id: sup.id, name: sup.name, taxId: sup.taxId ?? null, phone: sup.phone ?? null, email: sup.email ?? null };
   if (pu.lines) {
-    out.lines = pu.lines.map((l: any) => {
+    const localLots = (await getAll("stock_lots")).filter((x: any) => x.purchaseLineId && String(x.id).startsWith("LOCAL-"));
+    out.lines = pu.lines.map((l0: any) => {
+      const extra = localLots.filter((x: any) => x.purchaseLineId === l0.id).length;
+      const l = extra ? { ...l0, received: Number(l0.received ?? 0) + extra } : l0;
       if (l.product) return l;
       const p = prods.get(l.productId);
       return p ? { ...l, product: { id: p.id, name: p.name, salePrice: String(p.salePrice ?? "0"), sku: p.sku ?? null } } : l;

@@ -21,6 +21,8 @@ const TIPOS: Record<string, string> = {
   CATEGORY_UPDATE: "Editar categoria",
   PRODUCT_CREATE: "Produto",
   STOCK_BOX_CREATE: "Registar caixa",
+  PURCHASE_LINE_DAMAGED: "Caixas danificadas",
+  PURCHASE_LINE_CLOSE: "Fechar linha",
 };
 
 type Group = OpGroup;
@@ -91,6 +93,8 @@ export default function SyncQueuePage() {
     ? ""
     : confirmGroup.ops.some((o) => o.operationType === "SALE" || o.operationType === "PAYMENT")
       ? "Esta operação ainda não foi enviada. Se a descartar, a venda ou o pagamento perde-se."
+      : confirmGroup.ops.some((o) => o.payload?.purchaseLineId || o.payload?.lineId)
+      ? "Descarta o registo desta receção. Esta ação não pode ser desfeita."
       : confirmGroup.ops.some((o) => o.operationType === "STOCK_BOX_CREATE")
         ? "Descarta o registo da caixa e do produto associado. Esta ação não pode ser desfeita."
         : confirmGroup.ops.length > 1 && confirmGroup.ops.some((o) => o.operationType.startsWith("EXPENSE"))
@@ -130,6 +134,7 @@ export default function SyncQueuePage() {
 
   function rotuloGrupo(g: Group): string {
     if (g.ops.some((o) => o.operationType.startsWith("EXPENSE"))) return "Despesa";
+    if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE" && o.payload?.purchaseLineId)) return "Receção de fatura (caixa)";
     if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE")) return "Registar caixa";
     const ret = g.ops.find((o) => o.operationType === "RETURN");
     if (ret) return `Devolução (venda ${shortId(ret.payload?.saleId)})`;

@@ -23,7 +23,7 @@ export async function getClientId(): Promise<string> {
 }
 
 export async function enqueueOperation(
-  operationType: "CASH_OPEN" | "SALE" | "PAYMENT" | "EXPENSE" | "RETURN" | "CASH_CLOSE" | "EXPENSE_CONFIRM" | "EXPENSE_CANCEL" | "EXPENSE_UPDATE" | "RETURN_CONFIRM" | "RETURN_INSPECT" | "RETURN_CANCEL" | "REFUND" | "CATEGORY_CREATE" | "CATEGORY_UPDATE" | "PRODUCT_CREATE" | "STOCK_BOX_CREATE",
+  operationType: "CASH_OPEN" | "SALE" | "PAYMENT" | "EXPENSE" | "RETURN" | "CASH_CLOSE" | "EXPENSE_CONFIRM" | "EXPENSE_CANCEL" | "EXPENSE_UPDATE" | "RETURN_CONFIRM" | "RETURN_INSPECT" | "RETURN_CANCEL" | "REFUND" | "CATEGORY_CREATE" | "CATEGORY_UPDATE" | "PRODUCT_CREATE" | "STOCK_BOX_CREATE" | "PURCHASE_LINE_DAMAGED" | "PURCHASE_LINE_CLOSE",
   payload: any
 ): Promise<OutboxOperation> {
   const db = await openDb();

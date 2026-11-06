@@ -1,3 +1,4 @@
+import { markLineDamagedLocal, closeLineLocal } from "../offline/operationsLocal";
 import { apiClient } from "./api";
 import type {
   Purchase,
@@ -61,11 +62,29 @@ export async function confirmPurchase(id: string, pay?: { paidFrom: string; meth
 }
 
 export async function markLineDamaged(lineId: string, quantity: number, note?: string) {
+  try {
+    return await postLineDamaged(lineId, quantity, note);
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await markLineDamagedLocal(lineId, quantity, note);
+  }
+}
+
+async function postLineDamaged(lineId: string, quantity: number, note?: string) {
   const resp = await apiClient.patch(`/purchases/lines/${lineId}/damaged`, { quantity, ...(note ? { note } : {}) });
   return resp.data.data;
 }
 
 export async function closePurchaseLine(lineId: string) {
+  try {
+    return await postCloseLine(lineId);
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await closeLineLocal(lineId);
+  }
+}
+
+async function postCloseLine(lineId: string) {
   const resp = await apiClient.patch(`/purchases/lines/${lineId}/close`);
   return resp.data.data;
 }

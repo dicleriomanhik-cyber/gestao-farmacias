@@ -447,3 +447,120 @@ export async function createBoxLocal(data: any): Promise<any> {
   ]);
   return lot;
 }
+
+async function findLocalLine(lineId: string): Promise<{ purchase: any; line: any }> {
+  const list: any[] = await allFrom("purchases");
+  for (const p of list) {
+    const l = (p.lines ?? []).find((x: any) => x.id === lineId);
+    if (l) return { purchase: p, line: l };
+  }
+  throw new Error("Linha da fatura não encontrada.");
+}
+
+async function lineFaltaLocal(line: any): Promise<number> {
+  const lots: any[] = await allFrom("stock_lots");
+  const locais = lots.filter((x: any) => x.purchaseLineId === line.id && String(x.id).startsWith("LOCAL-")).length;
+  return Number(line.quantity) - Number(line.received ?? 0) - locais - Number(line.quantityDamaged ?? 0);
+}
+
+export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
+  const { purchase, line } = await findLocalLine(String(data.purchaseLineId));
+  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (line.closed) throw new Error("Esta linha já está fechada.");
+  const qrs: string[] = (data.qrCodes ?? []).map((s: any) => String(s).trim()).filter(Boolean);
+  if (qrs.length === 0) throw new Error("Lê pelo menos um QR.");
+  if (new Set(qrs).size !== qrs.length) throw new Error("Há QR repetidos na lista.");
+  const falta = await lineFaltaLocal(line);
+  if (qrs.length > falta) throw new Error("Só faltam " + falta + " caixas nesta linha.");
+  const product = await getRecord("products", line.productId);
+  if (!product) throw new Error("Produto não encontrado.");
+  const isMed = product.type === "MEDICINE";
+  const totalUnits = isMed ? Number(line.innerCount) * Number(line.unitsPerInner) : Number(line.unitsPerBox);
+  if (!(totalUnits > 0)) throw new Error("A linha não tem a estrutura da caixa definida.");
+  const expiry = data.expiryDate ?? null;
+  if (product.hasExpiry === true && !expiry) throw new Error("Indica a validade.");
+  if (expiry && new Date(expiry).getTime() <= Date.now()) throw new Error("A validade deve ser no futuro.");
+  const price = data.salePrice === undefined || data.salePrice === null || data.salePrice === "" ? null : Number(data.salePrice);
+  if (price !== null && (!Number.isFinite(price) || price < 0)) throw new Error("Preço de venda inválido.");
+  const existing: any[] = await allFrom("stock_lots");
+  for (const q of qrs) {
+    if (existing.some((l: any) => String(l.qrCode ?? "") === q)) throw new Error("O QR " + q + " já está registado.");
+  }
+  const boxCost = Number(line.subtotal) / Number(line.quantity);
+  const unitCost = Math.round((boxCost / totalUnits + Number.EPSILON) * 100) / 100;
+  const now = new Date().toISOString();
+  const lots: any[] = [];
+  const moves: any[] = [];
+  for (const qr of qrs) {
+    const op = await enqueueOperation("STOCK_BOX_CREATE", {
+      purchaseLineId: line.id,
+      qrCode: qr,
+      ...(expiry ? { expiryDate: expiry } : {}),
+      ...(price !== null ? { salePrice: price } : {}),
+    });
+    const lotId = "LOCAL-" + op.idempotencyKey;
+    lots.push({
+      id: lotId,
+      createKey: op.idempotencyKey,
+      pharmacyId: product.pharmacyId ?? null,
+      productId: product.id,
+      purchaseId: purchase.id,
+      purchaseLineId: line.id,
+      lotNumber: qr,
+      qrCode: qr,
+      expiryDate: expiry,
+      innerCount: isMed ? Number(line.innerCount) : null,
+      unitsPerInner: isMed ? Number(line.unitsPerInner) : null,
+      totalUnits,
+      quantityReceived: totalUnits,
+      quantityReceivedFromLine: 0,
+      quantityAvailable: totalUnits,
+      unitCost: String(unitCost),
+      acquisitionCost: String(Math.round((boxCost + Number.EPSILON) * 100) / 100),
+      status: "ACTIVE",
+      createdAt: now,
+      updatedAt: now,
+      product: { name: product.name, sku: product.sku ?? null },
+    });
+    moves.push({
+      id: "LOCAL-MOV-" + op.idempotencyKey,
+      pharmacyId: product.pharmacyId ?? null,
+      productId: product.id,
+      lotId,
+      type: "PURCHASE_ENTRY",
+      quantity: totalUnits,
+      referenceId: purchase.id,
+      referenceType: "Purchase",
+      notes: "Receção de fatura (caixa)",
+      userId: "offline",
+      createdAt: now,
+    });
+  }
+  await putRecords("stock_lots", lots);
+  await putRecords("stock_movements", moves);
+  if (price !== null) await putRecords("products", [{ ...product, salePrice: String(price) }]);
+  return lots;
+}
+
+export async function markLineDamagedLocal(lineId: string, quantity: number, note?: string): Promise<any> {
+  const { purchase, line } = await findLocalLine(lineId);
+  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (line.closed) throw new Error("Esta linha já está fechada.");
+  if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Indica quantas caixas vieram danificadas.");
+  const falta = await lineFaltaLocal(line);
+  if (quantity > falta) throw new Error("Só faltam " + falta + " caixas nesta linha.");
+  await enqueueOperation("PURCHASE_LINE_DAMAGED", { lineId, quantity, ...(note ? { note } : {}) });
+  const lines = (purchase.lines ?? []).map((l: any) => (l.id === lineId ? { ...l, quantityDamaged: Number(l.quantityDamaged ?? 0) + quantity, ...(note ? { damageNote: note } : {}) } : l));
+  await putRecords("purchases", [{ ...purchase, lines }]);
+  return { id: lineId };
+}
+
+export async function closeLineLocal(lineId: string): Promise<any> {
+  const { purchase, line } = await findLocalLine(lineId);
+  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (line.closed) throw new Error("Esta linha já está fechada.");
+  await enqueueOperation("PURCHASE_LINE_CLOSE", { lineId });
+  const lines = (purchase.lines ?? []).map((l: any) => (l.id === lineId ? { ...l, closed: true } : l));
+  await putRecords("purchases", [{ ...purchase, lines }]);
+  return { id: lineId };
+}

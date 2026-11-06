@@ -59,8 +59,44 @@ export async function retryOperationNow(idempotencyKey: string): Promise<void> {
 export async function discardOperation(idempotencyKey: string): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction("outbox", "readwrite");
-    tx.objectStore("outbox").delete(idempotencyKey);
+    const tx = db.transaction(["outbox", "stock_lots", "stock_movements", "purchases"], "readwrite");
+    const outbox = tx.objectStore("outbox");
+    const got = outbox.get(idempotencyKey);
+    got.onsuccess = () => {
+      const o = got.result as OutboxOperation | undefined;
+      outbox.delete(idempotencyKey);
+      if (!o) return;
+      if (o.operationType === "STOCK_BOX_CREATE") {
+        const lotId = "LOCAL-" + idempotencyKey;
+        tx.objectStore("stock_lots").delete(lotId);
+        tx.objectStore("stock_movements").openCursor().onsuccess = (ev) => {
+          const cur = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
+          if (!cur) return;
+          if (cur.value.lotId === lotId) cur.delete();
+          cur.continue();
+        };
+      } else if (o.operationType === "PURCHASE_LINE_DAMAGED" || o.operationType === "PURCHASE_LINE_CLOSE") {
+        const lineId = o.payload?.lineId;
+        const qty = Number(o.payload?.quantity ?? 0);
+        const isClose = o.operationType === "PURCHASE_LINE_CLOSE";
+        tx.objectStore("purchases").openCursor().onsuccess = (ev) => {
+          const cur = (ev.target as IDBRequest).result as IDBCursorWithValue | null;
+          if (!cur) return;
+          const v = cur.value;
+          if ((v.lines ?? []).some((l: any) => l.id === lineId)) {
+            const lines = v.lines.map((l: any) =>
+              l.id !== lineId
+                ? l
+                : isClose
+                  ? { ...l, closed: false }
+                  : { ...l, quantityDamaged: Math.max(0, Number(l.quantityDamaged ?? 0) - qty) }
+            );
+            cur.update({ ...v, lines });
+          }
+          cur.continue();
+        };
+      }
+    };
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
