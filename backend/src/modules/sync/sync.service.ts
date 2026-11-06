@@ -159,6 +159,7 @@ export class SyncService {
       if (expiryDate && isNaN(expiryDate.getTime())) throw new BadRequestException('Data de validade invalida.');
       if (expiryDate && !product.hasExpiry) throw new BadRequestException('Produto sem validade nao aceita data de validade.');
       if (!expiryDate && product.hasExpiry) throw new BadRequestException('Validade obrigatoria para este produto.');
+      if (expiryDate && expiryDate.getTime() <= Date.now()) throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
       let innerCount: number | null = null;
       let unitsPerInner: number | null = null;
       let totalUnits: number;

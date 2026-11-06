@@ -165,7 +165,14 @@ export class SalesService {
           FOR UPDATE
         ` as Array<{ id: string; quantityAvailable: number; expiryDate: Date | null; createdAt: Date; realUnitCost: any }>;
 
-        if (lots.length === 0) throw new BadRequestException(`Sem stock valido para o produto ${line.productId}.`);
+        if (lots.length === 0) {
+          const expirados = await txc.stockLot.count({ where: { productId: line.productId, pharmacyId, quantityAvailable: { gt: 0 }, expiryDate: { lt: new Date() } } });
+          if (expirados > 0) {
+            const prod = await txc.product.findFirst({ where: { id: line.productId }, select: { name: true } });
+            throw new BadRequestException(`${prod?.name ?? 'Produto'}: fora do prazo, não pode ser vendido.`);
+          }
+          throw new BadRequestException(`Sem stock valido para o produto ${line.productId}.`);
+        }
 
         for (const lot of lots) {
           if (remainingQty <= 0) break;

@@ -42,6 +42,7 @@ export class StockService {
         );
       }
 
+      if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
       let lot = await tx.stockLot.findFirst({
         where: { pharmacyId, productId: line.productId, lotNumber: dto.lotNumber },
       });
@@ -107,6 +108,7 @@ export class StockService {
         if (!product) throw new NotFoundException('Produto nÃ£o encontrado.');
 
         const expiryDate = new Date(dto.expiryDate);
+        if (expiryDate.getTime() <= Date.now()) throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
         if (isNaN(expiryDate.getTime())) {
           throw new BadRequestException('Data de validade invÃ¡lida.');
         }
@@ -192,6 +194,7 @@ export class StockService {
       const lot = lots[0];
       if (!lot) throw new NotFoundException('Lote nÃ£o encontrado.');
 
+      if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) { throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.'); }
       if (dto.quantity === 0 && !dto.expiryDate) { throw new BadRequestException('Ajuste com quantidade zero requer nova validade.'); }
       if (lot.quantityAvailable + dto.quantity < 0) {
         throw new BadRequestException('Ajuste resultaria em stock negativo.');
@@ -268,6 +271,9 @@ export class StockService {
       }
       if (dto.expiryDate && product.hasExpiry === false) {
         throw new BadRequestException('Produto sem validade nao aceita expiryDate.');
+      }
+      if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) {
+        throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
       }
       if (product.hasExpiry && !dto.expiryDate) {
         throw new BadRequestException('expiryDate obrigatoria para este produto.');
@@ -524,7 +530,11 @@ export class StockService {
           where: { pharmacyId, productId: p.id },
           _sum: { quantityAvailable: true },
         });
-        const totalAvailable = aggregate._sum.quantityAvailable ?? 0;
+        const expiredAgg = await this.prisma.stockLot.aggregate({
+          where: { pharmacyId, productId: p.id, expiryDate: { lt: now } },
+          _sum: { quantityAvailable: true },
+        });
+        const totalAvailable = (aggregate._sum.quantityAvailable ?? 0) - (expiredAgg._sum.quantityAvailable ?? 0);
         const level =
           totalAvailable === 0 ? 'EMPTY' : p.minStock !== null && totalAvailable <= p.minStock ? 'LOW' : 'OK';
 
