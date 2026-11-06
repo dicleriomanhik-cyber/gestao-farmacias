@@ -6,6 +6,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { existsSync } from 'fs';
 import { join, isAbsolute, resolve } from 'path';
 import { AppModule } from './app.module';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const helmet = require('helmet');
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
@@ -16,6 +18,14 @@ async function bootstrap(): Promise<void> {
   const corsOrigins = config.get<string[]>('corsOrigins') ?? [];
 
   app.setGlobalPrefix(apiPrefix);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-site' },
+      hsts: { maxAge: 15552000, includeSubDomains: false },
+    }),
+  );
 
   // Servir o build do Front-end (opcional)
   const rawDist = config.get<string>('frontendDistPath') ?? 'frontend/dist';
@@ -51,6 +61,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({ origin: corsOrigins.length > 0 ? corsOrigins : false });
 
+  const swaggerOn = process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true';
   const swaggerConfig = new DocumentBuilder()
     .setTitle('API — Gestão de Farmácias (Moçambique)')
     .setDescription('Fundação técnica. Autenticação com refresh rotativo, permissões explícitas e isolamento por farmácia.')
@@ -58,7 +69,7 @@ async function bootstrap(): Promise<void> {
     .addBearerAuth()
     .build();
 
-  SwaggerModule.setup(
+  if (swaggerOn) SwaggerModule.setup(
     `${apiPrefix}/docs`,
     app,
     SwaggerModule.createDocument(app, swaggerConfig),
