@@ -31,6 +31,9 @@ export interface PurchaseLine {
   unitsPerBox?: number | null;
   unitPrice?: number | null;
   received?: number;
+  quantityDamaged?: number;
+  damageNote?: string | null;
+  closed?: boolean;
   product?: PurchaseProductRef;
 }
 

@@ -60,6 +60,15 @@ export async function confirmPurchase(id: string, pay?: { paidFrom: string; meth
   return resp.data.data;
 }
 
+export async function markLineDamaged(lineId: string, quantity: number, note?: string) {
+  const resp = await apiClient.patch(`/purchases/lines/${lineId}/damaged`, { quantity, ...(note ? { note } : {}) });
+  return resp.data.data;
+}
+
+export async function closePurchaseLine(lineId: string) {
+  const resp = await apiClient.patch(`/purchases/lines/${lineId}/close`);
+  return resp.data.data;
+}
 export async function cancelPurchase(id: string): Promise<Purchase> {
   const resp = await apiClient.patch<Envelope<Purchase>>(`/purchases/${id}/cancel`);
   return resp.data.data;

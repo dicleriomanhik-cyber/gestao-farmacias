@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { getPurchases, getPurchaseById } from "../../services/purchaseService";
+import { getPurchases, getPurchaseById, markLineDamaged, closePurchaseLine } from "../../services/purchaseService";
 import { createStockBoxesBatch } from "../../services/stockService";
 import type { Purchase } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
@@ -32,6 +32,8 @@ export default function StockReceiveFormPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [dmgQty, setDmgQty] = useState("");
+  const [dmgNote, setDmgNote] = useState("");
 
   function load() {
     setLoading(true);
@@ -67,7 +69,7 @@ export default function StockReceiveFormPage() {
   const invoices = purchases.filter((p) => p.supplierId === supplierId);
   const lines = purchase?.lines ?? [];
   const line = lines.find((l) => l.id === lineId);
-  const falta = line ? line.quantity - (line.received ?? 0) : 0;
+  const falta = line ? line.quantity - (line.received ?? 0) - (line.quantityDamaged ?? 0) : 0;
   const qrs = qrText.split(/[\r\n,;]+/).map((s) => s.trim()).filter(Boolean);
   const medicine = line?.product?.type === "MEDICINE";
   const cur = purchase?.currency ?? "MZN";
@@ -99,6 +101,47 @@ export default function StockReceiveFormPage() {
       if (l && l.quantity - (l.received ?? 0) <= 0) setLineId("");
     } catch (err: any) {
       toast.error(String(err?.response?.data?.error?.message ?? "Erro ao receber a mercadoria."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function afterLineChange(id: string) {
+    const p = await getPurchaseById(purchaseId);
+    setPurchase(p);
+    setDmgQty("");
+    setDmgNote("");
+    const l = p.lines?.find((x) => x.id === id);
+    if (l && (l.closed || l.quantity - (l.received ?? 0) - (l.quantityDamaged ?? 0) <= 0)) setLineId("");
+  }
+
+  async function danificar() {
+    if (!line) return;
+    const q = parseInt(dmgQty, 10);
+    if (isNaN(q) || q < 1) return toast.error("Indica quantas caixas vieram danificadas.");
+    if (q > falta) return toast.error("Só faltam " + falta + " caixas nesta linha.");
+    setBusy(true);
+    try {
+      await markLineDamaged(line.id, q, dmgNote.trim() || undefined);
+      toast.success(q + " caixa(s) danificada(s) registada(s).");
+      await afterLineChange(line.id);
+    } catch (err: any) {
+      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao registar caixas danificadas."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function fecharLinha() {
+    if (!line) return;
+    if (!window.confirm("Fechar esta linha? As " + falta + " caixas em falta deixam de ser esperadas.")) return;
+    setBusy(true);
+    try {
+      await closePurchaseLine(line.id);
+      toast.success("Linha fechada.");
+      await afterLineChange(line.id);
+    } catch (err: any) {
+      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao fechar a linha."));
     } finally {
       setBusy(false);
     }
@@ -150,11 +193,12 @@ export default function StockReceiveFormPage() {
             <tbody>
               {lines.map((l) => {
                 const r = l.received ?? 0;
-                const done = r >= l.quantity;
+                const dm = l.quantityDamaged ?? 0;
+                const done = !!l.closed || r + dm >= l.quantity;
                 return (
                   <tr key={l.id} style={l.id === lineId ? { background: "#e8efff" } : undefined}>
                     <td>{l.product?.name ?? "?"}{l.product?.strength ? " " + l.product.strength : ""}</td>
-                    <td>{done ? "Completo — " : ""}recebido {r} de {l.quantity}</td>
+                    <td>{l.closed ? "Fechada — " : done ? "Completo — " : ""}recebido {r}{dm > 0 ? ", danificado " + dm : ""} de {l.quantity}</td>
                     <td>{fmtMoney(l.unitCost, cur)}</td>
                     <td>
                       <button type="button" className="btn btn-secondary" disabled={done} onClick={() => { setLineId(l.id); setQrText(""); }}>
@@ -194,6 +238,18 @@ export default function StockReceiveFormPage() {
                 <input type="number" min="0" step="0.01" style={inputStyle} value={salePrice} onChange={(e) => setSalePrice(e.target.value)} />
               </div>
             </div>
+          </div>
+          <div style={{ borderTop: "1px solid #e2e8f0", marginTop: "1rem", paddingTop: "1rem", display: "grid", gridTemplateColumns: "120px 1fr auto auto", gap: "0.75rem", alignItems: "end" }}>
+            <div>
+              <label style={lab}>Danificadas</label>
+              <input type="number" min="1" style={inputStyle} value={dmgQty} onChange={(e) => setDmgQty(e.target.value)} />
+            </div>
+            <div>
+              <label style={lab}>Motivo (opcional)</label>
+              <input type="text" maxLength={200} style={inputStyle} value={dmgNote} onChange={(e) => setDmgNote(e.target.value)} />
+            </div>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={danificar}>Registar danificadas</button>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={fecharLinha}>Fechar linha</button>
           </div>
           <button type="button" className="btn btn-primary" disabled={busy} style={{ marginTop: "1rem" }} onClick={confirmar}>
             {busy ? "A guardar..." : "Confirmar receção"}
