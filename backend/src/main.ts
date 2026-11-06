@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
   app.use(
     helmet({
       contentSecurityPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-site' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
       hsts: { maxAge: 15552000, includeSubDomains: false },
     }),
   );
