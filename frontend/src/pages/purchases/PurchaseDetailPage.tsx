@@ -156,7 +156,6 @@ export default function PurchaseDetailPage() {
   if (!purchase) return <ErrorState message="Compra não encontrada." onRetry={() => navigate("/fornecedores/compras")} />;
 
   const cur = purchase.currency;
-  const conf = purchase.conference;
   const boxes = purchase.boxes ?? [];
   const lines = purchase.lines ?? [];
   const editable = purchase.status === "DRAFT" && boxes.length === 0;
@@ -184,21 +183,11 @@ export default function PurchaseDetailPage() {
       <p><strong>Data:</strong> {fmtDate(purchase.purchaseDate)}</p>
       {purchase.dueDate && <p><strong>Data limite:</strong> {fmtDate(purchase.dueDate)}</p>}
 
-      {conf && conf.invoiceTotal !== null && conf.matches === false && (
-        <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", color: "#78350f", borderRadius: 8, padding: "0.75rem 1rem", margin: "1rem 0" }}>
-          A soma das linhas ({fmtMoney(conf.goodsTotal, cur)}) não bate com o total da fatura ({fmtMoney(conf.invoiceTotal, cur)}). Diferença: {fmtMoney(conf.diff, cur)}.
-        </div>
-      )}
-      {conf && conf.invoiceTotal !== null && conf.matches === true && (
-        <div style={{ background: "#dcfce7", border: "1px solid #86efac", color: "#166534", borderRadius: 8, padding: "0.75rem 1rem", margin: "1rem 0" }}>
-          A soma das linhas bate com o total da fatura.
-        </div>
-      )}
 
       <h2 style={sectionTitle}>Valores</h2>
       <table className="table">
         <tbody>
-          <tr><td>Mercadoria (soma das caixas e linhas)</td><td style={{ textAlign: "right" }}>{fmtMoney(purchase.totalAmount, cur)}</td></tr>
+          <tr><td>Mercadoria</td><td style={{ textAlign: "right" }}>{fmtMoney(purchase.totalAmount, cur)}</td></tr>
           <tr><td>Transporte</td><td style={{ textAlign: "right" }}>{fmtMoney(purchase.transportCost, cur)}</td></tr>
           <tr><td>Outros custos</td><td style={{ textAlign: "right" }}>{fmtMoney(purchase.otherCosts, cur)}</td></tr>
           {cur !== "MZN" && <tr><td>Câmbio</td><td style={{ textAlign: "right" }}>{num(purchase.exchangeRate)}</td></tr>}
