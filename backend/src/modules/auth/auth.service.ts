@@ -208,13 +208,16 @@ export class AuthService {
     });
   }
 
-  private readonly resetAttempts = new Map<string, number>();
+  
 
   async forgotPassword(email: string) {
     const generic = { message: 'Se o email existir, enviámos um código de confirmação.' };
     const user = await this.prisma.user.findFirst({ where: { email, accessType: 'ADMIN' }, include: { roles: { include: { role: true } } } });
     if (!user || user.status !== 'ACTIVE') return generic;
     if (!user.roles.some((ur) => ur.role.name === 'ADMIN')) return generic;
+    const pedidos = await this.prisma.loginAttempt.count({ where: { email: user.email, ipAddress: 'reset-request', createdAt: { gte: new Date(Date.now() - 900_000) } } });
+    if (pedidos >= 3) return generic;
+    await this.prisma.loginAttempt.create({ data: { userId: user.id, email: user.email, ipAddress: 'reset-request', success: false } });
     const code = String(randomBytes(4).readUInt32BE(0) % 1000000).padStart(6, '0');
     const tokenHash = sha256('code:' + user.id + ':' + code);
     const expiresAt = new Date(Date.now() + 900_000);
@@ -222,7 +225,7 @@ export class AuthService {
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
     
     
-    this.resetAttempts.delete(email); await this.mail.sendPasswordReset(user.email, code);
+    await this.mail.sendPasswordReset(user.email, code);
     return generic;
   }
 
@@ -230,17 +233,20 @@ export class AuthService {
     const invalid = new BadRequestException('Código inválido ou expirado.');
     const user = await this.prisma.user.findFirst({ where: { email, accessType: 'ADMIN' } });
     if (!user) throw invalid;
-    const tries = (this.resetAttempts.get(email) ?? 0) + 1;
-    this.resetAttempts.set(email, tries);
+    const tries = (await this.prisma.loginAttempt.count({ where: { email: user.email, ipAddress: 'reset-verify', createdAt: { gte: new Date(Date.now() - 900_000) } } })) + 1;
+    
     if (tries > 5) {
       await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
       throw invalid;
     }
     const rec = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: sha256('code:' + user.id + ':' + code) } });
-    if (!rec || rec.userId !== user.id || rec.expiresAt < new Date()) throw invalid;
+    if (!rec || rec.userId !== user.id || rec.expiresAt < new Date()) {
+      await this.prisma.loginAttempt.create({ data: { userId: user.id, email: user.email, ipAddress: 'reset-verify', success: false } });
+      throw invalid;
+    }
     const token = randomBytes(32).toString('hex');
     await this.prisma.passwordResetToken.update({ where: { id: rec.id }, data: { tokenHash: sha256(token), expiresAt: new Date(Date.now() + 900_000) } });
-    this.resetAttempts.delete(email);
+    await this.prisma.loginAttempt.deleteMany({ where: { email: user.email, ipAddress: 'reset-verify' } });
     return { token };
   }
 
