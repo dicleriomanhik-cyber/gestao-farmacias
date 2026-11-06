@@ -292,6 +292,9 @@ model Purchase {
 }
 
 model PurchaseLine {
+  quantityDamaged Int     @default(0)
+  damageNote  String?
+  closed      Boolean @default(false)
   id            String    @id @default(uuid()) @db.Uuid
   purchaseId    String    @db.Uuid
   productId     String    @db.Uuid

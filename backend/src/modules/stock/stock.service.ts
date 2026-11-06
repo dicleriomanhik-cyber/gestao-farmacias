@@ -301,7 +301,7 @@ export class StockService {
       if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
       if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada para receber mercadoria.');
       const received = await tx.stockLot.count({ where: { purchaseLineId: line.id } });
-      if (received >= line.quantity) {
+      if (line.closed || received + line.quantityDamaged >= line.quantity) {
         throw new BadRequestException(`Linha ja recebida por completo (${received} de ${line.quantity} caixas).`);
       }
       dto.productId = line.productId;

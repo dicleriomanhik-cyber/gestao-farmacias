@@ -114,6 +114,39 @@ export class PurchasesService {
     return { ...base, lines, boxes: base.stockLots, conference, totals };
   }
 
+  private async lockLine(tx: any, pharmacyId: string, lineId: string) {
+    await tx.$queryRaw`SELECT id FROM "purchase_lines" WHERE id = ${lineId}::uuid FOR UPDATE`;
+    const line = await tx.purchaseLine.findUnique({ where: { id: lineId }, include: { purchase: { select: { pharmacyId: true, status: true } } } });
+    if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
+    if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada.');
+    if (line.closed) throw new BadRequestException('Esta linha ja esta fechada.');
+    return line;
+  }
+
+  async registerDamaged(pharmacyId: string, actorId: string, lineId: string, quantity: number, note?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const line = await this.lockLine(tx, pharmacyId, lineId);
+      const received = await tx.stockLot.count({ where: { purchaseLineId: lineId } });
+      if (received + line.quantityDamaged + quantity > line.quantity) {
+        throw new BadRequestException(`So faltam ${line.quantity - received - line.quantityDamaged} caixas nesta linha.`);
+      }
+      const updated = await tx.purchaseLine.update({
+        where: { id: lineId },
+        data: { quantityDamaged: { increment: quantity }, ...(note ? { damageNote: note } : {}) },
+      });
+      await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.line.damaged', entity: 'PurchaseLine', entityId: lineId } });
+      return updated;
+    });
+  }
+
+  async closeLine(pharmacyId: string, actorId: string, lineId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockLine(tx, pharmacyId, lineId);
+      const updated = await tx.purchaseLine.update({ where: { id: lineId }, data: { closed: true } });
+      await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.line.closed', entity: 'PurchaseLine', entityId: lineId } });
+      return updated;
+    });
+  }
   async findOneBase(pharmacyId: string, id: string) {
     const p = await this.findOneRaw(pharmacyId, id);
     const dueMzn = purchaseDueMzn(p);

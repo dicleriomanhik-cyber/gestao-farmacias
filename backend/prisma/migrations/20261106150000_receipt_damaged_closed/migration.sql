@@ -1,0 +1,1 @@
+ALTER TABLE "purchase_lines" ADD COLUMN "quantityDamaged" INTEGER NOT NULL DEFAULT 0, ADD COLUMN "damageNote" TEXT, ADD COLUMN "closed" BOOLEAN NOT NULL DEFAULT false;

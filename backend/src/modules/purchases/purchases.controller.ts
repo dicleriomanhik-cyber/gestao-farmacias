@@ -5,6 +5,7 @@ import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto } from './dto/update-purchase.dto';
 import { ConfirmPurchaseDto } from './dto/confirm-purchase.dto';
 import { ReplaceLinesDto } from './dto/invoice-line.dto';
+import { DamagedLineDto } from './dto/damaged-line.dto';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions';
 import { Tenant } from '../../common/decorators/tenant.decorator';
@@ -74,6 +75,19 @@ export class PurchasesController {
     return this.service.confirm(pharmacyId, user.id, id, body?.paidFrom && body?.method ? { paidFrom: body.paidFrom, method: body.method } : undefined);
   }
 
+  @Patch('lines/:lineId/damaged')
+  @RequirePermissions(PERMISSIONS.PURCHASES_WRITE)
+  @ApiOperation({ summary: 'Registar caixas danificadas numa linha' })
+  damaged(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('lineId') lineId: string, @Body() dto: DamagedLineDto) {
+    return this.service.registerDamaged(pharmacyId, user.id, lineId, dto.quantity, dto.note);
+  }
+
+  @Patch('lines/:lineId/close')
+  @RequirePermissions(PERMISSIONS.PURCHASES_WRITE)
+  @ApiOperation({ summary: 'Fechar linha que nao vai ser recebida por completo' })
+  closeLine(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('lineId') lineId: string) {
+    return this.service.closeLine(pharmacyId, user.id, lineId);
+  }
   @Patch(':id/cancel')
   @RequirePermissions(PERMISSIONS.PURCHASES_WRITE)
   @ApiOperation({ summary: 'Cancelar compra' })
