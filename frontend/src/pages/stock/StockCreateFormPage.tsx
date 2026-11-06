@@ -38,6 +38,7 @@ export default function StockCreateFormPage() {
     e.preventDefault();
     if (!productId) return toast.error("Seleciona um produto.");
     if (!lotNumber.trim()) return toast.error("Número do lote é obrigatório.");
+    if (expiryDate && new Date(expiryDate).getTime() <= Date.now()) return toast.error("Validade j\u00e1 expirada: n\u00e3o \u00e9 poss\u00edvel registar produto fora do prazo.");
     if (!expiryDate) return toast.error("Data de validade é obrigatória.");
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) return toast.error("Quantidade deve ser maior que zero.");

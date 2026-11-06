@@ -33,6 +33,7 @@ export default function PosPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [stockMap, setStockMap] = useState<Record<string, number> | null>(null);
+  const [expiredMap, setExpiredMap] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,11 +62,27 @@ export default function PosPage() {
     return () => window.removeEventListener("resize", measure);
   }, [loading, completedSale]);
 
+  function tryAdd(p: Product) {
+    if (stockMap && (stockMap[p.id] ?? 0) <= 0 && (expiredMap[p.id] ?? 0) > 0) {
+      toast.error(`${p.name}: fora do prazo, n\u00e3o pode ser vendido.`);
+      return;
+    }
+    addItem(p);
+  }
+
   async function loadStock() {
     let lots: any[] = [];
     try { lots = await getStockLots(); } catch { try { lots = await getCatalogLots(); } catch { lots = []; } }
     const m: Record<string, number> = {};
-    for (const l of lots) { m[l.productId] = (m[l.productId] ?? 0) + (Number(l.quantityAvailable) || 0); }
+    const e: Record<string, number> = {};
+    const agoraMs = Date.now();
+    for (const l of lots) {
+      const q = Number(l.quantityAvailable) || 0;
+      const vencido = l.expiryDate && new Date(l.expiryDate).getTime() <= agoraMs;
+      if (vencido) e[l.productId] = (e[l.productId] ?? 0) + q;
+      else m[l.productId] = (m[l.productId] ?? 0) + q;
+    }
+    setExpiredMap(e);
     setStockMap(m);
   }
 
@@ -318,10 +335,10 @@ export default function PosPage() {
           ) : (
             products.map((p) => (
               <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc", flexShrink: 0 }}>
-                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: "normal", lineHeight: 1.2 }}>{p.name}</div>{stockMap && (<div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.2, marginTop: "0.1rem" }}>{stockMap[p.id] ?? 0} {p.type === "MEDICINE" ? "carteiras" : "unidades"} disponíveis</div>)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: "normal", lineHeight: 1.2 }}>{p.name}</div>{stockMap && (<div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.2, marginTop: "0.1rem" }}>{stockMap[p.id] ?? 0} {p.type === "MEDICINE" ? "carteiras" : "unidades"}{(stockMap[p.id] ?? 0) === 0 && (expiredMap[p.id] ?? 0) > 0 ? " \u00b7 fora do prazo" : ""} disponíveis</div>)}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <span style={{ fontWeight: "bold", color: "#1e293b" }}>{parseFloat(p.salePrice).toFixed(2)} MT</span>
-                  <button onClick={() => addItem(p)} style={{ padding: "0.3rem 0.7rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>Adicionar</button>
+                  <button onClick={() => tryAdd(p)} style={{ padding: "0.3rem 0.7rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>Adicionar</button>
                 </div>
               </div>
             ))
