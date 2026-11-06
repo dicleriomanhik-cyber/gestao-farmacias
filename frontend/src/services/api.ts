@@ -94,6 +94,14 @@ apiClient.interceptors.response.use(
       if (local) return { data: local, status: 200, statusText: "OK", headers: {}, config: original };
     }
 
+    const metodoReq = (original?.method ?? "get").toLowerCase();
+    const transitorio = !error.response ? error.code !== "ERR_CANCELED" : [502, 503, 504].includes(status as number);
+    const tentativasRt = ((original as any)?._rt ?? 0) as number;
+    if (original && metodoReq === "get" && !isRefreshCall && transitorio && tentativasRt < 4 && navigator.onLine) {
+      (original as any)._rt = tentativasRt + 1;
+      await new Promise((r) => setTimeout(r, 1500 * (tentativasRt + 1)));
+      return apiClient(original);
+    }
     if (status !== 401 || !original || original._retry || isRefreshCall) {
       return Promise.reject(error);
     }
@@ -146,5 +154,15 @@ apiClient.interceptors.response.use(
   }
 );
 
-
-
+let ultimoPing = 0;
+function aquecerServidor(): void {
+  if (typeof navigator === "undefined" || !navigator.onLine) return;
+  if (Date.now() - ultimoPing < 4 * 60 * 1000) return;
+  ultimoPing = Date.now();
+  void fetch(API_BASE_URL, { method: "GET", mode: "no-cors", cache: "no-store" }).catch(() => {});
+}
+if (typeof document !== "undefined") {
+  aquecerServidor();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) aquecerServidor(); });
+  window.addEventListener("online", aquecerServidor);
+}
