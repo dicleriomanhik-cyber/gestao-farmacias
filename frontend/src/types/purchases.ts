@@ -77,7 +77,6 @@ export interface Purchase {
   documentNumber: string;
   purchaseDate: string;
   status: PurchaseStatus;
-  notes: string | null;
   totalAmount: string;
   transportCost: string;
   otherCosts: string;
@@ -115,7 +114,6 @@ export interface PurchaseLineRequest {
 export interface PurchaseRequest {
   supplierId: string;
   documentNumber: string;
-  notes?: string;
   transportCost?: number;
   otherCosts?: number;
   invoiceTotal?: number;
@@ -131,7 +129,6 @@ export interface PurchaseUpdateRequest {
   otherCosts?: number;
   invoiceTotal?: number | null;
   dueDate?: string | null;
-  notes?: string | null;
 }
 
 export interface PaginatedMeta {
