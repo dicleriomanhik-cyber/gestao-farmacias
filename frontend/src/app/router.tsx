@@ -23,6 +23,7 @@ import StockProductListPage from "../pages/stock/StockProductListPage";
 import ProductEditPage from "../pages/stock/ProductEditPage";
 import StockBoxListPage from "../pages/stock/StockBoxListPage";
 import StockBoxDetailPage from "../pages/stock/StockBoxDetailPage";
+import StockBoxEmptyPage from "../pages/stock/StockBoxEmptyPage";
 import StockLayout from "../layouts/StockLayout";
 import StockBoxFormPage from "../pages/stock/StockBoxFormPage";
 import StockMovementListPage from "../pages/stock/StockMovementListPage";
@@ -39,6 +40,7 @@ import CategoryFormPage from "../pages/categories/CategoryFormPage";
 import SupplierListPage from "../pages/suppliers/SupplierListPage";
 import SupplierFormPage from "../pages/suppliers/SupplierFormPage";
 import SupplierProfilePage from "../pages/suppliers/SupplierProfilePage";
+import SupplierEmptyPage from "../pages/suppliers/SupplierEmptyPage";
 import PayablesPage from "../pages/suppliers/PayablesPage";
 import SuppliersLayout from "../layouts/SuppliersLayout";
 import UserListPage from "../pages/users/UserListPage";
@@ -98,6 +100,7 @@ export default function AppRouter() {
           <Route element={<StockLayout />}>
           <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
           <Route path="stock/caixas" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxListPage /></ProtectedRoute>} />
+          <Route path="stock/caixas/detalhe" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxEmptyPage /></ProtectedRoute>} />
           <Route path="stock/caixas/nova" element={<ProtectedRoute requiredPermission="stock:write"><StockBoxFormPage /></ProtectedRoute>} />
           <Route path="stock/caixas/:id" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxDetailPage /></ProtectedRoute>} />
           <Route path="stock/produtos" element={<ProtectedRoute requiredPermission="products:read"><StockProductListPage /></ProtectedRoute>} />
@@ -122,6 +125,7 @@ export default function AppRouter() {
 
           <Route element={<SuppliersLayout />}>
           <Route path="fornecedores" element={<ProtectedRoute requiredPermission="pharmacy:config:write"><SupplierListPage /></ProtectedRoute>} />
+          <Route path="fornecedores/ficha" element={<ProtectedRoute requiredPermission="pharmacy:config:write"><SupplierEmptyPage /></ProtectedRoute>} />
           <Route path="fornecedores/novo" element={<ProtectedRoute requiredPermission="pharmacy:config:write"><SupplierFormPage /></ProtectedRoute>} />
           <Route path="fornecedores/:id/editar" element={<ProtectedRoute requiredPermission="pharmacy:config:write"><SupplierFormPage /></ProtectedRoute>} />
           <Route path="fornecedores/compras" element={<ProtectedRoute requiredPermission="pharmacy:config:write"><PurchaseListPage /></ProtectedRoute>} />
