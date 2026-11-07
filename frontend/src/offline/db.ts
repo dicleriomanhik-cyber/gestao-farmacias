@@ -76,14 +76,31 @@ export async function putRecords(store: string, records: any[]): Promise<void> {
   });
 }
 
+export async function clearStore(store: string): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function applyChanges(changes: any[]): Promise<void> {
   const buckets: Record<string, any[]> = {};
   const add = (store: string, r: any) => {
     if (!buckets[store]) buckets[store] = [];
     buckets[store].push(r);
   };
+  const resetStores = ["sales", "sale_lines", "payments", "stock_movements", "cash_sessions", "cash_movements", "expenses", "returns", "products", "stock_lots", "suppliers", "purchases"];
+  let resetSeen = false;
   for (const c of changes) {
     const d = c.data;
+    if (c.type === "PHARMACY_RESET") {
+      resetSeen = true;
+      for (const s of resetStores) delete buckets[s];
+      continue;
+    }
     if (c.type === "SALE") {
       const { lines, payments, ...sale } = d;
       add("sales", sale);
@@ -97,6 +114,7 @@ export async function applyChanges(changes: any[]): Promise<void> {
     else if (c.type === "PRODUCT") add("products", d);
     else if (c.type === "STOCK_LOT") add("stock_lots", d);
   }
+  if (resetSeen) for (const s of resetStores) await clearStore(s);
   for (const store of Object.keys(buckets)) await putRecords(store, buckets[store]);
 }
 
