@@ -187,6 +187,14 @@ export async function bootstrapFromServer(): Promise<void> {
   }
   await putRecords("products", products);
   await putRecords("stock_lots", lots);
+  const idsProdutos = new Set<string>(products.map((p: any) => p.id));
+  for (const p of await getStore("products")) {
+    if (!String(p.id).startsWith("LOCAL-") && !idsProdutos.has(p.id)) await deleteRecord("products", p.id);
+  }
+  const idsLotes = new Set<string>(lots.map((l: any) => l.id));
+  for (const l of await getStore("stock_lots")) {
+    if (!String(l.id).startsWith("LOCAL-") && !idsLotes.has(l.id)) await deleteRecord("stock_lots", l.id);
+  }
   await putRecords("sales", sales);
   await putRecords("sale_lines", linhas);
   await putRecords("payments", pagamentos);

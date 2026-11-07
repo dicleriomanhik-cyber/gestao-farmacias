@@ -47,7 +47,13 @@ async function buildLines(lines: any[], purchaseId: string): Promise<{ recs: any
     const disc = Number(l.discount || 0);
     const subtotal = round2(q * cost - disc);
     if (subtotal < 0) fail("Desconto superior ao valor da linha.");
-    const prod = l.productId ? products.get(l.productId) : null;
+    let prod: any = l.productId ? products.get(l.productId) : null;
+    if (!prod && !l.productId) {
+      const nm = String(l.productName ?? "").trim().toLowerCase();
+      if (nm) {
+        prod = Array.from(products.values()).find((p: any) => !String(p.id).startsWith("LOCAL-") && String(p.name ?? "").trim().toLowerCase() === nm && p.type === l.type && (l.type !== "MEDICINE" || String(p.strength ?? "").trim().toLowerCase() === String(l.strength ?? "").trim().toLowerCase())) ?? null;
+      }
+    }
     if (l.productId && !prod) fail("Um ou mais produtos s\u00e3o inv\u00e1lidos.");
     if (!l.productId && !String(l.productName ?? "").trim()) fail("Indica o nome do produto em cada linha.");
     const type = prod ? prod.type : l.type;
@@ -57,7 +63,7 @@ async function buildLines(lines: any[], purchaseId: string): Promise<{ recs: any
     recs.push({
       id,
       purchaseId,
-      productId: l.productId ?? "",
+      productId: prod ? prod.id : (l.productId ?? ""),
       quantity: q,
       unitCost: String(cost),
       discount: String(disc),
@@ -290,7 +296,10 @@ export async function discardSupplierOpLocal(op: any): Promise<void> {
   const t = op?.operationType;
   const p = op?.payload ?? {};
   if (t === "SUPPLIER_CREATE" && p.newId) await deleteRecord("suppliers", p.newId);
-  else if (t === "PURCHASE_CREATE" && p.newId) await deleteRecord("purchases", p.newId);
+  else if (t === "PURCHASE_CREATE" && p.newId) {
+    await deleteRecord("purchases", p.newId);
+    for (const l of p.data?.lines ?? []) if (l.newLineId) await deleteRecord("products", "LOCAL-" + l.newLineId);
+  }
   notifyDataChanged();
   await refreshSupplierData().catch(() => undefined);
 }

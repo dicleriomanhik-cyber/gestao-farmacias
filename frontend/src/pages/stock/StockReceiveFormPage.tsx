@@ -264,7 +264,7 @@ export default function StockReceiveFormPage() {
             <button type="button" className="btn btn-secondary" disabled={busy} onClick={fecharLinha}>Fechar linha</button>
           </div>
           <button type="button" className="btn btn-primary" disabled={busy} style={{ marginTop: "1rem" }} onClick={confirmar}>
-            {busy ? "A guardar..." : "Confirmar receção"}
+            {busy ? "A guardar..." : "Confirmar recepção"}
           </button>
         </div>
       )}

@@ -472,7 +472,39 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
   if (new Set(qrs).size !== qrs.length) throw new Error("Há QR repetidos na lista.");
   const falta = await lineFaltaLocal(line);
   if (qrs.length > falta) throw new Error("Só faltam " + falta + " caixas nesta linha.");
-  const product = await getRecord("products", line.productId);
+  let product: any = line.productId ? await getRecord("products", line.productId) : null;
+  if (!product) {
+    const phId = "LOCAL-" + line.id;
+    product = await getRecord("products", phId);
+    if (!product && !line.productId && line.product?.name) {
+      const todos = await allFrom("products");
+      const ptype = line.product.type === "MEDICINE" ? "MEDICINE" : "PRODUCT";
+      const stamp = new Date().toISOString();
+      product = {
+        id: phId,
+        pharmacyId: todos[0]?.pharmacyId ?? null,
+        categoryId: null,
+        name: line.product.name,
+        description: null,
+        sku: null,
+        barcode: null,
+        activeIngredient: ptype === "MEDICINE" ? line.product.name : null,
+        dosageForm: null,
+        strength: line.product.strength ?? null,
+        unit: ptype === "MEDICINE" ? "carteira" : "unidade",
+        type: ptype,
+        hasExpiry: true,
+        minStock: null,
+        saleUnitLabel: ptype === "MEDICINE" ? "carteira" : "unidade",
+        salePrice: "0.00",
+        referenceCost: null,
+        status: "INACTIVE",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      await putRecords("products", [product]);
+    }
+  }
   if (!product) throw new Error("Produto não encontrado.");
   const isMed = product.type === "MEDICINE";
   const totalUnits = isMed ? Number(line.innerCount) * Number(line.unitsPerInner) : Number(line.unitsPerBox);
@@ -531,7 +563,7 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
       quantity: totalUnits,
       referenceId: purchase.id,
       referenceType: "Purchase",
-      notes: "Receção de fatura (caixa)",
+      notes: "Recepção de fatura (caixa)",
       userId: "offline",
       createdAt: now,
     });

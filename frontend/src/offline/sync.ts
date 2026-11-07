@@ -187,6 +187,13 @@ async function flushOutbox(): Promise<number> {
       if (item.op.operationType === "STOCK_BOX_CREATE") {
         await removeLocalBox("LOCAL-" + item.op.idempotencyKey);
       }
+      if (item.op.operationType === "PURCHASE_CREATE" || item.op.operationType === "PURCHASE_LINES_REPLACE") {
+        const pls: any[] = item.op.operationType === "PURCHASE_CREATE" ? (item.op.payload?.data?.lines ?? []) : (item.op.payload?.lines ?? []);
+        for (const pl of pls) {
+          const lid = pl.newLineId ?? pl.lineId;
+          if (lid) await deleteRecord("products", "LOCAL-" + lid);
+        }
+      }
       if (item.op.operationType === "PAYMENT" && r.result?.paymentId) {
         const payLocal: IdMap = (await getMeta("payLocal")) ?? {};
         const localPayId = payLocal[item.op.payload?.saleKey];
