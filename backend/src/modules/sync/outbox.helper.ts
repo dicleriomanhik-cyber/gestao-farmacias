@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 export async function emitOutboxEvent(
   tx: Prisma.TransactionClient,
   pharmacyId: string,
-  entityType: 'PRODUCT' | 'STOCK_LOT' | 'SALE' | 'SALE_PAYMENT',
+  entityType: 'PRODUCT' | 'STOCK_LOT' | 'SALE' | 'SALE_PAYMENT' | 'PHARMACY_RESET',
   entityId: string,
   action: 'CREATED' | 'UPDATED' | 'CONFIRMED',
   payload: any,
@@ -15,7 +15,7 @@ export async function emitOutboxEvent(
     ON CONFLICT ("pharmacyId") DO NOTHING
   `;
 
-  // Lock do checkpoint para serializar escritas desta farmácia
+  // Lock do checkpoint para serializar escritas desta farmacia
   const rows = await tx.$queryRaw<Array<{ lastCommittedSequence: bigint }>>`
     SELECT "lastCommittedSequence" FROM "sync_checkpoints"
     WHERE "pharmacyId" = ${pharmacyId}::uuid
