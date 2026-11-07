@@ -402,7 +402,7 @@ export class StockService {
         referenceId: line ? line.purchaseId : lot.id,
         referenceType: line ? 'Purchase' : 'StockLot',
         userId: actorId,
-        notes: line ? 'Receção de fatura (caixa)' : 'Entrada directa de caixa (createBox)',
+        notes: line ? 'Recepção de fatura (caixa)' : 'Entrada directa de caixa (createBox)',
       },
     });
 
