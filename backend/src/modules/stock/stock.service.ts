@@ -269,7 +269,7 @@ export class StockService {
           for (const qrCode of codes) {
             const lot: any = await this.createBoxTx(
               tx, pharmacyId, actorId,
-              { purchaseLineId: dto.purchaseLineId, expiryDate: dto.expiryDate, salePrice: dto.salePrice, qrCode } as CreateBoxDto,
+              { purchaseLineId: dto.purchaseLineId, expiryDate: dto.expiryDate, salePrice: dto.salePrice, noExpiry: dto.noExpiry, qrCode } as CreateBoxDto,
               false,
             );
             purchaseId = lot.purchaseId;
@@ -341,7 +341,7 @@ export class StockService {
     if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) {
       throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.');
     }
-    if (product.hasExpiry && !dto.expiryDate) {
+    if (product.hasExpiry && !dto.expiryDate && !dto.noExpiry) {
       throw new BadRequestException('expiryDate obrigatoria para este produto.');
     }
     if (line && product.type !== 'MEDICINE' && dto.totalUnits === undefined && line.unitsPerBox) {

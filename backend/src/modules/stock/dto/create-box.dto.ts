@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateBoxDto {
@@ -60,6 +60,11 @@ export class CreateBoxDto {
   @Type(() => Number)
   @IsOptional()
   salePrice?: number;
+
+  @ApiPropertyOptional({ description: 'Receber sem data de validade.' })
+  @IsBoolean()
+  @IsOptional()
+  noExpiry?: boolean;
 
   @ApiPropertyOptional({ description: 'Compra (rascunho) a que a caixa pertence.' })
   @IsUUID()
