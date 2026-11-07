@@ -17,7 +17,7 @@ export default function PaidFromFields({ paidFrom, method, allowCash, onChange }
     <div style={{ display: "grid", gridTemplateColumns: methods.length > 1 ? "1fr 1fr" : "1fr", gap: "1rem" }}>
       <div>
         <label style={labelStyle}>Pago com</label>
-        <CustomSelect value={paidFrom} onChange={(v) => onChange(v, (METHODS_FOR[v] ?? [""])[0])} placeholder="Seleciona" options={options.map((o) => ({ value: o.value, label: o.label }))} />
+        <CustomSelect value={paidFrom} onChange={(v) => onChange(v, (METHODS_FOR[v] ?? [""])[0])} placeholder="Selecciona" options={options.map((o) => ({ value: o.value, label: o.label }))} />
       </div>
       {methods.length > 1 && (
         <div>

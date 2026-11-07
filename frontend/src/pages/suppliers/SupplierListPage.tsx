@@ -103,7 +103,7 @@ export default function SupplierListPage() {
               <th>Total comprado</th>
               {payables && <th>Em dívida</th>}
               <th>Estado</th>
-              <th>Ações</th>
+              <th>Acções</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +122,7 @@ export default function SupplierListPage() {
                     backgroundColor: s.status === "ACTIVE" ? "#dcfce7" : "#fee2e2",
                     color: s.status === "ACTIVE" ? "#166534" : "#991b1b",
                   }}>
-                    {s.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                    {s.status === "ACTIVE" ? "Activo" : "Inactivo"}
                   </span>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>

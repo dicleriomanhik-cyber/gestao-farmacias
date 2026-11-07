@@ -61,7 +61,7 @@ export default function CashMovementsPage() {
                 <th>Tipo</th>
                 <th>Motivo</th>
                 <th>Valor</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>

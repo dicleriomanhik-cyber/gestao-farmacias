@@ -86,7 +86,7 @@ export default function PurchaseDetailPage() {
 
   async function handleCancel() {
     if (!purchaseId) return;
-    if (!(await confirmDialog({ title: "Cancelar esta compra?", message: "Esta ação não pode ser desfeita.", confirmLabel: "Cancelar compra", cancelLabel: "Voltar" }))) return;
+    if (!(await confirmDialog({ title: "Cancelar esta compra?", message: "Esta acção não pode ser desfeita.", confirmLabel: "Cancelar compra", cancelLabel: "Voltar" }))) return;
     setBusy(true);
     try {
       await cancelPurchase(purchaseId);
@@ -105,7 +105,7 @@ export default function PurchaseDetailPage() {
     if (!r.ok) return toast.error(r.error);
     const novoTotal = linesTotal(draft);
     if (purchase && purchase.status === "CONFIRMED" && num(purchase.paidTotal) > 0 && Math.abs(novoTotal - num(purchase.totalAmount)) > 0.005) {
-      if (!(await confirmDialog({ title: "Alterar o total da fatura?", message: "O total das linhas passa de " + fmtMoney(purchase.totalAmount, purchase.currency) + " para " + fmtMoney(novoTotal, purchase.currency) + ". O estado do pagamento \u00e9 recalculado, mas os pagamentos j\u00e1 registados n\u00e3o mudam.", confirmLabel: "Guardar", cancelLabel: "Voltar" }))) return;
+      if (!(await confirmDialog({ title: "Alterar o total da factura?", message: "O total das linhas passa de " + fmtMoney(purchase.totalAmount, purchase.currency) + " para " + fmtMoney(novoTotal, purchase.currency) + ". O estado do pagamento \u00e9 recalculado, mas os pagamentos j\u00e1 registados n\u00e3o mudam.", confirmLabel: "Guardar", cancelLabel: "Voltar" }))) return;
     }
     setBusy(true);
     try {
@@ -243,7 +243,7 @@ export default function PurchaseDetailPage() {
 
       {editable && (
         <div style={boxStyle}>
-          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Linhas da fatura</div>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Linhas da factura</div>
           <InvoiceLinesEditor lines={draft} onChange={setDraft} currency={cur} />
           <button type="button" className="btn btn-secondary" disabled={busy} style={{ marginTop: "0.75rem" }} onClick={saveLines}>Guardar linhas</button>
         </div>
@@ -251,7 +251,7 @@ export default function PurchaseDetailPage() {
 
       {purchase.status === "CONFIRMED" && editing && (
         <div style={boxStyle}>
-          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Editar linhas da fatura</div>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Editar linhas da factura</div>
           <InvoiceLinesEditor lines={draft} onChange={setDraft} currency={cur} />
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={saveLines}>{busy ? "A guardar..." : "Guardar"}</button>
@@ -295,7 +295,7 @@ export default function PurchaseDetailPage() {
 
       {purchase.status !== "CANCELLED" && (
         <div style={boxStyle}>
-          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Custos e fatura</div>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Custos e factura</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
             <div>
               <label style={labelStyle}>Transporte</label>
@@ -306,7 +306,7 @@ export default function PurchaseDetailPage() {
               <input type="number" min="0" step="0.01" className="input" value={others} onChange={(e) => setOthers(e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>Total da fatura</label>
+              <label style={labelStyle}>Total da factura</label>
               <input type="number" min="0" step="0.01" className="input" value={invoice} onChange={(e) => setInvoice(e.target.value)} />
             </div>
           </div>

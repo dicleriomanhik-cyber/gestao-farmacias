@@ -69,7 +69,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
       .then((st) => {
         setAllowCash(st.allowCashExpenses);
         if (isOperational && !st.allowCashExpenses) {
-          toast.error("Despesas desativadas pelo administrador.");
+          toast.error("Despesas desactivadas pelo administrador.");
           navigate("/pos/despesas", { replace: true });
           return;
         }
@@ -133,7 +133,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
     try {
       if (isEdit) {
         await updateExpense(id!, { ...payload, category: payload.category as ExpenseCategory, method: payload.method as ExpenseMethod });
-        toast.success("Despesa atualizada.");
+        toast.success("Despesa actualizada.");
       } else {
         await createExpense({ ...payload, origin: isOperational ? "COLLABORATOR" : "ADMIN", category: payload.category as ExpenseCategory, method: payload.method as ExpenseMethod });
         toast.success("Despesa criada como rascunho.");
@@ -141,7 +141,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
       navigate(isOperational ? "/pos/despesas" : "/despesas");
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message;
-      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? (isEdit ? "Erro ao atualizar despesa." : "Erro ao criar despesa.")));
+      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? (isEdit ? "Erro ao actualizar despesa." : "Erro ao criar despesa.")));
     } finally {
       setSubmitting(false);
     }

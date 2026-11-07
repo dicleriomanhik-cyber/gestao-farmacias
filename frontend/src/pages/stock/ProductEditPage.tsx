@@ -86,11 +86,11 @@ export default function ProductEditPage() {
         await adjustStock({
           lotId,
           quantity: 0,
-          reason: "Atualização de validade",
+          reason: "Actualização de validade",
           expiryDate: monthEnd(expiryDate),
         });
       }
-      toast.success("Produto atualizado com sucesso.");
+      toast.success("Produto actualizado com sucesso.");
       navigate("/stock/produtos");
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao guardar o produto.");

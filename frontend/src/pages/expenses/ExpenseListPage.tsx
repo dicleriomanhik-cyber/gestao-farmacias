@@ -181,7 +181,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? (isOperational && !allowCash ? <button type="button" className="btn btn-primary" disabled title="Despesas desativadas pelo administrador" style={{ opacity: 0.5, cursor: "not-allowed" }}>Nova Despesa</button> : <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">Nova Despesa</Link>) : null}</div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? (isOperational && !allowCash ? <button type="button" className="btn btn-primary" disabled title="Despesas desactivadas pelo administrador" style={{ opacity: 0.5, cursor: "not-allowed" }}>Nova Despesa</button> : <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">Nova Despesa</Link>) : null}</div>
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ width: "220px" }}>
@@ -235,7 +235,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                 <th>Valor</th>
                 <th>Origem</th>
                 <th>Estado</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>
@@ -299,7 +299,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
             style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", width: "100%", maxWidth: "380px", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}
           >
             <div style={{ fontSize: "1.05rem", fontWeight: 600, color: "#0f172a", marginBottom: "0.5rem" }}>Cancelar esta despesa?</div>
-            <div style={{ fontSize: "0.9rem", color: "#334155", marginBottom: "1.25rem" }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ fontSize: "0.9rem", color: "#334155", marginBottom: "1.25rem" }}>Esta acção não pode ser desfeita.</div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
               <button
                 onClick={() => setCancelId(null)}

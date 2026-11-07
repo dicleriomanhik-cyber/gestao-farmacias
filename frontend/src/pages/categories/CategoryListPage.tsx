@@ -56,7 +56,7 @@ export default function CategoryListPage() {
             <tr>
               <th>Nome</th>
               <th>Descrição</th>
-              <th>Ações</th>
+              <th>Acções</th>
             </tr>
           </thead>
           <tbody>

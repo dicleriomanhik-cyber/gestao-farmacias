@@ -247,7 +247,7 @@ export default function ReportsPage() {
           <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
             <button onClick={handleExportPDF} className="btn btn-secondary" disabled={loading}>{"\u{1F4C4} PDF"}</button>
             <button onClick={load} className="btn btn-secondary" disabled={loading}>
-              {loading ? "A carregar…" : "Atualizar"}
+              {loading ? "A carregar…" : "Actualizar"}
             </button>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function ReportsPage() {
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Devoluções do Período</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "12%" }}>Nº</th><th style={{ width: "12%" }}>Venda</th><th style={{ width: "30%" }}>Motivo</th><th style={{ width: "16%" }}>Total</th><th style={{ width: "15%" }}>Colaborador</th><th style={{ width: "15%" }}>Ações</th></tr>
+              <tr><th style={{ width: "12%" }}>Nº</th><th style={{ width: "12%" }}>Venda</th><th style={{ width: "30%" }}>Motivo</th><th style={{ width: "16%" }}>Total</th><th style={{ width: "15%" }}>Colaborador</th><th style={{ width: "15%" }}>Acções</th></tr>
             </thead>
             <tbody>
               {filteredReturnsList.map((r) => (

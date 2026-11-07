@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getSales } from "../../services/saleService";
@@ -59,7 +59,7 @@ export default function OperationalDashboard() {
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Ações Rápidas</h3>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Acções Rápidas</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
             <Link to="/pos" className="btn btn-primary" style={{ textAlign: "center" }}>🛒 Nova Venda</Link>
             <Link to="/pos/historico" className="btn btn-secondary" style={{ textAlign: "center" }}>📋 Ver Histórico</Link>

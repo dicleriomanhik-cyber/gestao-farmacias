@@ -177,7 +177,7 @@ export default function StockProductListPage() {
                 <th style={head}>Nome</th>
                 <th style={head}>Validade</th>
                 <th style={head}>Preço</th>
-                <th style={{ ...head, borderRight: 0, textAlign: "center" }}>Ações</th>
+                <th style={{ ...head, borderRight: 0, textAlign: "center" }}>Acções</th>
               </tr>
             </thead>
             <tbody>

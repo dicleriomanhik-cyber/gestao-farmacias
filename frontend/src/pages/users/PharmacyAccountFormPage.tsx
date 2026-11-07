@@ -91,7 +91,7 @@ export default function PharmacyAccountFormPage() {
       await updateAccountOperator(id, opId, { isActive });
       setAccount(await getPharmacyAccount(id));
     } catch (err: any) {
-      toast.error(msgOf(err, "Erro ao atualizar o colaborador."));
+      toast.error(msgOf(err, "Erro ao actualizar o colaborador."));
     } finally {
       setSubmitting(false);
     }
@@ -118,7 +118,7 @@ export default function PharmacyAccountFormPage() {
     try {
       if (isEditing && id) {
         await updatePharmacyAccount(id, { pharmacyName: farmacia, status, ...(password ? { password } : {}) });
-        toast.success("Farmácia atualizada.");
+        toast.success("Farmácia actualizada.");
       } else {
         await createPharmacyAccount({ pharmacyName: farmacia, operatorNames: lista, email: email.trim(), password });
         toast.success("Farmácia registada.");
@@ -186,8 +186,8 @@ export default function PharmacyAccountFormPage() {
             <ul style={{ listStyle: "none", padding: 0, margin: "0.75rem 0 0" }}>
               {account.operators.map((o) => (
                 <li key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", marginBottom: "0.4rem", opacity: o.isActive ? 1 : 0.6 }}>
-                  <span>{o.name}{o.isActive ? "" : " (inativo)"}</span>
-                  <button type="button" disabled={submitting} onClick={() => toggleOperator(o.id, !o.isActive)} style={linkBtn}>{o.isActive ? "Desativar" : "Ativar"}</button>
+                  <span>{o.name}{o.isActive ? "" : " (inactivo)"}</span>
+                  <button type="button" disabled={submitting} onClick={() => toggleOperator(o.id, !o.isActive)} style={linkBtn}>{o.isActive ? "Desactivar" : "Activar"}</button>
                 </li>
               ))}
             </ul>
@@ -236,7 +236,7 @@ export default function PharmacyAccountFormPage() {
         {isEditing && (
           <div style={rowStyle}>
             <label style={labelStyle}>Estado da conta</label>
-            <CustomSelect value={status} onChange={(v) => setStatus(v as "ACTIVE" | "INACTIVE")} options={[{ value: "ACTIVE", label: "Ativa" }, { value: "INACTIVE", label: "Inativa (não consegue entrar)" }]} />
+            <CustomSelect value={status} onChange={(v) => setStatus(v as "ACTIVE" | "INACTIVE")} options={[{ value: "ACTIVE", label: "Activa" }, { value: "INACTIVE", label: "Inactiva (não consegue entrar)" }]} />
           </div>
         )}
 

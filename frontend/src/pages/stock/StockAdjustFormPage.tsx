@@ -36,7 +36,7 @@ export default function StockAdjustFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!lotId) return toast.error("Seleciona um lote.");
+    if (!lotId) return toast.error("Selecciona um lote.");
     const qtyNum = parseInt(quantity, 10);
     if (isNaN(qtyNum) || qtyNum === 0) return toast.error("Quantidade deve ser diferente de zero.");
     if (!reason.trim()) return toast.error("Motivo é obrigatório.");
@@ -85,7 +85,7 @@ export default function StockAdjustFormPage() {
             options={lotOptions}
             value={lotId}
             onChange={setLotId}
-            placeholder="Seleciona um lote"
+            placeholder="Selecciona um lote"
           />
         </div>
 

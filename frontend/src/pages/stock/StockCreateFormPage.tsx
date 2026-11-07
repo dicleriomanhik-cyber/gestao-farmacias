@@ -36,7 +36,7 @@ export default function StockCreateFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!productId) return toast.error("Seleciona um produto.");
+    if (!productId) return toast.error("Selecciona um produto.");
     if (!lotNumber.trim()) return toast.error("Número do lote é obrigatório.");
     if (expiryDate && new Date(expiryDate).getTime() <= Date.now()) return toast.error("Validade j\u00e1 expirada: n\u00e3o \u00e9 poss\u00edvel registar produto fora do prazo.");
     if (!expiryDate) return toast.error("Data de validade é obrigatória.");
@@ -83,7 +83,7 @@ export default function StockCreateFormPage() {
             options={productOptions}
             value={productId}
             onChange={setProductId}
-            placeholder="Seleciona um produto"
+            placeholder="Selecciona um produto"
           />
         </div>
 

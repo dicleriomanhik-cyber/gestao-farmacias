@@ -61,7 +61,7 @@ export default function StockReceiveFormPage() {
     }
     getPurchaseById(purchaseId)
       .then(setPurchase)
-      .catch(() => toast.error("Erro ao carregar a fatura."));
+      .catch(() => toast.error("Erro ao carregar a factura."));
   }, [purchaseId]);
 
   const suppliers = useMemo(() => {
@@ -152,14 +152,14 @@ export default function StockReceiveFormPage() {
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar as faturas." onRetry={load} />;
+  if (error) return <ErrorState message="Não foi possível carregar as facturas." onRetry={load} />;
 
   return (
     <div style={{ maxWidth: 850, width: "100%", margin: "0 auto", overflowY: "auto", paddingBottom: "2rem" }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginTop: 0 }}>Receber mercadoria</h2>
 
       {purchases.length === 0 ? (
-        <div style={box}>Não há faturas confirmadas. Cria e confirma uma fatura em Fornecedores.</div>
+        <div style={box}>Não há facturas confirmadas. Cria e confirma uma factura em Fornecedores.</div>
       ) : (
         <div style={{ ...box, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
           <div>
@@ -167,8 +167,8 @@ export default function StockReceiveFormPage() {
             <CustomSelect value={supplierId} onChange={(v) => { setSupplierId(v); setPurchaseId(""); }} placeholder="Escolhe o fornecedor" options={suppliers.map(([id, name]) => ({ value: id, label: name }))} />
           </div>
           <div>
-            <label style={lab}>Fatura</label>
-            <CustomSelect value={purchaseId} onChange={setPurchaseId} disabled={!supplierId} placeholder="Escolhe a fatura" options={invoices.map((p) => ({ value: p.id, label: p.documentNumber }))} />
+            <label style={lab}>Factura</label>
+            <CustomSelect value={purchaseId} onChange={setPurchaseId} disabled={!supplierId} placeholder="Escolhe a factura" options={invoices.map((p) => ({ value: p.id, label: p.documentNumber }))} />
           </div>
         </div>
       )}

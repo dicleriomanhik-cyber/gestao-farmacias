@@ -26,11 +26,11 @@ const TIPOS: Record<string, string> = {
   PURCHASE_LINE_CLOSE: "Fechar linha",
   SUPPLIER_CREATE: "Novo fornecedor",
   SUPPLIER_UPDATE: "Editar fornecedor",
-  PURCHASE_CREATE: "Fatura de fornecedor",
-  PURCHASE_UPDATE: "Editar fatura",
-  PURCHASE_LINES_REPLACE: "Editar linhas da fatura",
-  PURCHASE_CONFIRM: "Confirmar fatura",
-  PURCHASE_CANCEL: "Cancelar fatura",
+  PURCHASE_CREATE: "Factura de fornecedor",
+  PURCHASE_UPDATE: "Editar factura",
+  PURCHASE_LINES_REPLACE: "Editar linhas da factura",
+  PURCHASE_CONFIRM: "Confirmar factura",
+  PURCHASE_CANCEL: "Cancelar factura",
   SUPPLIER_PAYMENT_CREATE: "Pagamento a fornecedor",
 };
 
@@ -104,14 +104,14 @@ export default function SyncQueuePage() {
     : confirmGroup.ops.some((o) => o.operationType === "SALE" || o.operationType === "PAYMENT")
       ? "Esta operação ainda não foi enviada. Se a descartar, a venda ou o pagamento perde-se."
       : confirmGroup.ops.some((o) => o.payload?.purchaseLineId || o.payload?.lineId)
-      ? "Descarta o registo desta recepção. Esta ação não pode ser desfeita."
+      ? "Descarta o registo desta recepção. Esta acção não pode ser desfeita."
       : confirmGroup.ops.some((o) => o.operationType === "STOCK_BOX_CREATE")
-        ? "Descarta o registo da caixa e do produto associado. Esta ação não pode ser desfeita."
+        ? "Descarta o registo da caixa e do produto associado. Esta acção não pode ser desfeita."
         : confirmGroup.ops.length > 1 && confirmGroup.ops.some((o) => o.operationType.startsWith("EXPENSE"))
-        ? "Descarta a despesa e todos os passos associados. Esta ação não pode ser desfeita."
+        ? "Descarta a despesa e todos os passos associados. Esta acção não pode ser desfeita."
         : confirmGroup.ops.length > 1
-        ? "Descarta a devolução e todos os passos associados. Esta ação não pode ser desfeita."
-        : "Esta ação não pode ser desfeita.";
+        ? "Descarta a devolução e todos os passos associados. Esta acção não pode ser desfeita."
+        : "Esta acção não pode ser desfeita.";
 
   const rows = visibleOperations(ops);
   const groups = buildGroups(rows);
@@ -143,9 +143,9 @@ export default function SyncQueuePage() {
   }
 
   function rotuloGrupo(g: Group): string {
-    if (g.ops.some((o) => o.operationType.startsWith("PURCHASE_") && !o.operationType.startsWith("PURCHASE_LINE_"))) return "Fatura de fornecedor";
+    if (g.ops.some((o) => o.operationType.startsWith("PURCHASE_") && !o.operationType.startsWith("PURCHASE_LINE_"))) return "Factura de fornecedor";
     if (g.ops.some((o) => o.operationType.startsWith("EXPENSE"))) return "Despesa";
-    if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE" && o.payload?.purchaseLineId)) return "Recepção de fatura (caixa)";
+    if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE" && o.payload?.purchaseLineId)) return "Recepção de factura (caixa)";
     if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE")) return "Registar caixa";
     const ret = g.ops.find((o) => o.operationType === "RETURN");
     if (ret) return `Devolução (venda ${shortId(ret.payload?.saleId)})`;
@@ -179,7 +179,7 @@ export default function SyncQueuePage() {
                 <th style={{ ...th, textAlign: "right" }}>Valor</th>
                 <th style={{ ...th, textAlign: "center" }}>Estado</th>
                 {temRejeitadas && <th style={th}>Detalhe</th>}
-                <th style={{ ...th, textAlign: "right" }}>Ações</th>
+                <th style={{ ...th, textAlign: "right" }}>Acções</th>
               </tr>
             </thead>
             <tbody>

@@ -71,14 +71,14 @@ export default function PurchaseListPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nº da fatura</th>
+              <th>Nº da factura</th>
               <th>Fornecedor</th>
               <th>Data</th>
               <th>Total</th>
               {payables && <th>Em dívida</th>}
               {payables && <th>Pagamento</th>}
               <th>Estado</th>
-              <th>Ações</th>
+              <th>Acções</th>
             </tr>
           </thead>
           <tbody>

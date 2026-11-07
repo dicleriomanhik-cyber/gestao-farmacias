@@ -349,7 +349,7 @@ export default function PosPage() {
       {/* Coluna da direita: carrinho e pagamento */}
       <div style={cardStyle}>
         <div style={{ backgroundColor: "#dbeafe", padding: "0.85rem 1.25rem", borderBottom: "1px solid #bfdbfe", flexShrink: 0 }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: "bold", margin: 0 }}>Itens selecionados</h2>
+          <h2 style={{ fontSize: "1rem", fontWeight: "bold", margin: 0 }}>Itens seleccionados</h2>
         </div>
 
         <div style={{ padding: "1rem 1.25rem", flex: isMobile ? "none" : 1, minHeight: 0, display: "flex", flexDirection: "column" }}>

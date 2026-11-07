@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getCategoryById,
@@ -48,7 +48,7 @@ export default function CategoryFormPage() {
           name: name.trim(),
           description: description.trim() || null,
         });
-        toast.success("Categoria atualizada.");
+        toast.success("Categoria actualizada.");
       } else {
         await createCategory({
           name: name.trim(),

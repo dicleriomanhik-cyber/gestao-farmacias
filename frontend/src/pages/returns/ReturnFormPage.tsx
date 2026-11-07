@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSales } from "../../services/saleService";
 import { getReturns } from "../../services/returnService";
@@ -73,7 +73,7 @@ export default function ReturnFormPage() {
         <EmptyState message={dateFilter === "DAILY" ? "Nenhuma venda disponível para devolução hoje." : "Nenhuma venda disponível para devolução."} />
       ) : (
         <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-          <p style={{ marginBottom: "1rem", color: "#475569" }}>Selecione a venda que deseja devolver:</p>
+          <p style={{ marginBottom: "1rem", color: "#475569" }}>Seleccione a venda que deseja devolver:</p>
           <table className="table">
             <thead>
               <tr>
@@ -81,7 +81,7 @@ export default function ReturnFormPage() {
                 <th>Produtos</th>
                 <th>Data</th>
                 <th>Total</th>
-                <th>Ação</th>
+                <th>Acção</th>
               </tr>
             </thead>
             <tbody>

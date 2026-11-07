@@ -244,7 +244,7 @@ export default function AdminCashPage() {
                       <th>Data</th>
                       <th>Total</th>
                       <th>Estado</th>
-                      <th>Ações</th>
+                      <th>Acções</th>
                     </tr>
                   </thead>
                   <tbody>

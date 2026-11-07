@@ -53,8 +53,8 @@ export default function PurchaseFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supplierId) return toast.error("Seleciona um fornecedor.");
-    if (!documentNumber.trim()) return toast.error("Número da fatura é obrigatório.");
+    if (!supplierId) return toast.error("Selecciona um fornecedor.");
+    if (!documentNumber.trim()) return toast.error("Número da factura é obrigatório.");
     const r = toLineRequests(lines);
     if (!r.ok) return toast.error(r.error);
 
@@ -79,10 +79,10 @@ export default function PurchaseFormPage() {
     setSubmitting(true);
     try {
       const created = await createPurchase(body);
-      toast.success("Fatura criada em rascunho.");
+      toast.success("Factura criada em rascunho.");
       navigate(`/fornecedores/compras/${created.id}`);
     } catch (err: any) {
-      toast.error(apiError(err, "Erro ao criar a fatura."));
+      toast.error(apiError(err, "Erro ao criar a factura."));
     } finally {
       setSubmitting(false);
     }
@@ -99,15 +99,15 @@ export default function PurchaseFormPage() {
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "960px", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Nova fatura de fornecedor</h1>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Nova factura de fornecedor</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
             <label style={labelStyle}>Fornecedor</label>
-            <CustomSelect value={supplierId} onChange={setSupplierId} placeholder="Seleciona um fornecedor" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
+            <CustomSelect value={supplierId} onChange={setSupplierId} placeholder="Selecciona um fornecedor" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
           </div>
           <div>
-            <label style={labelStyle}>Nº da fatura</label>
+            <label style={labelStyle}>Nº da factura</label>
             <input type="text" className="input" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} required />
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function PurchaseFormPage() {
           </div>
         )}
 
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "1.25rem 0 0.75rem" }}>Linhas da fatura</h2>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "1.25rem 0 0.75rem" }}>Linhas da factura</h2>
         <InvoiceLinesEditor lines={lines} onChange={setLines} currency={cur} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", margin: "1.25rem 0 1rem" }}>
@@ -159,7 +159,7 @@ export default function PurchaseFormPage() {
         <div style={{ fontSize: "1.1rem", fontWeight: 600, margin: "1rem 0 1.5rem" }}>Total da fatura: {fmtMoney(grand, cur)}</div>
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A criar…" : "Criar fatura (rascunho)"}
+          {submitting ? "A criar…" : "Criar factura (rascunho)"}
         </button>
       </form>
     </div>

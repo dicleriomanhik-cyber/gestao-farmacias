@@ -454,7 +454,7 @@ async function findLocalLine(lineId: string): Promise<{ purchase: any; line: any
     const l = (p.lines ?? []).find((x: any) => x.id === lineId);
     if (l) return { purchase: p, line: l };
   }
-  throw new Error("Linha da fatura não encontrada.");
+  throw new Error("Linha da factura não encontrada.");
 }
 
 async function lineFaltaLocal(line: any): Promise<number> {
@@ -465,7 +465,7 @@ async function lineFaltaLocal(line: any): Promise<number> {
 
 export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
   const { purchase, line } = await findLocalLine(String(data.purchaseLineId));
-  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (purchase.status !== "CONFIRMED") throw new Error("A factura precisa de estar confirmada.");
   if (line.closed) throw new Error("Esta linha já está fechada.");
   const qrs: string[] = (data.qrCodes ?? []).map((s: any) => String(s).trim()).filter(Boolean);
   if (qrs.length === 0) throw new Error("Lê pelo menos um QR.");
@@ -563,7 +563,7 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
       quantity: totalUnits,
       referenceId: purchase.id,
       referenceType: "Purchase",
-      notes: "Recepção de fatura (caixa)",
+      notes: "Recepção de factura (caixa)",
       userId: "offline",
       createdAt: now,
     });
@@ -576,7 +576,7 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
 
 export async function markLineDamagedLocal(lineId: string, quantity: number, note?: string): Promise<any> {
   const { purchase, line } = await findLocalLine(lineId);
-  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (purchase.status !== "CONFIRMED") throw new Error("A factura precisa de estar confirmada.");
   if (line.closed) throw new Error("Esta linha já está fechada.");
   if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Indica quantas caixas vieram danificadas.");
   const falta = await lineFaltaLocal(line);
@@ -589,7 +589,7 @@ export async function markLineDamagedLocal(lineId: string, quantity: number, not
 
 export async function closeLineLocal(lineId: string): Promise<any> {
   const { purchase, line } = await findLocalLine(lineId);
-  if (purchase.status !== "CONFIRMED") throw new Error("A fatura precisa de estar confirmada.");
+  if (purchase.status !== "CONFIRMED") throw new Error("A factura precisa de estar confirmada.");
   if (line.closed) throw new Error("Esta linha já está fechada.");
   await enqueueOperation("PURCHASE_LINE_CLOSE", { lineId });
   const lines = (purchase.lines ?? []).map((l: any) => (l.id === lineId ? { ...l, closed: true } : l));

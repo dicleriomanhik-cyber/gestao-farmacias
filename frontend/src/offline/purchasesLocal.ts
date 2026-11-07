@@ -146,7 +146,7 @@ export async function createPurchaseLocal(body: any): Promise<any> {
   if (!supplier) fail("Fornecedor inv\u00e1lido.");
   if (supplier.status === "INACTIVE") fail("Fornecedor inactivo n\u00e3o pode ser usado.");
   const all = await allFrom("purchases");
-  if (all.some((p: any) => p.supplierId === body.supplierId && String(p.documentNumber) === String(body.documentNumber))) fail("J\u00e1 existe uma fatura com este n\u00famero para este fornecedor.");
+  if (all.some((p: any) => p.supplierId === body.supplierId && String(p.documentNumber) === String(body.documentNumber))) fail("J\u00e1 existe uma factura com este n\u00famero para este fornecedor.");
   const currency = body.currency ?? "MZN";
   const rate = currency === "MZN" ? 1 : Number(body.exchangeRate ?? 0);
   if (!(rate > 0)) fail("Indica o c\u00e2mbio para a moeda escolhida.");
@@ -223,12 +223,12 @@ export async function replacePurchaseLinesLocal(id: string, lines: any[]): Promi
     newLines = built.recs.map((rc: any, i: number) => (lines[i].lineId && locked.has(lines[i].lineId) ? existing.find((e: any) => e.id === lines[i].lineId) : rc));
     payload = built.payload;
   } else if (cur.status === "DRAFT") {
-    if ((await boxCount(cur)) > 0) fail("Esta fatura j\u00e1 tem caixas registadas.");
+    if ((await boxCount(cur)) > 0) fail("Esta factura j\u00e1 tem caixas registadas.");
     const built = await buildLines(lines, id);
     newLines = built.recs;
     payload = built.payload;
   } else {
-    fail("S\u00f3 se alteram as linhas de uma fatura em rascunho.");
+    fail("S\u00f3 se alteram as linhas de uma factura em rascunho.");
   }
   const total = round2(newLines.reduce((s: number, x: any) => s + Number(x.subtotal), 0));
   const nx: any = { ...cur, lines: newLines, totalAmount: String(total), updatedAt: new Date().toISOString() };

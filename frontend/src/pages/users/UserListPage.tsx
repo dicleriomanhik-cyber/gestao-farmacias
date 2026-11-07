@@ -86,7 +86,7 @@ export default function UserListPage() {
                 <th>Colaboradores</th>
                 <th>Email de acesso</th>
                 <th>Estado</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>
@@ -95,7 +95,7 @@ export default function UserListPage() {
                   <td>{a.name}</td>
                   <td>{a.operators.filter((o) => o.isActive).map((o) => o.name).join(", ") || "—"}</td>
                   <td>{a.email ?? "—"}</td>
-                  <td>{badge(a.status === "ACTIVE", "Ativa", "Inativa")}</td>
+                  <td>{badge(a.status === "ACTIVE", "Activa", "Inactiva")}</td>
                   <td>
                     {canWrite ? (
                       <Link to={`/utilizadores/farmacias/${a.id}/editar`} className="btn-soft">Editar</Link>
@@ -119,7 +119,7 @@ export default function UserListPage() {
                 <th>Email</th>
                 <th>Função</th>
                 <th>Estado</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>
@@ -128,7 +128,7 @@ export default function UserListPage() {
                   <td>{u.fullName}</td>
                   <td>{u.email}</td>
                   <td>{isAdminUser(u) ? "Administrador" : primaryRole(u)}</td>
-                  <td>{badge(u.status === "ACTIVE", "Ativo", "Inativo")}</td>
+                  <td>{badge(u.status === "ACTIVE", "Activo", "Inactivo")}</td>
                   <td>
                     {canWrite ? (
                       <Link to={`/utilizadores/${u.id}/editar`} className="btn-soft">

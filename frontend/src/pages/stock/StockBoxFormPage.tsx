@@ -160,7 +160,7 @@ export default function StockBoxFormPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!term) return toast.error("Seleciona um produto ou escreve o nome de um novo.");
+    if (!term) return toast.error("Selecciona um produto ou escreve o nome de um novo.");
     if (!qrCode.trim()) return toast.error("O QR Code é obrigatório.");
 
     const usaValidade = !semValidadeForced && !noExpiry;

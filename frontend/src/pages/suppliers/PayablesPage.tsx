@@ -70,14 +70,14 @@ export default function PayablesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Nº da fatura</th>
+                  <th>Nº da factura</th>
                   <th>Data</th>
                   <th>Data limite</th>
                   <th>Total</th>
                   <th>Pago</th>
                   <th>Em dívida</th>
                   <th>Pagamento</th>
-                  <th>Ações</th>
+                  <th>Acções</th>
                 </tr>
               </thead>
               <tbody>

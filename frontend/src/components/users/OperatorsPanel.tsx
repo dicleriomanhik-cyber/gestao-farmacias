@@ -78,10 +78,10 @@ export default function OperatorsPanel() {
     try {
       await updateOperator(id, { name: n });
       setEditId(null);
-      toast.success("Nome atualizado.");
+      toast.success("Nome actualizado.");
       loadOperators();
     } catch (err: any) {
-      toast.error(msgOf(err, "Erro ao atualizar o nome."));
+      toast.error(msgOf(err, "Erro ao actualizar o nome."));
     } finally {
       setBusy(false);
     }
@@ -93,7 +93,7 @@ export default function OperatorsPanel() {
       await updateOperator(o.id, { isActive: !o.isActive });
       loadOperators();
     } catch (err: any) {
-      toast.error(msgOf(err, "Erro ao atualizar o colaborador."));
+      toast.error(msgOf(err, "Erro ao actualizar o colaborador."));
     } finally {
       setBusy(false);
     }
@@ -145,7 +145,7 @@ export default function OperatorsPanel() {
               <tr>
                 <th>Nome</th>
                 <th>Estado</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>
@@ -160,7 +160,7 @@ export default function OperatorsPanel() {
                   </td>
                   <td>
                     <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: o.isActive ? "#dcfce7" : "#fee2e2", color: o.isActive ? "#166534" : "#991b1b" }}>
-                      {o.isActive ? "Ativo" : "Inativo"}
+                      {o.isActive ? "Activo" : "Inactivo"}
                     </span>
                   </td>
                   <td>
@@ -174,7 +174,7 @@ export default function OperatorsPanel() {
                     ) : (
                       <span style={{ display: "flex", gap: "0.75rem" }}>
                         <button type="button" disabled={busy} onClick={() => { setEditId(o.id); setEditName(o.name); }} className="btn-soft">Editar</button>
-                        <button type="button" disabled={busy} onClick={() => toggle(o)} className={o.isActive ? "btn-soft-danger" : "btn-soft"}>{o.isActive ? "Desativar" : "Ativar"}</button>
+                        <button type="button" disabled={busy} onClick={() => toggle(o)} className={o.isActive ? "btn-soft-danger" : "btn-soft"}>{o.isActive ? "Desactivar" : "Activar"}</button>
                       </span>
                     )}
                   </td>

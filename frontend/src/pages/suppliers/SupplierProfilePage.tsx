@@ -71,7 +71,7 @@ export default function SupplierProfilePage() {
         </div>
         {payables && (
           <div className="card" style={cardStyle}>
-            <div style={cardLabel}>Dívida atual</div>
+            <div style={cardLabel}>Dívida actual</div>
             <div style={cardValue}>{fmtMt(summary.debt)}</div>
           </div>
         )}
@@ -85,7 +85,7 @@ export default function SupplierProfilePage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Nº da fatura</th>
+                <th>Nº da factura</th>
                 <th>Data</th>
                 <th>Total</th>
                 {payables && <th>Pago</th>}

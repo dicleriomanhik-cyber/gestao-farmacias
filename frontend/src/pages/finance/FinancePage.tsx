@@ -241,7 +241,7 @@ function FinanceSummary() {
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Finanças</h1>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <button onClick={exportPdf} className="btn btn-secondary" disabled={loading || !data}>{"\u{1F4C4} PDF"}</button>
-          <button onClick={() => setTick((t) => t + 1)} className="btn btn-secondary" disabled={loading}>{loading ? "A carregar…" : "Atualizar"}</button>
+          <button onClick={() => setTick((t) => t + 1)} className="btn btn-secondary" disabled={loading}>{loading ? "A carregar…" : "Actualizar"}</button>
         </div>
       </div>
 

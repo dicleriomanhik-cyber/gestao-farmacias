@@ -219,7 +219,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
                 {isOperational && <th>Colaborador</th>}
                 <th>Total</th>
                 <th>Estado</th>
-                <th>Ações</th>
+                <th>Acções</th>
               </tr>
             </thead>
             <tbody>

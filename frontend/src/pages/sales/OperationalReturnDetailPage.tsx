@@ -76,7 +76,7 @@ export default function OperationalReturnDetailPage() {
       toast.success(status === "COMPLETED" ? "Pagamento confirmado." : "Reembolso cancelado.");
       await load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Não foi possível atualizar o reembolso.");
+      toast.error(err?.response?.data?.message ?? "Não foi possível actualizar o reembolso.");
     } finally {
       setActionLoading(false);
     }
@@ -148,7 +148,7 @@ export default function OperationalReturnDetailPage() {
 
   async function handleRefund() {
     if (!id || !ret || !selectedLine || !selectedPayment) {
-      return toast.error("Selecione a linha e o pagamento original.");
+      return toast.error("Seleccione a linha e o pagamento original.");
     }
     const payment = payments.find((p) => p.id === selectedPayment);
     if (!payment) return toast.error("Pagamento não encontrado.");
@@ -211,7 +211,7 @@ export default function OperationalReturnDetailPage() {
               <th>Qtd</th>
               <th>Condição</th>
               <th>Libertado</th>
-              <th>Ações</th>
+              <th>Acções</th>
             </tr>
           </thead>
           <tbody>

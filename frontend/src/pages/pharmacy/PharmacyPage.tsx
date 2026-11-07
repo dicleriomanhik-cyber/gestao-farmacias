@@ -75,10 +75,10 @@ export default function PharmacyPage() {
     try {
       const updated = await updatePharmacy(payload);
       setPharmacy(updated);
-      toast.success("Farmácia atualizada.");
+      toast.success("Farmácia actualizada.");
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message;
-      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? "Erro ao atualizar a farmácia."));
+      toast.error(Array.isArray(msg) ? msg.join(" ") : (msg ?? "Erro ao actualizar a farmácia."));
     } finally {
       setSubmitting(false);
     }

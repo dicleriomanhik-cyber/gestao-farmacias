@@ -192,7 +192,7 @@ export default function ReturnListPage() {
                 <th style={{ width: "40%" }}>Motivo</th>
                 <th style={{ width: "15%" }}>Total</th>
                 <th style={{ width: "10%" }}>Estado</th>
-                <th style={{ width: "5%", textAlign: "center" }}>Ações</th>
+                <th style={{ width: "5%", textAlign: "center" }}>Acções</th>
               </tr>
             </thead>
             <tbody>

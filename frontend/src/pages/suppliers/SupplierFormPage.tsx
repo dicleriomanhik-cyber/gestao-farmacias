@@ -80,7 +80,7 @@ export default function SupplierFormPage() {
     try {
       if (isEditing && id) {
         await updateSupplier(id, payload);
-        toast.success("Fornecedor atualizado.");
+        toast.success("Fornecedor actualizado.");
       } else {
         await createSupplier(payload);
         toast.success("Fornecedor criado.");

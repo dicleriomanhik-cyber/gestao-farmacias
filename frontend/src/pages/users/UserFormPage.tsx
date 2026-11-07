@@ -59,7 +59,7 @@ export default function UserFormPage() {
     try {
       if (isEditing && id) {
         await updateUser(id, { fullName, status, ...(password ? { password } : {}) });
-        toast.success("Conta atualizada.");
+        toast.success("Conta actualizada.");
       } else {
         await createUser({ email: email.trim(), fullName: nome, password, roleName: "COLLABORATOR" });
         toast.success("Conta de colaborador criada.");
@@ -87,7 +87,7 @@ export default function UserFormPage() {
       </h1>
       <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
         {isEditing
-          ? (isAdmin ? "O email n\u00e3o pode ser alterado. Podes redefinir a palavra-passe." : "O email não pode ser alterado. Podes redefinir a password ou desativar a conta.")
+          ? (isAdmin ? "O email n\u00e3o pode ser alterado. Podes redefinir a palavra-passe." : "O email não pode ser alterado. Podes redefinir a password ou desactivar a conta.")
           : "O colaborador entra no painel dele com este email e esta password. Entrega-lhe estas credenciais."}
       </p>
 
@@ -143,7 +143,7 @@ export default function UserFormPage() {
         {isEditing && !isAdmin && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Estado da conta</label>
-            <CustomSelect value={status} onChange={(v) => setStatus(v as UserStatus)} options={[{ value: "ACTIVE", label: "Ativa" }, { value: "INACTIVE", label: "Inativa (não consegue entrar)" }]} />
+            <CustomSelect value={status} onChange={(v) => setStatus(v as UserStatus)} options={[{ value: "ACTIVE", label: "Activa" }, { value: "INACTIVE", label: "Inactiva (não consegue entrar)" }]} />
           </div>
         )}
 

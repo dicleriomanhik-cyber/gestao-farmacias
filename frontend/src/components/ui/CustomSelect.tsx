@@ -16,7 +16,7 @@ interface Props {
   style?: React.CSSProperties;
 }
 
-export default function CustomSelect({ options, value, onChange, placeholder = "Seleciona…", disabled = false, style, menuMaxWidth }: Props) {
+export default function CustomSelect({ options, value, onChange, placeholder = "Selecciona…", disabled = false, style, menuMaxWidth }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
