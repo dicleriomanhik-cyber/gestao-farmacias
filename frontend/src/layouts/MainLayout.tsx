@@ -1,4 +1,4 @@
-import { Outlet, useNavigate, NavLink, Link } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, NavLink, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { hasPermission } from "../utils/permissions";
 import SyncStatusBadge from "../components/offline/SyncStatusBadge";
@@ -7,6 +7,7 @@ import PharmacyName from "../components/layout/PharmacyName";
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const permissions = user?.permissions ?? [];
   const displayName = user?.name || user?.email || "—";
@@ -45,7 +46,7 @@ export default function MainLayout() {
 
       <nav className="app-nav">
         {navItems.map((item) => (
-          <NavLink key={item.path} to={item.path} end={item.path === "/"}>
+          <NavLink key={item.path} to={item.path} end={item.path === "/"} className={({ isActive }) => (isActive || (item.path === "/stock/caixas" && pathname.startsWith("/stock")) ? "active" : undefined)}>
             {item.label}
           </NavLink>
         ))}

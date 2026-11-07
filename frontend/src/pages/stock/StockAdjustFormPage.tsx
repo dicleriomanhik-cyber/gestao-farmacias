@@ -93,7 +93,7 @@ export default function StockAdjustFormPage() {
           <div style={{ marginBottom: "1rem", padding: "0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", fontSize: "0.875rem" }}>
             <strong>Disponível:</strong> {selectedLot.quantityAvailable} unidades
             <br />
-            <strong>Validade:</strong> {selectedLot.expiryDate ? new Date(selectedLot.expiryDate).toLocaleDateString("pt-PT") : "Sem validade"}
+            <strong>Validade:</strong> {selectedLot.expiryDate ? (String(new Date(selectedLot.expiryDate).getUTCMonth() + 1).padStart(2, "0") + "/" + new Date(selectedLot.expiryDate).getUTCFullYear()) : "Sem validade"}
           </div>
         )}
 

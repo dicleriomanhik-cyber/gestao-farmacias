@@ -278,7 +278,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
                 <tr key={l.id}>
                   <td>{l.productName}</td>
                   <td>{l.qrCode}</td>
-                  <td>{fmtDate(l.expiryDate)}</td>
+                  <td>{l.expiryDate ? String(new Date(l.expiryDate).getUTCMonth() + 1).padStart(2, "0") + "/" + new Date(l.expiryDate).getUTCFullYear() : "—"}</td>
                   <td>{l.expectedQty}</td>
                   <td>
                     {open ? (

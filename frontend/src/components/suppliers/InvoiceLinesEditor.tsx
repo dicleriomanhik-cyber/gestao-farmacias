@@ -1,5 +1,6 @@
 import type { PurchaseLine, PurchaseLineRequest } from "../../types/purchases";
 import { fmtMoney } from "../../utils/supplierFormat";
+import CustomSelect from "../ui/CustomSelect";
 
 export interface LineDraft {
   key: string;
@@ -163,10 +164,7 @@ export default function InvoiceLinesEditor({ lines, onChange, currency }: Props)
               <div style={grid}>
                 <div>
                   <label style={lab}>Tipo</label>
-                  <select className="input" value={l.type} onChange={(e) => patch(l.key, { type: e.target.value as "MEDICINE" | "PRODUCT" })}>
-                    <option value="MEDICINE">Medicamento</option>
-                    <option value="PRODUCT">Produto</option>
-                  </select>
+                  <CustomSelect value={l.type} onChange={(v) => patch(l.key, { type: v as "MEDICINE" | "PRODUCT" })} options={[{ value: "MEDICINE", label: "Medicamento" }, { value: "PRODUCT", label: "Produto" }]} />
                 </div>
                 {field(l, "Nome", "name", false)}
                 {medicine && field(l, "Dosagem", "strength", false)}

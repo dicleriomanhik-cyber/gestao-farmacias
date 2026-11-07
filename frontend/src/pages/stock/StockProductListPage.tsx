@@ -42,11 +42,10 @@ const btnBase: CSSProperties = {
 const btnEdit: CSSProperties = { ...btnBase, color: "#1e40af", background: "#dbeafe", border: "none", borderRadius: 999 };
 const btnDelete: CSSProperties = { ...btnBase, color: "#991b1b", background: "#fee2e2", border: "none", borderRadius: 999, font: "inherit", fontSize: "0.85rem", fontWeight: 500 };
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "Sem validade";
   const d = new Date(dateStr);
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${d.getUTCFullYear()}`;
+  return `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
 }
 
 export default function StockProductListPage() {

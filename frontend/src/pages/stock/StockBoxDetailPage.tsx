@@ -21,10 +21,10 @@ const C = {
   doneText: "#9aa4b8",
 };
 
-function formatDate(s: string | null) {
+function formatDate(s: string | null): string {
   if (!s) return "Sem validade";
   const d = new Date(s);
-  return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+  return `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
 }
 
 function formatDateTime(s: string) {

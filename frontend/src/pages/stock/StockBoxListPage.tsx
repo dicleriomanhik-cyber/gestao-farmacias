@@ -16,10 +16,10 @@ const STATE_LABEL: Record<StockBoxState, string> = {
   EXPIRED: "Expirada",
 };
 
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return null;
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "Sem validade";
   const d = new Date(dateStr);
-  return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+  return `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
 }
 
 const cellStyle = { padding: "10px 16px", borderRight: "1px solid #e5e7eb" };

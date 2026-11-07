@@ -9,6 +9,7 @@ import type { PurchaseRequest } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import CustomSelect from "../../components/ui/CustomSelect";
 import InvoiceLinesEditor, { linesTotal, newLine, toLineRequests } from "../../components/suppliers/InvoiceLinesEditor";
 import type { LineDraft } from "../../components/suppliers/InvoiceLinesEditor";
 import { apiError, fmtMoney } from "../../utils/supplierFormat";
@@ -103,10 +104,7 @@ export default function PurchaseFormPage() {
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
             <label style={labelStyle}>Fornecedor</label>
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required className="input">
-              <option value="">Seleciona um fornecedor</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <CustomSelect value={supplierId} onChange={setSupplierId} placeholder="Seleciona um fornecedor" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
           </div>
           <div>
             <label style={labelStyle}>Nº da fatura</label>
@@ -147,10 +145,7 @@ export default function PurchaseFormPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
             <div>
               <label style={labelStyle}>Pagamento</label>
-              <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as "PAID" | "CREDIT")}>
-                <option value="PAID">Pago na confirmação</option>
-                <option value="CREDIT">A prazo</option>
-              </select>
+              <CustomSelect value={paymentStatus} onChange={(v) => setPaymentStatus(v as "PAID" | "CREDIT")} options={[{ value: "PAID", label: "Pago na confirmação" }, { value: "CREDIT", label: "A prazo" }]} />
             </div>
             {paymentStatus === "CREDIT" && (
               <div>

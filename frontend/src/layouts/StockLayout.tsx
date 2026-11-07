@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getStockBoxes } from "../services/stockService";
 import { useToast } from "../contexts/ToastContext";
+import { useDataChanged } from "../offline/dataChanged";
 
 const base = { padding: "8px 14px", borderRadius: 8, border: "1px solid #d9dee9", fontSize: 14, textDecoration: "none", cursor: "pointer" } as const;
 
@@ -11,6 +12,16 @@ export default function StockLayout() {
   const navigate = useNavigate();
   const toast = useToast();
   const [abrindo, setAbrindo] = useState(false);
+  const [primeiroId, setPrimeiroId] = useState<string | null | undefined>(undefined);
+
+  function atualizar() {
+    getStockBoxes({ limit: 1 })
+      .then((res) => setPrimeiroId(res.data?.[0]?.id ?? null))
+      .catch(() => undefined);
+  }
+
+  useEffect(atualizar, [pathname]);
+  useDataChanged(atualizar);
 
   const tab = (active: boolean) => ({
     ...base,
@@ -20,10 +31,15 @@ export default function StockLayout() {
   });
 
   async function abrirDetalhe() {
+    if (primeiroId) {
+      navigate(`/stock/caixas/${primeiroId}`);
+      return;
+    }
     setAbrindo(true);
     try {
       const res = await getStockBoxes({ limit: 1 });
       const primeira = res.data?.[0];
+      setPrimeiroId(primeira?.id ?? null);
       navigate(primeira ? `/stock/caixas/${primeira.id}` : "/stock/caixas/detalhe");
     } catch {
       toast.error("Erro ao abrir o detalhe da caixa.");
