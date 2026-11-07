@@ -81,7 +81,40 @@ async function refreshCashMovements(): Promise<void> {
   await replaceStore("cash_movements", rows.filter((m) => !String(m.id).startsWith("LOCAL-")));
 }
 
+const SUPPLIER_OPS = ["SUPPLIER_CREATE", "SUPPLIER_UPDATE", "PURCHASE_CREATE", "PURCHASE_UPDATE", "PURCHASE_LINES_REPLACE", "PURCHASE_CONFIRM", "PURCHASE_CANCEL", "SUPPLIER_PAYMENT_CREATE", "PURCHASE_LINE_DAMAGED", "PURCHASE_LINE_CLOSE", "STOCK_BOX_CREATE"];
+
+async function hasOpenSupplierOps(): Promise<boolean> {
+  return (await getPendingOperations()).some((o: any) => SUPPLIER_OPS.includes(o.operationType));
+}
+
+export async function refreshSupplierData(): Promise<void> {
+  if (await hasOpenSupplierOps()) return;
+  const suppliers = await fetchPaged("/suppliers");
+  const purchases = await fetchPaged("/purchases");
+  const known = new Map<string, any>((await getStore("purchases")).map((x: any) => [x.id, x] as [string, any]));
+  const completas: any[] = [];
+  for (const pu of purchases) {
+    const k = known.get(pu.id);
+    const aberta = !!k && (k.lines ?? []).some((l: any) => !l.closed && Number(l.received ?? 0) + Number(l.quantityDamaged ?? 0) < Number(l.quantity));
+    if (k && k.updatedAt === pu.updatedAt && k.lines && !aberta) {
+      completas.push(k);
+      continue;
+    }
+    let det: any = pu;
+    try {
+      det = (await apiClient.get(`/purchases/${pu.id}`)).data.data;
+    } catch {
+      det = pu;
+    }
+    completas.push(det);
+  }
+  if (await hasOpenSupplierOps()) return;
+  await replaceStore("suppliers", suppliers);
+  await replaceStore("purchases", completas);
+}
+
 export async function refreshAfterSync(): Promise<void> {
+  await refreshSupplierData().catch(() => undefined);
   const expenses = await fetchPaged("/expenses");
   await replaceStore("expenses", expenses);
   await reapplyPendingExpenses();
@@ -127,11 +160,11 @@ export async function bootstrapFromServer(): Promise<void> {
   const users = await fetchPaged("/users").catch(() => null);
   if (users) await replaceStore("users", users);
   const suppliers = await fetchPaged("/suppliers").catch(() => null);
-  if (suppliers) await replaceStore("suppliers", suppliers);
+  if (suppliers && !(await hasOpenSupplierOps())) await replaceStore("suppliers", suppliers);
   const pharmacy = await apiClient.get("/pharmacy").then((r) => r.data.data).catch(() => null);
   if (pharmacy) await replaceStore("pharmacy", [pharmacy]);
   const purchases = await fetchPaged("/purchases").catch(() => null);
-  if (purchases) {
+  if (purchases && !(await hasOpenSupplierOps())) {
     const known = new Map<string, any>((await getStore("purchases")).map((x: any) => [x.id, x] as [string, any]));
     const completas: any[] = [];
     for (const pu of purchases) {

@@ -1,4 +1,6 @@
 import { apiClient } from "./api";
+import { isApiOnline } from "../offline/connectivity";
+import { createSupplierLocal, updateSupplierLocal } from "../offline/purchasesLocal";
 import type {
   Supplier,
   SupplierRequest,
@@ -44,11 +46,31 @@ export async function getSupplierSummary(id: string): Promise<SupplierSummary> {
 }
 
 export async function createSupplier(data: SupplierRequest): Promise<Supplier> {
+  if (!isApiOnline()) return await createSupplierLocal(data);
+  try {
+    return await postCreateSupplier(data);
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await createSupplierLocal(data);
+  }
+}
+
+async function postCreateSupplier(data: SupplierRequest): Promise<Supplier> {
   const resp = await apiClient.post<Envelope<Supplier>>("/suppliers", data);
   return resp.data.data;
 }
 
 export async function updateSupplier(id: string, data: Partial<SupplierRequest>): Promise<Supplier> {
+  if (!isApiOnline()) return await updateSupplierLocal(id, data);
+  try {
+    return await patchUpdateSupplier(id, data);
+  } catch (err: any) {
+    if (err?.response) throw err;
+    return await updateSupplierLocal(id, data);
+  }
+}
+
+async function patchUpdateSupplier(id: string, data: Partial<SupplierRequest>): Promise<Supplier> {
   const resp = await apiClient.patch<Envelope<Supplier>>(`/suppliers/${id}`, data);
   return resp.data.data;
 }

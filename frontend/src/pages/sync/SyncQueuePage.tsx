@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { discardSupplierOpLocal } from "../../offline/purchasesLocal";
 import { useNavigate } from "react-router-dom";
 import type { OutboxOperation } from "../../offline/db";
 import { listOpenOperations, retryOperationNow, discardOperation, visibleOperations, buildGroups, type OpGroup } from "../../offline/outboxAdmin";
@@ -23,6 +24,14 @@ const TIPOS: Record<string, string> = {
   STOCK_BOX_CREATE: "Registar caixa",
   PURCHASE_LINE_DAMAGED: "Caixas danificadas",
   PURCHASE_LINE_CLOSE: "Fechar linha",
+  SUPPLIER_CREATE: "Novo fornecedor",
+  SUPPLIER_UPDATE: "Editar fornecedor",
+  PURCHASE_CREATE: "Fatura de fornecedor",
+  PURCHASE_UPDATE: "Editar fatura",
+  PURCHASE_LINES_REPLACE: "Editar linhas da fatura",
+  PURCHASE_CONFIRM: "Confirmar fatura",
+  PURCHASE_CANCEL: "Cancelar fatura",
+  SUPPLIER_PAYMENT_CREATE: "Pagamento a fornecedor",
 };
 
 type Group = OpGroup;
@@ -86,6 +95,7 @@ export default function SyncQueuePage() {
     setConfirmGroup(null);
     if (!g) return;
     for (const o of g.ops) await discardOperation(o.idempotencyKey);
+    for (const o of g.ops) await discardSupplierOpLocal(o);
     await load();
   }
 
@@ -133,6 +143,7 @@ export default function SyncQueuePage() {
   }
 
   function rotuloGrupo(g: Group): string {
+    if (g.ops.some((o) => o.operationType.startsWith("PURCHASE_") && !o.operationType.startsWith("PURCHASE_LINE_"))) return "Fatura de fornecedor";
     if (g.ops.some((o) => o.operationType.startsWith("EXPENSE"))) return "Despesa";
     if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE" && o.payload?.purchaseLineId)) return "Receção de fatura (caixa)";
     if (g.ops.some((o) => o.operationType === "STOCK_BOX_CREATE")) return "Registar caixa";

@@ -34,6 +34,14 @@ function probe(): Promise<void> {
   return inflight;
 }
 
+async function reconnectBurst(): Promise<void> {
+  for (let i = 0; i < 20 && !isApiOnline(); i++) {
+    await probe();
+    if (isApiOnline()) return;
+    await new Promise((res) => setTimeout(res, 1500));
+  }
+}
+
 export function checkApiNow(): void {
   void probe();
 }
@@ -57,8 +65,8 @@ export function startConnectivityProbe(): void {
   if (started) return;
   started = true;
   void probe();
-  setInterval(() => void probe(), PROBE_INTERVAL_MS);
-  window.addEventListener("online", () => void probe());
+  setInterval(() => void probe(), PROBE_INTERVAL_MS); setInterval(() => { if (!isApiOnline()) void probe(); }, 3000);
+  window.addEventListener("online", () => { failures = 0; void reconnectBurst(); });
   window.addEventListener("offline", () => setOnline(false));
   window.addEventListener("focus", () => void probe());
   document.addEventListener("visibilitychange", () => {

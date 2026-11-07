@@ -94,7 +94,7 @@ async function recordLocalMappings(saleKey: string, result: any): Promise<void> 
 
 async function rejectedKeys(): Promise<Set<string>> { const db = await openDb(); return new Promise((resolve, reject) => { const r = db.transaction("outbox", "readonly").objectStore("outbox").getAll(); r.onsuccess = () => resolve(new Set((r.result as OutboxOperation[]).filter((o) => o.status === "REJECTED" || o.status === "CONFLICT").map((o) => o.idempotencyKey))); r.onerror = () => reject(r.error); }); }
 async function flushOutbox(): Promise<number> {
-  if (!isApiOnline()) return 0;
+  if (!isApiOnline() && !navigator.onLine) return 0;
   const clientId = await getClientId();
   const pending = (await getPendingOperations()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   if (pending.length === 0) return 0;

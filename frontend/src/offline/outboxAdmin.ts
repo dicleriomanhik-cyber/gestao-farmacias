@@ -117,6 +117,8 @@ const RETURN_TYPES = ["RETURN", "RETURN_CONFIRM", "RETURN_INSPECT", "RETURN_CANC
 export type OpGroup = { id: string; ops: OutboxOperation[] };
 
 export function groupKeyOf(o: OutboxOperation): string {
+  if (o.operationType === "PURCHASE_CREATE" && o.payload?.newId) return String(o.payload.newId);
+  if (["PURCHASE_UPDATE", "PURCHASE_LINES_REPLACE", "PURCHASE_CONFIRM", "PURCHASE_CANCEL", "SUPPLIER_PAYMENT_CREATE"].includes(o.operationType) && o.payload?.purchaseId) return String(o.payload.purchaseId);
   if (o.operationType === "RETURN") return o.idempotencyKey;
   if (o.operationType.startsWith("EXPENSE_") && o.payload?.createKey) return String(o.payload.createKey);
   if (o.operationType === "STOCK_BOX_CREATE" && o.payload?.createKey) return String(o.payload.createKey);

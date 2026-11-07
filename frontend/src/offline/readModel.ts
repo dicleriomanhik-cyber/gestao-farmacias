@@ -1,4 +1,5 @@
 import { openDb, getMeta } from "./db";
+import { dueOf, paidOf, outstandingOf, round2 } from "./purchaseMath";
 
 function getAll(store: string): Promise<any[]> {
   return openDb().then(
@@ -108,7 +109,7 @@ export async function localCashMovements() {
       derived.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", method: p.method ?? "CASH", amount: String(p.amount), reason: "Reembolso devolução " + (r?.returnNumber ?? ""), createdAt: o.createdAt });
     }
   }
-  return [...derived, ...rows].sort((a, b) => ((a.createdAt ?? "") < (b.createdAt ?? "") ? 1 : -1));
+  return [...derived, ...supplierCashDerived(outbox), ...rows].sort((a, b) => ((a.createdAt ?? "") < (b.createdAt ?? "") ? 1 : -1));
 }
 
 export async function localSales(params: { page?: number; limit?: number; status?: string } = {}) {
@@ -198,7 +199,12 @@ export async function localResponse(path: string, params: Record<string, any> = 
     const u = (await getAll("users")).find((x) => x.id === p.slice(7));
     return u ? envelope(u) : null;
   }
-  if (p === "/suppliers") return envelope(await localSuppliers(params));
+  if (p === "/suppliers") return envelope(await localSuppliersWithStats(params));
+  if (p.startsWith("/suppliers/") && p.endsWith("/summary")) {
+    const sm = await localSupplierSummary(p.slice(11, -8));
+    return sm ? envelope(sm) : null;
+  }
+  if (p === "/supplier-payments/payables") return envelope(await localPayables());
   if (p.startsWith("/suppliers/")) {
     const s = (await getAll("suppliers")).find((x) => x.id === p.slice(11));
     return s ? envelope(s) : null;
@@ -442,6 +448,7 @@ async function enrichPurchase(pu: any, suppliers: Map<string, any>, prods: Map<s
 export async function localPurchases(params: Record<string, any> = {}) {
   let list = await getAll("purchases");
   if (params.status) list = list.filter((x) => x.status === params.status);
+  if (params.supplierId) list = list.filter((x) => x.supplierId === params.supplierId);
   list.sort((a, b) => (String(a.purchaseDate ?? "") < String(b.purchaseDate ?? "") ? 1 : -1));
   const suppliers = new Map<string, any>((await getAll("suppliers")).map((s: any) => [s.id, s] as [string, any]));
   const prods = new Map<string, any>((await getAll("products")).map((p: any) => [p.id, p] as [string, any]));
@@ -696,4 +703,103 @@ export async function localReportStock() {
     summary: { totalProducts, totalLots, expiredLotsCount, nearExpiryLotsCount, totalStockValue: totalStockValue.toFixed(2) },
     products,
   };
+}
+function statsFor(supplierId: string, purchases: any[]) {
+  let totalPurchased = 0;
+  let purchaseCount = 0;
+  let lastPurchaseDate: string | null = null;
+  let debt = 0;
+  for (const p of purchases) {
+    if (p.supplierId !== supplierId || p.status !== "CONFIRMED") continue;
+    totalPurchased = round2(totalPurchased + dueOf(p));
+    purchaseCount += 1;
+    if (!lastPurchaseDate || String(p.purchaseDate) > lastPurchaseDate) lastPurchaseDate = String(p.purchaseDate);
+    if (p.paymentStatus !== "PAID") debt = round2(debt + outstandingOf(p));
+  }
+  return { totalPurchased, purchaseCount, lastPurchaseDate, debt };
+}
+
+export async function localSuppliersWithStats(params: Record<string, any> = {}) {
+  const page = await localSuppliers(params);
+  const purchases = await getAll("purchases");
+  return { ...page, data: page.data.map((s: any) => ({ ...s, ...statsFor(s.id, purchases) })) };
+}
+
+export async function localSupplierSummary(id: string) {
+  const supplier = (await getAll("suppliers")).find((s) => s.id === id);
+  if (!supplier) return null;
+  const purchases = (await getAll("purchases"))
+    .filter((p) => p.supplierId === id)
+    .sort((a, b) => (String(a.purchaseDate) < String(b.purchaseDate) ? 1 : -1));
+  const stats = statsFor(id, purchases);
+  const rows = purchases.map((p) => ({
+    id: p.id,
+    documentNumber: p.documentNumber,
+    purchaseDate: p.purchaseDate,
+    status: p.status,
+    paymentStatus: p.paymentStatus,
+    dueDate: p.dueDate ?? null,
+    currency: p.currency,
+    dueMzn: dueOf(p),
+    paidTotal: paidOf(p),
+    outstanding: outstandingOf(p),
+  }));
+  const prodMap = new Map<string, any>();
+  for (const p of purchases) {
+    if (p.status !== "CONFIRMED") continue;
+    for (const l of p.lines ?? []) {
+      if (!l.productId) continue;
+      const cur = prodMap.get(l.productId);
+      if (!cur || String(p.purchaseDate) > String(cur.lastDate)) {
+        prodMap.set(l.productId, { productId: l.productId, name: l.product?.name ?? "", lastUnitCost: round2(Number(l.unitCost) * Number(p.exchangeRate || 1)), lastQuantity: l.quantity, lastDate: p.purchaseDate });
+      }
+    }
+  }
+  const payments: any[] = [];
+  for (const p of purchases) {
+    for (const x of p.supplierPayments ?? []) payments.push({ ...x, purchase: { documentNumber: p.documentNumber }, user: null });
+  }
+  payments.sort((a, b) => (String(a.paidAt) < String(b.paidAt) ? 1 : -1));
+  return { supplier: { ...supplier, ...stats }, summary: stats, purchases: rows, products: Array.from(prodMap.values()), payments };
+}
+
+export async function localPayables() {
+  const suppliers = new Map<string, any>((await getAll("suppliers")).map((s: any) => [s.id, s] as [string, any]));
+  const list = (await getAll("purchases"))
+    .filter((p) => p.status === "CONFIRMED" && p.paymentStatus !== "PAID")
+    .sort((a, b) => {
+      const da = a.dueDate ? String(a.dueDate) : "9999";
+      const dz = b.dueDate ? String(b.dueDate) : "9999";
+      if (da !== dz) return da < dz ? -1 : 1;
+      return String(a.purchaseDate) < String(b.purchaseDate) ? -1 : 1;
+    });
+  const groups = new Map<string, any>();
+  for (const p of list) {
+    const out = outstandingOf(p);
+    if (out <= 0) continue;
+    const sup = suppliers.get(p.supplierId);
+    let g = groups.get(p.supplierId);
+    if (!g) {
+      g = { supplierId: p.supplierId, supplierName: sup?.name ?? "", phone: sup?.phone ?? null, whatsapp: sup?.whatsapp ?? null, totalDue: 0, nextDueDate: null, purchases: [] };
+      groups.set(p.supplierId, g);
+    }
+    g.totalDue = round2(g.totalDue + out);
+    if (p.dueDate && (!g.nextDueDate || String(p.dueDate) < String(g.nextDueDate))) g.nextDueDate = p.dueDate;
+    g.purchases.push({ id: p.id, documentNumber: p.documentNumber, purchaseDate: p.purchaseDate, dueDate: p.dueDate ?? null, paymentStatus: p.paymentStatus, total: dueOf(p), paid: paidOf(p), outstanding: out });
+  }
+  return Array.from(groups.values());
+}
+
+function supplierCashDerived(outbox: any[]): any[] {
+  const out: any[] = [];
+  for (const o of outbox) {
+    if (!OPEN_STATUSES.includes(o.status)) continue;
+    const p = o.payload ?? {};
+    if (o.operationType === "SUPPLIER_PAYMENT_CREATE" && p.paidFrom === "PHARMACY_CASH") {
+      out.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", method: "CASH", amount: String(p.amount), reason: "Pagamento a fornecedor", createdAt: o.createdAt });
+    } else if (o.operationType === "PURCHASE_CONFIRM" && p.pay?.paidFrom === "PHARMACY_CASH" && Number(p.payAmount) > 0) {
+      out.push({ id: "LOCAL-MOV-" + o.idempotencyKey, type: "OUT", method: "CASH", amount: String(p.payAmount), reason: "Pagamento a fornecedor", createdAt: o.createdAt });
+    }
+  }
+  return out;
 }
