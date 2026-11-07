@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createExpense, getExpenseById, updateExpense } from "../../services/expenseService";
@@ -167,24 +168,18 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
         {!isOperational && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className="input">
-              {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
+            <CustomSelect value={category} onChange={(v) => setCategory(v as ExpenseCategory)} options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))} />
           </div>
         )}
 
         <div style={{ marginBottom: "1.5rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento</label>
-          <select value={method} onChange={(e) => { const m = e.target.value as ExpenseMethod; setMethod(m); setPaidFrom(derivePaidFrom(m, allowCash)); }} className="input">
-            {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
+          <CustomSelect value={method} onChange={(v) => { const m = v as ExpenseMethod; setMethod(m); setPaidFrom(derivePaidFrom(m, allowCash)); }} options={METHODS.map((m) => ({ value: m.value, label: m.label }))} />
         </div>
 
         <div style={{ marginBottom: "1.5rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Pago com</label>
-          <select value={paidFrom} onChange={(e) => setPaidFrom(e.target.value as ExpensePaidFrom)} className="input">
-            {PAID_FROM.filter((o) => o.value !== "PHARMACY_CASH" || allowCash).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <CustomSelect value={paidFrom} onChange={(v) => setPaidFrom(v as ExpensePaidFrom)} options={PAID_FROM.filter((o) => o.value !== "PHARMACY_CASH" || allowCash).map((o) => ({ value: o.value, label: o.label }))} />
         </div>
 
         {isOperational && paidFrom === "PHARMACY_CASH" && availableBalance !== null && (

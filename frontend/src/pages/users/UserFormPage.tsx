@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createUser, getUserById, updateUser } from "../../services/userService";
@@ -142,10 +143,7 @@ export default function UserFormPage() {
         {isEditing && !isAdmin && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Estado da conta</label>
-            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
-              <option value="ACTIVE">Ativa</option>
-              <option value="INACTIVE">Inativa (não consegue entrar)</option>
-            </select>
+            <CustomSelect value={status} onChange={(v) => setStatus(v as UserStatus)} options={[{ value: "ACTIVE", label: "Ativa" }, { value: "INACTIVE", label: "Inativa (não consegue entrar)" }]} />
           </div>
         )}
 

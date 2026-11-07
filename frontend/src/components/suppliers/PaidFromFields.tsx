@@ -1,3 +1,4 @@
+import CustomSelect from "../ui/CustomSelect";
 import { METHODS_FOR, METHOD_LABEL, PAID_FROM_OPTIONS } from "../../utils/supplierFormat";
 
 interface Props {
@@ -16,21 +17,12 @@ export default function PaidFromFields({ paidFrom, method, allowCash, onChange }
     <div style={{ display: "grid", gridTemplateColumns: methods.length > 1 ? "1fr 1fr" : "1fr", gap: "1rem" }}>
       <div>
         <label style={labelStyle}>Pago com</label>
-        <select className="input" value={paidFrom} onChange={(e) => onChange(e.target.value, (METHODS_FOR[e.target.value] ?? [""])[0])}>
-          <option value="">Seleciona</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <CustomSelect value={paidFrom} onChange={(v) => onChange(v, (METHODS_FOR[v] ?? [""])[0])} placeholder="Seleciona" options={options.map((o) => ({ value: o.value, label: o.label }))} />
       </div>
       {methods.length > 1 && (
         <div>
           <label style={labelStyle}>Método</label>
-          <select className="input" value={method} onChange={(e) => onChange(paidFrom, e.target.value)}>
-            {methods.map((m) => (
-              <option key={m} value={m}>{METHOD_LABEL[m] ?? m}</option>
-            ))}
-          </select>
+          <CustomSelect value={method} onChange={(v) => onChange(paidFrom, v)} options={methods.map((m) => ({ value: m, label: METHOD_LABEL[m] ?? m }))} />
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getReturnById, confirmReturn, inspectReturnLine, createRefund, cancelReturn, confirmRefund } from "../../services/returnService";
@@ -235,12 +236,7 @@ export default function OperationalReturnDetailPage() {
         <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
           <h3 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.75rem" }}>Inspecionar Linha</h3>
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Condição:</label>
-          <select value={condition} onChange={(e) => setCondition(e.target.value as ReturnLineCondition)} className="input" style={{ marginBottom: "1rem" }}>
-            <option value="RESELLABLE">Reutilizável</option>
-            <option value="DAMAGED">Danificado</option>
-            <option value="EXPIRED">Expirado</option>
-            <option value="LOST">Perdido</option>
-          </select>
+          <div style={{ marginBottom: "1rem" }}><CustomSelect value={condition} onChange={(v) => setCondition(v as ReturnLineCondition)} options={[{ value: "RESELLABLE", label: "Reutilizável" }, { value: "DAMAGED", label: "Danificado" }, { value: "EXPIRED", label: "Expirado" }, { value: "LOST", label: "Perdido" }]} /></div>
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Quantidade a libertar:</label>
           <input type="number" min="1" value={quantityToRelease} onChange={(e) => setQuantityToRelease(parseInt(e.target.value, 10) || 1)} className="input" style={{ marginBottom: "1rem" }} />
           <button onClick={handleInspect} disabled={actionLoading} className="btn btn-primary">{actionLoading ? "A processar…" : "Confirmar Inspeção"}</button>
@@ -263,19 +259,10 @@ export default function OperationalReturnDetailPage() {
           <p style={{ marginBottom: "1rem" }}>Total a reembolsar: {parseFloat(ret.totalRefund).toFixed(2)} MT</p>
 
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Pagamento original:</label>
-          <select value={selectedPayment} onChange={(e) => setSelectedPayment(e.target.value)} className="input" style={{ marginBottom: "1rem" }}>
-            {payments.map((p) => (
-              <option key={p.id} value={p.id}>{methodLabels[p.method] ?? p.method} — {parseFloat(p.amount).toFixed(2)} MT</option>
-            ))}
-          </select>
+          <div style={{ marginBottom: "1rem" }}><CustomSelect value={selectedPayment} onChange={setSelectedPayment} options={payments.map((p) => ({ value: p.id, label: `${methodLabels[p.method] ?? p.method} — ${parseFloat(p.amount).toFixed(2)} MT` }))} /></div>
 
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Método de reembolso:</label>
-          <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as any)} className="input" style={{ marginBottom: "1rem" }}>
-            <option value="CASH">Dinheiro</option>
-            <option value="CARD">Cartão</option>
-            <option value="MPESA">M-Pesa</option>
-            <option value="EMOLA">e-Mola</option>
-          </select>
+          <div style={{ marginBottom: "1rem" }}><CustomSelect value={refundMethod} onChange={(v) => setRefundMethod(v as any)} options={[{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }]} /></div>
 
           {selectedPaymentData && refundMethod !== selectedPaymentData.method && (
             <p style={{ color: "#b91c1c", fontSize: "0.85rem", marginBottom: "1rem" }}>

@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getPurchases } from "../../services/purchaseService";
@@ -63,17 +64,7 @@ export default function PurchaseListPage() {
 
       <div style={{ marginBottom: "1rem" }}>
         <label style={{ marginRight: "0.5rem", fontWeight: 500 }}>Estado:</label>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as PurchaseStatus | ""); }}
-          className="input"
-          style={{ display: "inline-block", width: "auto" }}
-        >
-          <option value="">Todos</option>
-          <option value="DRAFT">Rascunho</option>
-          <option value="CONFIRMED">Confirmada</option>
-          <option value="CANCELLED">Cancelada</option>
-        </select>
+        <div style={{ display: "inline-block", minWidth: 180, verticalAlign: "middle" }}><CustomSelect value={statusFilter} onChange={(v) => { setPage(1); setStatusFilter(v as PurchaseStatus | ""); }} options={[{ value: "", label: "Todos" }, { value: "DRAFT", label: "Rascunho" }, { value: "CONFIRMED", label: "Confirmada" }, { value: "CANCELLED", label: "Cancelada" }]} /></div>
       </div>
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>

@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "../../contexts/ToastContext";
@@ -235,10 +236,7 @@ export default function PharmacyAccountFormPage() {
         {isEditing && (
           <div style={rowStyle}>
             <label style={labelStyle}>Estado da conta</label>
-            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as "ACTIVE" | "INACTIVE")}>
-              <option value="ACTIVE">Ativa</option>
-              <option value="INACTIVE">Inativa (não consegue entrar)</option>
-            </select>
+            <CustomSelect value={status} onChange={(v) => setStatus(v as "ACTIVE" | "INACTIVE")} options={[{ value: "ACTIVE", label: "Ativa" }, { value: "INACTIVE", label: "Inativa (não consegue entrar)" }]} />
           </div>
         )}
 

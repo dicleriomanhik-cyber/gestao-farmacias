@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getSaleById, confirmSale, getSalePayments } from "../../services/saleService";
@@ -256,12 +257,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
           ) : (
             <div style={{ border: "1px solid #ccc", borderRadius: "4px", padding: "1rem" }}>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento</label>
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className="input" style={{ marginBottom: "1rem" }}>
-                <option value="CASH">Dinheiro</option>
-                <option value="CARD">Cartão</option>
-                <option value="MPESA">M-Pesa</option>
-                <option value="EMOLA">e-Mola</option>
-              </select>
+              <div style={{ marginBottom: "1rem" }}><CustomSelect value={paymentMethod} onChange={(v) => setPaymentMethod(v as PaymentMethod)} options={[{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }]} /></div>
               <p style={{ marginBottom: "1rem" }}><strong>Valor:</strong> {parseFloat(sale.total).toFixed(2)} MT</p>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button onClick={handlePayment} disabled={actionLoading} className="btn btn-success" style={{ flex: 1, padding: "0.75rem" }}>

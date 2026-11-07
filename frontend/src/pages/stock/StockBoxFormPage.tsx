@@ -1,3 +1,4 @@
+import CustomSelect from "../../components/ui/CustomSelect";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -407,20 +408,7 @@ export default function StockBoxFormPage() {
   const compraField = (
     <div className={isMobile ? "sbf-field" : undefined}>
       <label style={labelStyle}>Compra</label>
-      <select
-        value={purchaseId}
-        onChange={(e) => {
-          if (e.target.value === "__nova") navigate("/fornecedores/compras/nova");
-          else setPurchaseId(e.target.value);
-        }}
-        style={inputStyle}
-      >
-        <option value="">Sem compra</option>
-        {purchases.map((p) => (
-          <option key={p.id} value={p.id}>{p.documentNumber} — {p.supplier?.name ?? "—"}</option>
-        ))}
-        <option value="__nova">+ Nova compra</option>
-      </select>
+      <CustomSelect value={purchaseId} placeholder="Sem compra" onChange={(v) => { if (v === "__nova") navigate("/fornecedores/compras/nova"); else setPurchaseId(v); }} options={[{ value: "", label: "Sem compra" }, ...purchases.map((p) => ({ value: p.id, label: `${p.documentNumber} — ${p.supplier?.name ?? "—"}` })), { value: "__nova", label: "+ Nova compra" }]} />
     </div>
   );
 
