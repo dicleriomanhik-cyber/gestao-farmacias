@@ -228,6 +228,7 @@ export class SyncService {
         const upProd = await tx.product.update({ where: { id: product.id }, data: { salePrice: sp } });
         await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', upProd.id, 'UPDATED', upProd as any);
       }
+      if (rline) { const ativ = await tx.product.updateMany({ where: { id: product.id, pharmacyId, status: 'INACTIVE' }, data: { status: 'ACTIVE' } }); if (ativ.count > 0) { const reat = await tx.product.findUnique({ where: { id: product.id } }); await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', product.id, 'UPDATED', reat as any); } }
       await emitOutboxEvent(tx, pharmacyId, 'STOCK_LOT', lot.id, 'CREATED', lot as any);
       return { lotId: lot.id };
     }

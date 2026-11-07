@@ -410,6 +410,7 @@ export class StockService {
       data: { pharmacyId, userId: actorId, action: line ? 'stock.box.receive' : 'stock.box.create', entity: 'StockLot', entityId: lot.id },
     });
 
+    if (line) { const act = await tx.product.updateMany({ where: { id: product.id, pharmacyId, status: 'INACTIVE' }, data: { status: 'ACTIVE' } }); if (act.count > 0) { const reativado = await tx.product.findUnique({ where: { id: product.id } }); await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', product.id, 'UPDATED', reativado as any); } }
     if (dto.salePrice !== undefined) {
       const up = await tx.product.update({ where: { id: product.id }, data: { salePrice: dto.salePrice } });
       await emitOutboxEvent(tx, pharmacyId, 'PRODUCT', up.id, 'UPDATED', up as any);

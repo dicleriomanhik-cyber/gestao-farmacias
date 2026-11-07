@@ -84,7 +84,7 @@ export async function resolveLineProducts(
         productId = existing.id;
       } else {
         const created = await tx.product.create({
-          data: { pharmacyId, name, type: l.type as any, salePrice: 0, ...(medicine ? { strength, activeIngredient: name } : {}) },
+          data: { pharmacyId, name, type: l.type as any, salePrice: 0, status: 'INACTIVE' as any, ...(medicine ? { strength, activeIngredient: name } : {}) },
         });
         await tx.auditLog.create({
           data: { pharmacyId, userId: actorId, action: 'product.create', entity: 'Product', entityId: created.id },
