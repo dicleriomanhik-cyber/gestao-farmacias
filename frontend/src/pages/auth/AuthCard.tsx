@@ -12,10 +12,10 @@ export function authButton(loading: boolean): CSSProperties {
   return {
     width: "100%",
     padding: "0.75rem",
-    backgroundColor: "#2563eb",
+    backgroundColor: "var(--brand)",
     color: "white",
     border: "none",
-    borderRadius: "4px",
+    borderRadius: "999px",
     cursor: loading ? "not-allowed" : "pointer",
     fontWeight: "bold",
     opacity: loading ? 0.6 : 1,

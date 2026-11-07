@@ -1,4 +1,4 @@
-﻿export type ToastVariant = "success" | "error" | "info";
+export type ToastVariant = "success" | "error" | "info";
 
 export interface ToastData {
   id: string;
@@ -25,7 +25,7 @@ export default function Toast({ toasts, onDismiss }: ToastProps) {
       {toasts.map((t) => {
         const palette = colorMap[t.variant];
         return (
-          <div key={t.id} role="alert" aria-live="polite" style={{ backgroundColor: palette.bg, color: palette.color, borderLeft: `4px solid ${palette.border}`, padding: "0.75rem 1rem", borderRadius: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", minWidth: "260px", maxWidth: "400px", fontSize: "0.875rem", fontWeight: 500 }}>
+          <div key={t.id} role="alert" aria-live="polite" style={{ backgroundColor: palette.bg, color: palette.color, border: `1px solid ${palette.border}`, padding: "0.65rem 1.25rem", borderRadius: "999px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", minWidth: "260px", maxWidth: "400px", fontSize: "0.875rem", fontWeight: 500 }}>
             <span>{t.message}</span>
             <button onClick={() => onDismiss(t.id)} style={{ background: "none", border: "none", cursor: "pointer", color: palette.color, fontSize: "1rem", lineHeight: 1, padding: 0 }} aria-label="Fechar notificação">×</button>
           </div>

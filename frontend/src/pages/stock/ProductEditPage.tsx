@@ -114,7 +114,7 @@ export default function ProductEditPage() {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input" style={{ width: "100%" }} />
           </div>
           <div>
-            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Preço (MT) *</label>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Preço (MT)</label>
             <input type="number" step="0.01" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} required className="input" style={{ width: "100%" }} />
           </div>
         </div>

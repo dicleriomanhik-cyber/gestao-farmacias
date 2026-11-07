@@ -584,12 +584,12 @@ body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }
     cursor: pointer;
   }
   .app-content .cal-overlay .cal-month.is-current {
-    border-color: #2f5bd3;
-    color: #2f5bd3;
+    border-color: var(--brand);
+    color: var(--brand);
   }
   .app-content .cal-overlay .cal-month.is-selected {
-    background: #2f5bd3;
-    border-color: #2f5bd3;
+    background: var(--brand);
+    border-color: var(--brand);
     color: #ffffff;
     font-weight: 600;
   }

@@ -78,7 +78,7 @@ export default function CashMovementsPage() {
                   <td>
                     <button
                       onClick={() => setSelectedMovement(m)}
-                      style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                      className="btn-soft"
                     >
                       Ver Detalhe
                     </button>

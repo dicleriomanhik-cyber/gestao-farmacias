@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCategories } from "../../services/categoryService";
 import type { Category } from "../../types/products";
@@ -47,7 +47,7 @@ export default function CategoryListPage() {
     <div>
       <PageHeader
         title="Categorias"
-        actions={<Link to="/categorias/novo" className="btn btn-primary">+ Nova Categoria</Link>}
+        actions={<Link to="/categorias/novo" className="btn btn-primary">Nova Categoria</Link>}
       />
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
@@ -65,7 +65,7 @@ export default function CategoryListPage() {
                 <td>{cat.name}</td>
                 <td>{cat.description ?? "—"}</td>
                 <td>
-                  <Link to={`/categorias/${cat.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>
+                  <Link to={`/categorias/${cat.id}/editar`} className="btn-soft">
                     Editar
                   </Link>
                 </td>

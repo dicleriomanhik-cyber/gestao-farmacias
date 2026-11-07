@@ -134,7 +134,7 @@ export default function OperatorsPanel() {
               }}
               style={{ flex: 1, minWidth: "220px" }}
             />
-            <button type="button" className="btn btn-primary" onClick={addOperator} disabled={busy}>+ Adicionar</button>
+            <button type="button" className="btn btn-primary" onClick={addOperator} disabled={busy}>Adicionar</button>
           </div>
         )}
         {operators.length === 0 ? (
@@ -168,13 +168,13 @@ export default function OperatorsPanel() {
                       <span style={{ color: "#9ca3af" }}>—</span>
                     ) : editId === o.id ? (
                       <span style={{ display: "flex", gap: "0.75rem" }}>
-                        <button type="button" disabled={busy} onClick={() => saveEdit(o.id)} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Guardar</button>
-                        <button type="button" disabled={busy} onClick={() => setEditId(null)} style={{ color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Cancelar</button>
+                        <button type="button" disabled={busy} onClick={() => saveEdit(o.id)} className="btn-soft">Guardar</button>
+                        <button type="button" disabled={busy} onClick={() => setEditId(null)} className="btn-soft-neutral">Cancelar</button>
                       </span>
                     ) : (
                       <span style={{ display: "flex", gap: "0.75rem" }}>
-                        <button type="button" disabled={busy} onClick={() => { setEditId(o.id); setEditName(o.name); }} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Editar</button>
-                        <button type="button" disabled={busy} onClick={() => toggle(o)} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>{o.isActive ? "Desativar" : "Ativar"}</button>
+                        <button type="button" disabled={busy} onClick={() => { setEditId(o.id); setEditName(o.name); }} className="btn-soft">Editar</button>
+                        <button type="button" disabled={busy} onClick={() => toggle(o)} className={o.isActive ? "btn-soft-danger" : "btn-soft"}>{o.isActive ? "Desativar" : "Ativar"}</button>
                       </span>
                     )}
                   </td>

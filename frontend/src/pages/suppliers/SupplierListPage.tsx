@@ -78,7 +78,7 @@ export default function SupplierListPage() {
     <div>
       <PageHeader
         title="Fornecedores"
-        actions={<Link to="/fornecedores/novo" className="btn btn-primary">+ Novo Fornecedor</Link>}
+        actions={<Link to="/fornecedores/novo" className="btn btn-primary">Novo Fornecedor</Link>}
       />
 
       <form onSubmit={onSearch} className="sup-search" style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
@@ -127,10 +127,10 @@ export default function SupplierListPage() {
                   </span>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <Link to={`/fornecedores/${s.id}`} style={{ color: "#2563eb", textDecoration: "none", marginRight: "1rem" }}>
+                  <Link to={`/fornecedores/${s.id}`} className="btn-soft" style={{ marginRight: "0.5rem" }}>
                     Ficha
                   </Link>
-                  <Link to={`/fornecedores/${s.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>
+                  <Link to={`/fornecedores/${s.id}/editar`} className="btn-soft">
                     Editar
                   </Link>
                 </td>

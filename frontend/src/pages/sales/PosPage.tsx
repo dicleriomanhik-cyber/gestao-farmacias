@@ -277,7 +277,7 @@ export default function PosPage() {
           </div>
         )}
 
-        <button onClick={startNewSale} style={{ marginTop: "2rem", width: "100%", padding: "1rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+        <button onClick={startNewSale} style={{ marginTop: "2rem", width: "100%", padding: "1rem", backgroundColor: "var(--brand)", color: "white", border: "none", borderRadius: "999px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
           Nova Venda
         </button>
         <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#94a3b8" }}>
@@ -446,7 +446,7 @@ export default function PosPage() {
               disabled={submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total)}
               style={{
                 marginTop: "0.75rem", width: "100%", padding: "0.85rem",
-                backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px",
+                backgroundColor: "var(--brand)", color: "white", border: "none", borderRadius: "999px",
                 fontSize: "1rem", fontWeight: "bold",
                 cursor: submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total) ? "not-allowed" : "pointer",
                 opacity: submitting || cart.length === 0 || (paymentMethod === "CASH" && paid < total) ? 0.7 : 1,

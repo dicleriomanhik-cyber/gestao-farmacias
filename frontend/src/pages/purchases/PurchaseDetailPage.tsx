@@ -12,6 +12,7 @@ import PaidFromFields from "../../components/suppliers/PaidFromFields";
 import InvoiceLinesEditor, { fromPurchaseLines, toLineRequests } from "../../components/suppliers/InvoiceLinesEditor";
 import type { LineDraft } from "../../components/suppliers/InvoiceLinesEditor";
 import { useToast } from "../../contexts/ToastContext";
+import { confirmDialog } from "../../components/ui/confirmDialog";
 import { METHOD_LABEL, PAID_FROM_LABEL, apiError, fmtDate, fmtMoney, fmtMt, num } from "../../utils/supplierFormat";
 
 const labelStyle = { display: "block", marginBottom: "0.5rem", fontWeight: 500 } as const;
@@ -84,7 +85,7 @@ export default function PurchaseDetailPage() {
 
   async function handleCancel() {
     if (!purchaseId) return;
-    if (!window.confirm("Tens a certeza que queres cancelar esta compra?")) return;
+    if (!(await confirmDialog({ title: "Cancelar esta compra?", message: "Esta ação não pode ser desfeita.", confirmLabel: "Cancelar compra", cancelLabel: "Voltar" }))) return;
     setBusy(true);
     try {
       await cancelPurchase(purchaseId);

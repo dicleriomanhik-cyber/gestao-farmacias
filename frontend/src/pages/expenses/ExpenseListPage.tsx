@@ -181,7 +181,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? (isOperational && !allowCash ? <button type="button" className="btn btn-primary" disabled title="Despesas desativadas pelo administrador" style={{ opacity: 0.5, cursor: "not-allowed" }}>+ Nova Despesa</button> : <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">+ Nova Despesa</Link>) : null}</div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? (isOperational && !allowCash ? <button type="button" className="btn btn-primary" disabled title="Despesas desativadas pelo administrador" style={{ opacity: 0.5, cursor: "not-allowed" }}>Nova Despesa</button> : <Link to={isOperational ? "/pos/despesas/novo" : "/despesas/novo"} className="btn btn-primary">Nova Despesa</Link>) : null}</div>
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ width: "220px" }}>
@@ -250,7 +250,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                   <td><div style={{ display: "flex", gap: "0.5rem" }}>
                     <button
                       onClick={() => setSelectedExpense(e)}
-                      style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                      className="btn-soft"
                     >
                       Ver Detalhe
                     </button>
@@ -258,8 +258,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                       <>
                         <button
                           onClick={() => navigate(isOperational ? `/pos/despesas/${e.id}/editar` : `/despesas/${e.id}/editar`)}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                          className="btn-soft"
                         >
                           Editar
                         </button>
@@ -274,8 +273,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
                         <button
                           onClick={() => setCancelId(e.id)}
                           disabled={actionLoading === e.id}
-                          className="btn btn-danger"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                          className="btn-soft-danger"
                         >
                           Cancelar
                         </button>

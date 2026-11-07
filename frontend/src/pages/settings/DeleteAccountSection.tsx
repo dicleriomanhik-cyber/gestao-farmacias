@@ -31,7 +31,7 @@ export default function DeleteAccountSection() {
         Elimina para sempre a conta do administrador, a conta do POS, os colaboradores e todos os dados da farmácia (vendas, stock, caixas, despesas). O email fica livre para um novo registo. Esta ação não pode ser desfeita.
       </div>
       {!open ? (
-        <button type="button" className="btn" style={{ background: "#dc2626", color: "#fff", border: "none" }} onClick={() => setOpen(true)}>
+        <button type="button" className="btn" style={{ background: "#e11d1d", color: "#fff", border: "none", fontWeight: 600 }} onClick={() => setOpen(true)}>
           Eliminar conta
         </button>
       ) : (
@@ -45,10 +45,10 @@ export default function DeleteAccountSection() {
             onChange={(e) => setPassword(e.target.value)}
             style={{ flex: 1, minWidth: "220px" }}
           />
-          <button type="button" className="btn" disabled={busy || !password} style={{ background: "#dc2626", color: "#fff", border: "none" }} onClick={() => void confirmDelete()}>
+          <button type="button" className="btn" disabled={busy || !password} style={{ background: "#e11d1d", color: "#fff", border: "none", fontWeight: 600 }} onClick={() => void confirmDelete()}>
             {busy ? "A eliminar..." : "Confirmar eliminação"}
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => { setOpen(false); setPassword(""); }}>
+          <button type="button" className="btn" disabled={busy} style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }} onClick={() => { setOpen(false); setPassword(""); }}>
             Cancelar
           </button>
         </div>

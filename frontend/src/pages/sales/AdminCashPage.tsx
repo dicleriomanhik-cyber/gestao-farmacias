@@ -293,7 +293,7 @@ export default function AdminCashPage() {
                           </span>
                         </td>
                         <td>
-                          <a href={`/vendas/${s.id}`} style={{ color: "#2563eb", textDecoration: "underline" }}>Ver Detalhe</a>
+                          <a href={`/vendas/${s.id}`} className="btn-soft">Ver Detalhe</a>
                         </td>
                       </tr>
                     ))}
@@ -313,8 +313,8 @@ export default function AdminCashPage() {
             <p style={{ color: "#475569", marginBottom: "1.5rem" }}>Tens a certeza? Esta ação apaga TODA a informação da farmácia (vendas, devoluções, despesas, caixas, fornecedores, compras, produtos e stock) e não pode ser desfeita.</p>
             <input type="password" className="input" autoComplete="current-password" placeholder="Palavra-passe do administrador" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} style={{ marginBottom: "1.5rem" }} />
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-              <button onClick={() => setShowResetConfirm(false)} disabled={resetting} style={{ padding: "0.5rem 1rem", backgroundColor: "#e2e8f0", color: "#1e293b", border: "none", borderRadius: "6px", fontWeight: "500", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={handleResetTestData} disabled={resetting || !resetPassword} style={{ padding: "0.5rem 1rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "6px", fontWeight: "500", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.7 : 1 }}>{resetting ? "A resetar…" : "Sim, Resetar"}</button>
+              <button onClick={() => setShowResetConfirm(false)} disabled={resetting} style={{ padding: "0.55rem 1.1rem", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#0f172a", cursor: "pointer", fontSize: "0.9rem" }}>Cancelar</button>
+              <button onClick={handleResetTestData} disabled={resetting || !resetPassword} style={{ padding: "0.55rem 1.1rem", borderRadius: 999, border: "none", background: "#e11d1d", color: "#fff", cursor: resetting ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 600, opacity: resetting ? 0.7 : 1 }}>{resetting ? "A resetar…" : "Sim, Resetar"}</button>
             </div>
           </div>
         </div>

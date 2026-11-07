@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
+import { confirmDialog } from "../../components/ui/confirmDialog";
 import {
   cancelInventory,
   completeInventory,
@@ -14,7 +15,7 @@ import {
 
 const STATUS_LABELS: Record<InventoryStatus, string> = { OPEN: "Aberto", COMPLETED: "Concluído", CANCELLED: "Cancelado" };
 const STATUS_COLORS: Record<InventoryStatus, string> = { OPEN: "#b45309", COMPLETED: "#166534", CANCELLED: "#64748b" };
-const primary = { backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" } as const;
+const primary = { backgroundColor: "var(--brand)", color: "white", border: "none", borderRadius: "999px", padding: "0.55rem 1.1rem", fontWeight: 600, cursor: "pointer" } as const;
 
 function msgOf(err: any, fallback: string): string {
   if (!err?.response) return "Não foi possível ligar à internet.";
@@ -207,8 +208,8 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
   async function onComplete() {
     if (!inv) return;
     const missing = inv.lines.length - stats.counted;
-    const msg = (missing > 0 ? missing + " caixas sem contagem ficam como estão. " : "") + "Concluir aplica as diferenças ao stock e não pode ser desfeito. Continuar?";
-    if (!window.confirm(msg)) return;
+    const msg = (missing > 0 ? missing + " caixas sem contagem ficam como estão. " : "") + "Concluir aplica as diferenças ao stock e não pode ser desfeito.";
+    if (!(await confirmDialog({ title: "Concluir inventário?", message: msg, confirmLabel: "Concluir", danger: false }))) return;
     setBusy(true);
     if (await save()) {
       try {
@@ -223,7 +224,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
   }
 
   async function onCancel() {
-    if (!window.confirm("Cancelar este inventário? As contagens são descartadas e o stock não muda.")) return;
+    if (!(await confirmDialog({ title: "Cancelar inventário?", message: "As contagens são descartadas e o stock não muda.", confirmLabel: "Cancelar inventário", cancelLabel: "Voltar" }))) return;
     setBusy(true);
     try {
       await cancelInventory(id);

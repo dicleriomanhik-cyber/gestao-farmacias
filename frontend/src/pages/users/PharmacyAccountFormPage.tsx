@@ -168,7 +168,7 @@ export default function PharmacyAccountFormPage() {
               }}
               style={{ flex: 1, minWidth: "200px" }}
             />
-            <button type="button" className="btn btn-primary" onClick={addName} disabled={submitting}>+ Adicionar</button>
+            <button type="button" className="btn btn-primary" onClick={addName} disabled={submitting}>Adicionar</button>
           </div>
 
           {!isEditing && names.length > 0 && (
@@ -176,7 +176,7 @@ export default function PharmacyAccountFormPage() {
               {names.map((n) => (
                 <li key={n} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", backgroundColor: "#f3f4f6", borderRadius: "4px", marginBottom: "0.4rem" }}>
                   <span>{n}</span>
-                  <button type="button" onClick={() => setNames(names.filter((x) => x !== n))} style={{ ...linkBtn, color: "#b91c1c" }}>Remover</button>
+                  <button type="button" onClick={() => setNames(names.filter((x) => x !== n))} className="btn-soft-danger">Remover</button>
                 </li>
               ))}
             </ul>
@@ -222,7 +222,7 @@ export default function PharmacyAccountFormPage() {
         </div>
 
         <div style={rowStyle}>
-          <label style={labelStyle}>Confirmar password{isEditing ? "" : " *"}</label>
+          <label style={labelStyle}>Confirmar password</label>
           <input
             type="password"
             className="input"

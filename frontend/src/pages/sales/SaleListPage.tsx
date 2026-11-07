@@ -122,7 +122,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
         actions={
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             {isOperational && !hideNewSaleButton && canCreateSales(user?.permissions) && (
-              <Link to="/pos" className="btn btn-primary">+ Nova Venda</Link>
+              <Link to="/pos" className="btn btn-primary">Nova Venda</Link>
             )}
             {isOperational && (
               <>
@@ -243,7 +243,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
                     <td>
                       <Link 
                         to={isOperational ? `/pos/historico/${s.id}` : `/vendas/${s.id}`} 
-                        style={{ color: "#2563eb", textDecoration: "underline" }}
+                        className="btn-soft"
                       >
                         Ver Detalhe
                       </Link>

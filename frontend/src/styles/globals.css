@@ -1,4 +1,4 @@
-﻿@import './reset.css';
+@import './reset.css';
 @import './variables.css';
 @import './responsive.css';
 
@@ -36,17 +36,17 @@ tr:hover { background-color: #f1f3f5; }
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.1rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background-color: #2563eb; color: white; }
-.btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
+.btn-primary { background-color: var(--brand); color: white; }
+.btn-primary:hover:not(:disabled) { background-color: var(--brand-hover); }
 .btn-success { background-color: #16a34a; color: white; }
 .btn-success:hover:not(:disabled) { background-color: #15803d; }
 .btn-danger { background-color: #b91c1c; color: white; }
@@ -85,3 +85,32 @@ tr:hover { background-color: #f1f3f5; }
 .table td {
   border-bottom: 1px solid #e5e7eb;
 }
+.btn-soft, .btn-soft-danger, .btn-soft-neutral {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+}
+.btn-soft { background: #dbeafe; color: #1e40af; }
+.btn-soft:hover:not(:disabled) { background: #bfdbfe; }
+.btn-soft-danger { background: #fee2e2; color: #991b1b; }
+.btn-soft-danger:hover:not(:disabled) { background: #fecaca; }
+.btn-soft-neutral { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; }
+.btn-soft-neutral:hover:not(:disabled) { background: #f1f5f9; }
+.btn-soft:disabled, .btn-soft-danger:disabled, .btn-soft-neutral:disabled { opacity: 0.5; cursor: not-allowed; }
+.users-table { table-layout: fixed; width: 100%; }
+.users-table th, .users-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.users-table th:nth-child(1), .users-table td:nth-child(1) { width: 22%; }
+.users-table th:nth-child(2), .users-table td:nth-child(2) { width: 22%; }
+.users-table th:nth-child(3), .users-table td:nth-child(3) { width: 26%; }
+.users-table th:nth-child(4), .users-table td:nth-child(4) { width: 14%; }
+.users-table th:nth-child(5), .users-table td:nth-child(5) { width: 16%; }

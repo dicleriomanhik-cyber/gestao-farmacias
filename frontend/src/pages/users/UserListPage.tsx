@@ -75,11 +75,11 @@ export default function UserListPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? <Link to="/utilizadores/novo" className="btn btn-primary">+ Nova farmácia</Link> : null}</div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>{canWrite ? <Link to="/utilizadores/novo" className="btn btn-primary">Nova farmácia</Link> : null}</div>
 
       {accounts.length > 0 && (
         <div className="card" style={{ padding: "1rem", overflowX: "auto", marginBottom: "1rem" }}>
-          <table className="table">
+          <table className="table users-table">
             <thead>
               <tr>
                 <th>Farmácia</th>
@@ -98,7 +98,7 @@ export default function UserListPage() {
                   <td>{badge(a.status === "ACTIVE", "Ativa", "Inativa")}</td>
                   <td>
                     {canWrite ? (
-                      <Link to={`/utilizadores/farmacias/${a.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>Editar</Link>
+                      <Link to={`/utilizadores/farmacias/${a.id}/editar`} className="btn-soft">Editar</Link>
                     ) : (
                       <span style={{ color: "#9ca3af" }}>—</span>
                     )}
@@ -112,7 +112,7 @@ export default function UserListPage() {
 
       {users.length > 0 && (
         <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-          <table className="table">
+          <table className="table users-table">
             <thead>
               <tr>
                 <th>Nome</th>
@@ -131,7 +131,7 @@ export default function UserListPage() {
                   <td>{badge(u.status === "ACTIVE", "Ativo", "Inativo")}</td>
                   <td>
                     {canWrite ? (
-                      <Link to={`/utilizadores/${u.id}/editar`} style={{ color: "#2563eb", textDecoration: "none" }}>
+                      <Link to={`/utilizadores/${u.id}/editar`} className="btn-soft">
                         Editar
                       </Link>
                     ) : (

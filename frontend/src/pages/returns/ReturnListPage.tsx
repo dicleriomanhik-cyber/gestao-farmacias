@@ -280,9 +280,7 @@ export default function ReturnListPage() {
               <button
                 onClick={() => setSelectedReturn(null)}
                 style={{
-                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
-                  color: "#1e293b", border: "none", borderRadius: "6px",
-                  fontWeight: "500", cursor: "pointer",
+                  padding: "0.55rem 1.1rem", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#0f172a", cursor: "pointer", fontSize: "0.9rem",
                 }}
               >
                 Fechar
@@ -322,9 +320,7 @@ export default function ReturnListPage() {
               <button
                 onClick={() => setDeleteTarget(null)}
                 style={{
-                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
-                  color: "#1e293b", border: "none", borderRadius: "6px",
-                  fontWeight: "500", cursor: "pointer",
+                  padding: "0.55rem 1.1rem", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#0f172a", cursor: "pointer", fontSize: "0.9rem",
                 }}
               >
                 Cancelar
@@ -332,9 +328,7 @@ export default function ReturnListPage() {
               <button
                 onClick={handleConfirmDelete}
                 style={{
-                  padding: "0.5rem 1rem", backgroundColor: "#ef4444",
-                  color: "white", border: "none", borderRadius: "6px",
-                  fontWeight: "500", cursor: "pointer",
+                  padding: "0.55rem 1.1rem", borderRadius: 999, border: "none", background: "#e11d1d", color: "#fff", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600,
                 }}
               >
                 Eliminar

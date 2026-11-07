@@ -189,7 +189,7 @@ export default function SyncQueuePage() {
                     {temRejeitadas && <td style={{ ...td, color: "#475569", maxWidth: "380px" }}>{rej ? (rejOps[0].rejectionReason ?? "Sem motivo registado.") : ""}</td>}
                     <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                       {rej && <button style={{ ...btn, marginRight: "0.4rem" }} onClick={() => void retry(g)}>Tentar novamente</button>}
-                      <button style={{ ...btn, color: "#b91c1c", borderColor: "#fca5a5" }} onClick={() => setConfirmGroup(g)}>Descartar</button>
+                      <button className="btn-soft-danger" onClick={() => setConfirmGroup(g)}>Descartar</button>
                     </td>
                   </tr>
                 );

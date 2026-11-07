@@ -15,10 +15,10 @@ export default function EmptyState({ message, actionLabel, actionLink }: EmptySt
           to={actionLink}
           style={{
             display: "inline-block",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--brand)",
             color: "white",
-            padding: "0.5rem 1rem",
-            borderRadius: "4px",
+            padding: "0.55rem 1.1rem",
+            borderRadius: "999px",
             textDecoration: "none",
           }}
         >

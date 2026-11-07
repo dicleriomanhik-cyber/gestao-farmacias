@@ -74,8 +74,8 @@ export default function LoginPage({ variant = "admin" }: { variant?: "admin" | "
       <div className="card" style={{ width: "100%", maxWidth: "400px" }}>
         <h1 className="card-title" style={{ textAlign: "center", marginBottom: "1.5rem" }}>Entrar</h1>
 <div style={{ display: "flex", marginBottom: "1.25rem", border: "1px solid #d1d5db", borderRadius: "6px", overflow: "hidden" }}>
-<Link to="/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "admin" ? "#2563eb" : "white", color: variant === "admin" ? "white" : "#475569" }}>Administrador</Link>
-<Link to="/pos/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "pos" ? "#2563eb" : "white", color: variant === "pos" ? "white" : "#475569" }}>POS</Link>
+<Link to="/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "admin" ? "var(--brand)" : "white", color: variant === "admin" ? "white" : "#475569" }}>Administrador</Link>
+<Link to="/pos/login" replace style={{ flex: 1, textAlign: "center", padding: "0.5rem", textDecoration: "none", fontWeight: 600, backgroundColor: variant === "pos" ? "var(--brand)" : "white", color: variant === "pos" ? "white" : "#475569" }}>POS</Link>
 </div>
         <form onSubmit={onSubmit}>
           <div style={{ marginBottom: "1rem" }}>
@@ -101,7 +101,7 @@ export default function LoginPage({ variant = "admin" }: { variant?: "admin" | "
           {error && (
             <div role="alert" style={{ color: "crimson", marginBottom: "1rem", textAlign: "center" }}>{error}</div>
           )}
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "4px", cursor: loading ? "not-allowed" : "pointer", fontWeight: "bold", opacity: loading ? 0.6 : 1 }}>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem", backgroundColor: "var(--brand)", color: "white", border: "none", borderRadius: "999px", cursor: loading ? "not-allowed" : "pointer", fontWeight: "bold", opacity: loading ? 0.6 : 1 }}>
             {loading ? "A entrar…" : "Entrar"}
           </button>
         </form>

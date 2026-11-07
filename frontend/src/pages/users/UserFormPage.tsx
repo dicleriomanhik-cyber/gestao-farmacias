@@ -129,7 +129,7 @@ export default function UserFormPage() {
         </div>
 
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Confirmar password{isEditing ? "" : " *"}</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Confirmar password</label>
           <input
             type="password"
             className="input"

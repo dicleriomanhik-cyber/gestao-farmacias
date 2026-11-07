@@ -148,11 +148,11 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
   }
 
   if (isEdit && loadingExpense) {
-    return <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>A carregar…</div>;
+    return <div className="card" style={{ padding: "2rem", width: "100%", maxWidth: "600px", margin: "0 auto", boxSizing: "border-box" }}>A carregar…</div>;
   }
 
   return (
-    <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
+    <div className="card" style={{ padding: "2rem", width: "100%", maxWidth: "600px", margin: "0 auto", boxSizing: "border-box" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>{isEdit ? "Editar Despesa" : "Nova Despesa"}</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
@@ -161,7 +161,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
         </div>
 
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Valor (MT) *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Valor (MT)</label>
           <input type="number" step="0.01" min="0.01" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} required placeholder="Ex: 100.00" />
         </div>
 

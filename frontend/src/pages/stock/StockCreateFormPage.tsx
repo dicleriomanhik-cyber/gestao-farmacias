@@ -96,7 +96,7 @@ export default function StockCreateFormPage() {
         <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade</label>
         <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: 100" />
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Custo Unitário (MT) *</label>
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Custo Unitário (MT)</label>
         <input type="number" step="0.01" min="0" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1.5rem" }} placeholder="Ex: 100.00" />
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>

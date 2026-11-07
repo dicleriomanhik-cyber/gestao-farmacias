@@ -53,7 +53,7 @@ export default function SupplierProfilePage() {
             {supplier.taxId ? ` · NUIT ${supplier.taxId}` : ""}
           </div>
         </div>
-        <Link to={`/fornecedores/${supplier.id}/editar`} className="btn btn-secondary">Editar</Link>
+        <Link to={`/fornecedores/${supplier.id}/editar`} className="btn-soft">Editar</Link>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>

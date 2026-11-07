@@ -14,7 +14,7 @@ import type { Purchase } from "../../types/purchases";
 
 const C = {
   border: "#d9dee9",
-  accent: "#2f5bd3",
+  accent: "var(--brand)",
   accentSoft: "#e8efff",
   muted: "#5b6478",
   text: "#1d2433",
@@ -436,14 +436,14 @@ export default function StockBoxFormPage() {
       <button
         type="submit"
         disabled={submitting}
-        style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
+        style={{ background: C.accent, color: "#fff", border: 0, borderRadius: 999, padding: "0.55rem 1.1rem", font: "inherit", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
       >
         {submitting ? "A guardar..." : "Guardar caixa"}
       </button>
       <button
         type="button"
         onClick={() => navigate("/stock/caixas")}
-        style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 20px", font: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer" }}
+        style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "0.55rem 1.1rem", font: "inherit", fontSize: "0.9rem", cursor: "pointer" }}
       >
         Cancelar
       </button>
@@ -682,7 +682,7 @@ export function MonthField({ value, onChange, disabled, style }: { value: string
                   key={nome}
                   type="button"
                   onClick={() => escolherMes(i + 1)}
-                  style={{ padding: "6px 0", borderRadius: 6, border: "1px solid #d9dee9", background: selecionado ? "#2f5bd3" : "#fff", color: selecionado ? "#fff" : "#1d2433", cursor: "pointer", fontSize: 13 }}
+                  style={{ padding: "6px 0", borderRadius: 6, border: "1px solid #d9dee9", background: selecionado ? "var(--brand)" : "#fff", color: selecionado ? "#fff" : "#1d2433", cursor: "pointer", fontSize: 13 }}
                 >
                   {nome}
                 </button>

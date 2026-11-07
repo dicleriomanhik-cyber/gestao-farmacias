@@ -59,7 +59,7 @@ export default function PurchaseListPage() {
     <div>
       <PageHeader
         title="Compras"
-        actions={<Link to="/fornecedores/compras/nova" className="btn btn-primary">+ Nova Compra</Link>}
+        actions={<Link to="/fornecedores/compras/nova" className="btn btn-primary">Nova Compra</Link>}
       />
 
       <div style={{ marginBottom: "1rem" }}>

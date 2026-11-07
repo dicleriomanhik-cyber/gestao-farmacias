@@ -13,5 +13,7 @@
   --sidebar-bg: #1e293b;
   --sidebar-text: #e2e8f0;
   --radius: 8px;
+  --brand: #45566e;
+  --brand-hover: #334155;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }

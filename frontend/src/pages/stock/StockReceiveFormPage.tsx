@@ -4,6 +4,7 @@ import { getPurchases, getPurchaseById, markLineDamaged, closePurchaseLine } fro
 import { createStockBoxesBatch } from "../../services/stockService";
 import type { Purchase } from "../../types/purchases";
 import { useToast } from "../../contexts/ToastContext";
+import { confirmDialog } from "../../components/ui/confirmDialog";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { MonthField } from "./StockBoxFormPage";
@@ -135,7 +136,7 @@ export default function StockReceiveFormPage() {
 
   async function fecharLinha() {
     if (!line) return;
-    if (!window.confirm("Fechar esta linha? As " + falta + " caixas em falta deixam de ser esperadas.")) return;
+    if (!(await confirmDialog({ title: "Fechar esta linha?", message: "As " + falta + " caixas em falta deixam de ser esperadas.", confirmLabel: "Fechar linha", cancelLabel: "Voltar" }))) return;
     setBusy(true);
     try {
       await closePurchaseLine(line.id);

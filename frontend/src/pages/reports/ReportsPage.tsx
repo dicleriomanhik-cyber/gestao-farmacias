@@ -361,7 +361,7 @@ export default function ReportsPage() {
                   <td>{money(r.totalRefund)} MT</td>
                   <td>{opName(r)}</td>
                   <td>
-                    <button onClick={() => setSelectedReturn(r)} style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    <button onClick={() => setSelectedReturn(r)} className="btn-soft">
                       Ver
                     </button>
                   </td>

@@ -93,7 +93,7 @@ export default function PayablesPage() {
                       <td>{fmtMt(p.outstanding)}</td>
                       <td><Badge kind="payment" value={p.paymentStatus} /></td>
                       <td>
-                        <Link to={`/fornecedores/compras/${p.id}`} style={{ color: "#2563eb", textDecoration: "none" }}>Pagar</Link>
+                        <Link to={`/fornecedores/compras/${p.id}`} className="btn-soft">Pagar</Link>
                       </td>
                     </tr>
                   );

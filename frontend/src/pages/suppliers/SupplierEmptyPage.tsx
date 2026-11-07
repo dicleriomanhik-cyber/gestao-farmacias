@@ -6,7 +6,7 @@ export default function SupplierEmptyPage() {
       <div style={{ background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", padding: "3rem 1.5rem", textAlign: "center" }}>
         <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "#1d2433", margin: "0 0 0.5rem" }}>Ainda não há fornecedores.</p>
         <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: "0 0 1.25rem" }}>Não há ficha para mostrar. Quando registares um fornecedor, a ficha aparece aqui.</p>
-        <Link to="/fornecedores/novo" className="btn btn-primary">+ Novo Fornecedor</Link>
+        <Link to="/fornecedores/novo" className="btn btn-primary">Novo Fornecedor</Link>
       </div>
     </div>
   );

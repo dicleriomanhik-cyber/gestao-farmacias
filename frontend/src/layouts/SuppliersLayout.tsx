@@ -4,7 +4,7 @@ import { getSuppliers } from "../services/supplierService";
 import { getSettings } from "../services/settingsService";
 import { useToast } from "../contexts/ToastContext";
 
-const base = { padding: "8px 14px", borderRadius: 8, border: "1px solid #d9dee9", fontSize: 14, textDecoration: "none", cursor: "pointer" } as const;
+const base = { padding: "8px 14px", borderRadius: 999, border: "1px solid #d9dee9", fontSize: 14, textDecoration: "none", cursor: "pointer" } as const;
 
 export default function SuppliersLayout() {
   const { id } = useParams();
@@ -22,9 +22,9 @@ export default function SuppliersLayout() {
 
   const tab = (active: boolean) => ({
     ...base,
-    background: active ? "#2f5bd3" : "#ffffff",
+    background: active ? "var(--brand)" : "#ffffff",
     color: active ? "#ffffff" : "#1d2433",
-    borderColor: active ? "#2f5bd3" : "#d9dee9",
+    borderColor: active ? "var(--brand)" : "#d9dee9",
   });
 
   async function abrirFicha() {
