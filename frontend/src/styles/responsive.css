@@ -253,10 +253,6 @@ body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }
 
 /* Telemóvel pequeno (<= 375px) */
 @media (max-width: 375px) {
-  .app-link-pos {
-    display: none;
-  }
-
   .app-logout {
     padding: 0.3rem 0.7rem;
     font-size: 0.8rem;
@@ -639,4 +635,14 @@ body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }
   .sup-search-label { display: block; font-size: 0.85rem; font-weight: 500; color: #475569; }
   .sup-search .sup-search-btn { display: none !important; }
   .sup-search input { width: 100% !important; flex: none !important; }
+}
+/* ===== Administrativo: botão Abrir POS visível no telemóvel ===== */
+@media (max-width: 600px) {
+  .app-link-pos {
+    flex-shrink: 0;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
 }
