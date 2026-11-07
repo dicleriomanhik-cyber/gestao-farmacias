@@ -151,9 +151,9 @@ export default function InvoiceLinesEditor({ lines, onChange, currency }: Props)
         const medicine = l.type === "MEDICINE";
         return (
           <div key={l.key} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.75rem", marginBottom: "0.75rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <div className="inv-line-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
               <strong>Linha {i + 1}</strong>
-              <button type="button" className="btn btn-danger" onClick={() => onChange(lines.filter((x) => x.key !== l.key))}>Remover</button>
+              <button type="button" className="btn btn-danger inv-line-remove" onClick={() => onChange(lines.filter((x) => x.key !== l.key))}>Remover</button>
             </div>
             {l.productId ? (
               <div style={{ marginBottom: "0.75rem" }}>

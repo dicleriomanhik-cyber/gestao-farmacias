@@ -609,3 +609,34 @@ body, #root { overflow: hidden; height: 100vh; margin: 0; padding: 0; }
     cursor: pointer;
   }
 }
+/* ===== Ajustes só telemóvel (<= 600px) ===== */
+.sup-search-label { display: none; }
+@media (max-width: 600px) {
+  .inv-line-head { gap: 0.5rem; }
+  .inv-line-head strong { white-space: nowrap; }
+  .inv-line-head .inv-line-remove {
+    width: auto !important;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .cash-page { overflow-x: clip; max-width: 100%; }
+  .cash-cards.cash-cards[style] {
+    display: flex !important;
+    overflow-x: auto;
+    gap: 0.75rem;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cash-cards.cash-cards[style] > .card {
+    flex: 0 0 auto;
+    min-width: 150px;
+  }
+
+  .sup-search { flex-direction: column !important; align-items: stretch !important; gap: 0.25rem !important; }
+  .sup-search-label { display: block; font-size: 0.85rem; font-weight: 500; color: #475569; }
+  .sup-search .sup-search-btn { display: none !important; }
+  .sup-search input { width: 100% !important; flex: none !important; }
+}

@@ -177,7 +177,7 @@ export default function CashSessionPage() {
   const totalAllMethods = cashInDrawer + net.CARD + net.MPESA + net.EMOLA;
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+    <div className="cash-page" style={{ maxWidth: "900px", margin: "0 auto" }}>
       <PageHeader title="Gestão de Caixa" />
 
       {!session && (
@@ -207,7 +207,7 @@ export default function CashSessionPage() {
 
       {session && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
+          <div className="cash-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
             <div className="card" style={{ padding: "0.75rem" }}>
               <h3 style={{ color: "#6b7280", fontSize: "0.75rem", margin: "0 0 0.25rem" }}>Valor Inicial</h3>
               <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(session.openingBalance)} MT</p>

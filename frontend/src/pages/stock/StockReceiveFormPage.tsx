@@ -8,6 +8,8 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { MonthField } from "./StockBoxFormPage";
 import { fmtMoney } from "../../utils/supplierFormat";
+import CustomSelect from "../../components/ui/CustomSelect";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const monthEnd = (ym: string) => {
   const [y, m] = ym.split("-").map(Number);
@@ -20,6 +22,7 @@ const box: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 8, paddi
 
 export default function StockReceiveFormPage() {
   const toast = useToast();
+  const isMobile = useIsMobile();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [purchaseId, setPurchaseId] = useState("");
@@ -160,21 +163,29 @@ export default function StockReceiveFormPage() {
         <div style={{ ...box, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
           <div>
             <label style={lab}>Fornecedor</label>
-            <select style={inputStyle} value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseId(""); }}>
-              <option value="">Escolhe o fornecedor</option>
-              {suppliers.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-            </select>
+            {isMobile ? (
+              <CustomSelect value={supplierId} onChange={(v) => { setSupplierId(v); setPurchaseId(""); }} placeholder="Escolhe o fornecedor" options={suppliers.map(([id, name]) => ({ value: id, label: name }))} />
+            ) : (
+              <select style={inputStyle} value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseId(""); }}>
+                <option value="">Escolhe o fornecedor</option>
+                {suppliers.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label style={lab}>Fatura</label>
-            <select style={inputStyle} value={purchaseId} disabled={!supplierId} onChange={(e) => setPurchaseId(e.target.value)}>
-              <option value="">Escolhe a fatura</option>
-              {invoices.map((p) => (
-                <option key={p.id} value={p.id}>{p.documentNumber}</option>
-              ))}
-            </select>
+            {isMobile ? (
+              <CustomSelect value={purchaseId} onChange={setPurchaseId} disabled={!supplierId} placeholder="Escolhe a fatura" options={invoices.map((p) => ({ value: p.id, label: p.documentNumber }))} />
+            ) : (
+              <select style={inputStyle} value={purchaseId} disabled={!supplierId} onChange={(e) => setPurchaseId(e.target.value)}>
+                <option value="">Escolhe a fatura</option>
+                {invoices.map((p) => (
+                  <option key={p.id} value={p.id}>{p.documentNumber}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       )}
