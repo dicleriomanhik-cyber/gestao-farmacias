@@ -96,6 +96,7 @@ export default function AppRouter() {
           
 
           <Route element={<StockLayout />}>
+          <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
           <Route path="stock/caixas" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxListPage /></ProtectedRoute>} />
           <Route path="stock/caixas/nova" element={<ProtectedRoute requiredPermission="stock:write"><StockBoxFormPage /></ProtectedRoute>} />
           <Route path="stock/caixas/:id" element={<ProtectedRoute requiredPermission="stock:read"><StockBoxDetailPage /></ProtectedRoute>} />
@@ -104,7 +105,7 @@ export default function AppRouter() {
           </Route>
           <Route path="stock/lotes" element={<Navigate to="/stock/caixas/nova" replace />} />
           <Route path="stock/movimentos" element={<ProtectedRoute requiredPermission="stock:read"><StockMovementListPage /></ProtectedRoute>} />
-          <Route path="stock/receber" element={<ProtectedRoute requiredPermission="stock:write"><StockReceiveFormPage /></ProtectedRoute>} />
+          
           <Route path="stock/novo" element={<ProtectedRoute requiredPermission="stock:write"><StockCreateFormPage /></ProtectedRoute>} />
           <Route path="stock/ajustar" element={<ProtectedRoute requiredPermission="stock:adjust"><StockAdjustFormPage /></ProtectedRoute>} />
 

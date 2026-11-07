@@ -103,7 +103,7 @@ export default function SupplierFormPage() {
       </h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={labelStyle}>Nome *</label>
+          <label style={labelStyle}>Nome</label>
           <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         {extras && (

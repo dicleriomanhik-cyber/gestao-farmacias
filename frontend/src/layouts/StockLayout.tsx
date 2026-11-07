@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { getStockBoxes } from "../services/stockService";
 import { useToast } from "../contexts/ToastContext";
+import { useDataChanged } from "../offline/dataChanged";
 
 const base = { padding: "8px 14px", borderRadius: 8, border: "1px solid #d9dee9", fontSize: 14, textDecoration: "none", cursor: "pointer" } as const;
 
@@ -10,6 +11,21 @@ export default function StockLayout() {
   const navigate = useNavigate();
   const toast = useToast();
   const [abrindo, setAbrindo] = useState(false);
+  const [temCaixas, setTemCaixas] = useState<boolean | null>(null);
+
+  function verificar() {
+    getStockBoxes({ limit: 1 })
+      .then((res) => setTemCaixas((res.data?.length ?? 0) > 0))
+      .catch(() => undefined);
+  }
+
+  useEffect(() => {
+    verificar();
+  }, []);
+
+  useDataChanged(verificar);
+
+  const semCaixas = temCaixas === false;
 
   const tab = (active: boolean) => ({
     ...base,
@@ -19,12 +35,13 @@ export default function StockLayout() {
   });
 
   async function abrirPrimeiraCaixa() {
+    if (semCaixas) return;
     setAbrindo(true);
     try {
       const res = await getStockBoxes({ limit: 100 });
       const primeira = res.data?.[0];
       if (!primeira) {
-        toast.error("Ainda não há caixas em stock.");
+        setTemCaixas(false);
         return;
       }
       navigate(`/stock/caixas/${primeira.id}`);
@@ -47,9 +64,16 @@ export default function StockLayout() {
           <button
             type="button"
             onClick={abrirPrimeiraCaixa}
-            disabled={abrindo}
-            title="Abre a primeira caixa em stock"
-            style={{ ...tab(false), font: "inherit", opacity: abrindo ? 0.6 : 1 }}
+            disabled={abrindo || semCaixas}
+            title={semCaixas ? "Nenhuma caixa registada" : "Abre a primeira caixa em stock"}
+            style={{
+              ...tab(false),
+              font: "inherit",
+              opacity: abrindo ? 0.6 : semCaixas ? 0.5 : 1,
+              cursor: semCaixas ? "not-allowed" : "pointer",
+              background: semCaixas ? "#f3f4f6" : "#ffffff",
+              color: semCaixas ? "#94a3b8" : "#1d2433",
+            }}
           >
             {abrindo ? "A abrir..." : "Detalhe da caixa"}
           </button>

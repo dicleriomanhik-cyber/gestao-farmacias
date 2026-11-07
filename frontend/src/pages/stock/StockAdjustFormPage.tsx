@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adjustStock, getStockLots } from "../../services/stockService";
 import type { StockLot } from "../../types/stock";
@@ -80,7 +80,7 @@ export default function StockAdjustFormPage() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Ajustar Stock</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Lote *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Lote</label>
           <CustomSelect
             options={lotOptions}
             value={lotId}
@@ -98,7 +98,7 @@ export default function StockAdjustFormPage() {
         )}
 
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade</label>
           <input
             type="number"
             className="input"
@@ -111,7 +111,7 @@ export default function StockAdjustFormPage() {
         </div>
 
         <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Motivo *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Motivo</label>
           <input
             type="text"
             className="input"

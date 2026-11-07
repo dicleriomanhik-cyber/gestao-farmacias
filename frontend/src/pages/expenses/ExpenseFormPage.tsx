@@ -155,7 +155,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>{isEdit ? "Editar Despesa" : "Nova Despesa"}</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Descrição *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Descrição</label>
           <input type="text" className="input" value={description} onChange={(e) => setDescription(e.target.value)} required placeholder="Ex: Transporte, Refeição…" />
         </div>
 
@@ -166,7 +166,7 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
 
         {!isOperational && (
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria *</label>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Categoria</label>
             <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className="input">
               {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
@@ -174,14 +174,14 @@ export default function ExpenseFormPage({ isOperational = false }: Props) {
         )}
 
         <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Método de Pagamento</label>
           <select value={method} onChange={(e) => { const m = e.target.value as ExpenseMethod; setMethod(m); setPaidFrom(derivePaidFrom(m, allowCash)); }} className="input">
             {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
 
         <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Pago com *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Pago com</label>
           <select value={paidFrom} onChange={(e) => setPaidFrom(e.target.value as ExpensePaidFrom)} className="input">
             {PAID_FROM.filter((o) => o.value !== "PHARMACY_CASH" || allowCash).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>

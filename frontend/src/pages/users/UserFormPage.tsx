@@ -93,13 +93,13 @@ export default function UserFormPage() {
       <form onSubmit={handleSubmit} autoComplete="off">
         {!isEditing && (
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome *</label>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Nome</label>
             <input type="text" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
         )}
 
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email de acesso *</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Email de acesso</label>
           <input
             type="email"
             className="input"
@@ -114,7 +114,7 @@ export default function UserFormPage() {
 
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
-            {isEditing ? "Nova password (deixa vazio para manter)" : "Password *"}
+            {isEditing ? "Nova password (deixa vazio para manter)" : "Password"}
           </label>
           <input
             type="password"

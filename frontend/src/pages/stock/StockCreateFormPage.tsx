@@ -73,7 +73,7 @@ export default function StockCreateFormPage() {
       <PageHeader title="Adicionar Stock (Novo Lote)" />
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-          <label style={{ fontWeight: 500 }}>Produto *</label>
+          <label style={{ fontWeight: 500 }}>Produto</label>
           <Link to="/stock/caixas/nova" style={{ color: "#2563eb", fontSize: "0.85rem", textDecoration: "underline" }}>
             + Novo Produto
           </Link>
@@ -87,13 +87,13 @@ export default function StockCreateFormPage() {
           />
         </div>
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número do Lote *</label>
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número do Lote</label>
         <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: LOTE-2026-001" />
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Validade *</label>
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Validade</label>
         <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade *</label>
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Quantidade</label>
         <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: 100" />
 
         <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Custo Unitário (MT) *</label>

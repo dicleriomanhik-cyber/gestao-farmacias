@@ -102,14 +102,14 @@ export default function PurchaseFormPage() {
       <form onSubmit={handleSubmit}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
-            <label style={labelStyle}>Fornecedor *</label>
+            <label style={labelStyle}>Fornecedor</label>
             <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required className="input">
               <option value="">Seleciona um fornecedor</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Nº da fatura *</label>
+            <label style={labelStyle}>Nº da fatura</label>
             <input type="text" className="input" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} required />
           </div>
         </div>

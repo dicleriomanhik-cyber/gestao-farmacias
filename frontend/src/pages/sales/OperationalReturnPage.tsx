@@ -149,7 +149,7 @@ export default function OperationalReturnPage() {
     <div>
       <PageHeader title={`Nova Devolução — ${sale.saleNumber}`} />
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "800px", margin: "0 auto" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Motivo *</label>
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Motivo</label>
         <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1.5rem" }} />
 
         <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Linhas a devolver</h3>

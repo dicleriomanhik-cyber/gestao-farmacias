@@ -146,12 +146,12 @@ export default function PharmacyAccountFormPage() {
 
       <form onSubmit={handleSubmit} autoComplete="off">
         <div style={rowStyle}>
-          <label style={labelStyle}>Nome da farmácia *</label>
+          <label style={labelStyle}>Nome da farmácia</label>
           <input type="text" className="input" value={pharmacyName} onChange={(e) => setPharmacyName(e.target.value)} required />
         </div>
 
         <div style={rowStyle}>
-          <label style={labelStyle}>Nomes dos colaboradores *</label>
+          <label style={labelStyle}>Nomes dos colaboradores</label>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <input
               type="text"
@@ -194,7 +194,7 @@ export default function PharmacyAccountFormPage() {
         </div>
 
         <div style={rowStyle}>
-          <label style={labelStyle}>Email de acesso *</label>
+          <label style={labelStyle}>Email de acesso</label>
           <input
             type="email"
             className="input"
@@ -208,7 +208,7 @@ export default function PharmacyAccountFormPage() {
         </div>
 
         <div style={rowStyle}>
-          <label style={labelStyle}>{isEditing ? "Nova password (deixa vazio para manter)" : "Password *"}</label>
+          <label style={labelStyle}>{isEditing ? "Nova password (deixa vazio para manter)" : "Password"}</label>
           <input
             type="password"
             className="input"

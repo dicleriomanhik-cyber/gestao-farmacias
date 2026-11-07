@@ -187,7 +187,7 @@ export default function CashSessionPage() {
             <form onSubmit={handleOpen} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
               {needOperator && (
                 <div style={{ flex: "1 1 140px" }}>
-                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador *</label>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador</label>
                   <CustomSelect value={chosenOperator} onChange={setOperatorId} placeholder="Escolher colaborador" options={ops.operators.map((o) => ({ value: o.id, label: o.name }))} />
                 </div>
               )}
@@ -269,7 +269,7 @@ export default function CashSessionPage() {
                 </div>
               ) : needOperator ? (
                 <div style={{ flex: "1 1 140px" }}>
-                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador *</label>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>Colaborador</label>
                   <CustomSelect value={chosenOperator} onChange={setOperatorId} placeholder="Escolher colaborador" options={ops.operators.map((o) => ({ value: o.id, label: o.name }))} />
                 </div>
               ) : null}

@@ -110,7 +110,7 @@ export default function ProductEditPage() {
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.25rem", maxWidth: "700px", margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Nome *</label>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Nome</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input" style={{ width: "100%" }} />
           </div>
           <div>

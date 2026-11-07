@@ -240,7 +240,7 @@ export default function AdminCashPage() {
             <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>Zona de Perigo</h3>
             <p style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "1rem" }}>Apaga toda a informação da farmácia: vendas, devoluções, despesas, caixas, fornecedores, compras, produtos e todo o stock. Mantém a conta, as definições e os utilizadores. Pede a palavra-passe do administrador.</p>
             <button onClick={() => { setResetPassword(""); setShowResetConfirm(true); }} disabled={resetting} className="btn btn-danger" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.6 : 1 }}>
-              {resetting ? "A resetar…" : "Reset de Dados de Teste"}
+              {resetting ? "A resetar…" : "Resetar Dados da Farmácia"}
             </button>
           </div>
 
@@ -309,7 +309,7 @@ export default function AdminCashPage() {
       {showResetConfirm && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowResetConfirm(false)}>
           <div className="card" style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", maxWidth: "450px", width: "90%", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#b91c1c" }}>Reset de Dados de Teste</h2>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#b91c1c" }}>Resetar Dados da Farmácia</h2>
             <p style={{ color: "#475569", marginBottom: "1.5rem" }}>Tens a certeza? Esta ação apaga TODA a informação da farmácia (vendas, devoluções, despesas, caixas, fornecedores, compras, produtos e stock) e não pode ser desfeita.</p>
             <input type="password" className="input" autoComplete="current-password" placeholder="Palavra-passe do administrador" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} style={{ marginBottom: "1.5rem" }} />
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
