@@ -14,6 +14,8 @@ export interface LineDraft {
   innerCount: string;
   unitsPerInner: string;
   unitsPerBox: string;
+  lineId?: string;
+  locked?: boolean;
 }
 
 export type LinesResult = { ok: true; lines: PurchaseLineRequest[] } | { ok: false; error: string };
@@ -35,6 +37,8 @@ export function fromPurchaseLines(lines: PurchaseLine[]): LineDraft[] {
     const disc = Number(l.discount);
     return {
       key: "e" + seq,
+      lineId: l.id,
+      locked: (l.received ?? 0) > 0 || (l.quantityDamaged ?? 0) > 0 || !!l.closed,
       productId: l.productId,
       type: medicine ? "MEDICINE" : "PRODUCT",
       name: l.product?.name ?? "",
@@ -83,6 +87,7 @@ export function toLineRequests(ds: LineDraft[]): LinesResult {
     if (!Number.isInteger(q) || q < 1) return { ok: false, error: n + "indica a quantidade de caixas." };
     if (isNaN(p) || p < 0) return { ok: false, error: n + "indica o preço por caixa." };
     const r: PurchaseLineRequest = { quantity: q, unitCost: p };
+    if (d.lineId) r.lineId = d.lineId;
     if (d.productId) {
       r.productId = d.productId;
     } else {
@@ -137,7 +142,7 @@ export default function InvoiceLinesEditor({ lines, onChange, currency }: Props)
           type={numeric ? "number" : "text"}
           min={numeric ? "0" : undefined}
           step={k === "pricePerBox" ? "0.01" : numeric ? "1" : undefined}
-          value={l[k]}
+          value={l[k]} disabled={l.locked}
           onChange={(e) => patch(l.key, { [k]: e.target.value } as Partial<LineDraft>)}
         />
       </div>
@@ -154,7 +159,7 @@ export default function InvoiceLinesEditor({ lines, onChange, currency }: Props)
           <div key={l.key} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.75rem", marginBottom: "0.75rem" }}>
             <div className="inv-line-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
               <strong>Linha {i + 1}</strong>
-              <button type="button" className="btn-soft-danger inv-line-remove" onClick={() => onChange(lines.filter((x) => x.key !== l.key))}>Remover</button>
+              {l.locked ? <span style={{ fontSize: "0.8rem", color: "#64748b" }}>{"Com caixas recebidas: n\u00e3o se edita"}</span> : (<button type="button" className="btn-soft-danger inv-line-remove" onClick={() => onChange(lines.filter((x) => x.key !== l.key))}>Remover</button>)}
             </div>
             {l.productId ? (
               <div style={{ marginBottom: "0.75rem" }}>

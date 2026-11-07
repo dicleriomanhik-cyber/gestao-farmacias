@@ -9,7 +9,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import Badge from "../../components/suppliers/Badge";
 import PaidFromFields from "../../components/suppliers/PaidFromFields";
-import InvoiceLinesEditor, { fromPurchaseLines, toLineRequests } from "../../components/suppliers/InvoiceLinesEditor";
+import InvoiceLinesEditor, { fromPurchaseLines, toLineRequests, linesTotal } from "../../components/suppliers/InvoiceLinesEditor";
 import type { LineDraft } from "../../components/suppliers/InvoiceLinesEditor";
 import { useToast } from "../../contexts/ToastContext";
 import { confirmDialog } from "../../components/ui/confirmDialog";
@@ -38,6 +38,7 @@ export default function PurchaseDetailPage() {
   const [invoice, setInvoice] = useState("");
   const [due, setDue] = useState("");
   const [draft, setDraft] = useState<LineDraft[]>([]);
+  const [editing, setEditing] = useState(false);
 
   function fill(p: Purchase) {
     setTransport(String(num(p.transportCost)));
@@ -102,10 +103,15 @@ export default function PurchaseDetailPage() {
     if (!purchaseId) return;
     const r = toLineRequests(draft);
     if (!r.ok) return toast.error(r.error);
+    const novoTotal = linesTotal(draft);
+    if (purchase && purchase.status === "CONFIRMED" && num(purchase.paidTotal) > 0 && Math.abs(novoTotal - num(purchase.totalAmount)) > 0.005) {
+      if (!(await confirmDialog({ title: "Alterar o total da fatura?", message: "O total das linhas passa de " + fmtMoney(purchase.totalAmount, purchase.currency) + " para " + fmtMoney(novoTotal, purchase.currency) + ". O estado do pagamento \u00e9 recalculado, mas os pagamentos j\u00e1 registados n\u00e3o mudam.", confirmLabel: "Guardar", cancelLabel: "Voltar" }))) return;
+    }
     setBusy(true);
     try {
       await replacePurchaseLines(purchaseId, r.lines);
       toast.success("Linhas guardadas.");
+      setEditing(false);
       load(true);
     } catch (err: any) {
       toast.error(apiError(err, "Erro ao guardar as linhas."));
@@ -243,9 +249,25 @@ export default function PurchaseDetailPage() {
         </div>
       )}
 
-      {lines.length > 0 && !editable && (
+      {purchase.status === "CONFIRMED" && editing && (
+        <div style={boxStyle}>
+          <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Editar linhas da fatura</div>
+          <InvoiceLinesEditor lines={draft} onChange={setDraft} currency={cur} />
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={saveLines}>{busy ? "A guardar..." : "Guardar"}</button>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setDraft(fromPurchaseLines(lines)); setEditing(false); }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {lines.length > 0 && !editable && !editing && (
         <>
-          <h2 style={sectionTitle}>Linhas</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "1.5rem 0 0.5rem" }}>
+            <h2 style={{ ...sectionTitle, margin: 0 }}>Linhas</h2>
+            {purchase.status === "CONFIRMED" && (
+              <button type="button" className="btn-soft" onClick={() => { setDraft(fromPurchaseLines(lines)); setEditing(true); }}>Editar</button>
+            )}
+          </div>
           <table className="table">
             <thead>
               <tr>

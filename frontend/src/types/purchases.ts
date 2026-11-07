@@ -99,6 +99,7 @@ export interface Purchase {
 }
 
 export interface PurchaseLineRequest {
+  lineId?: string;
   productId?: string;
   productName?: string;
   type?: "MEDICINE" | "PRODUCT";
