@@ -1,4 +1,5 @@
 import { apiClient } from "./api";
+import { setMeta } from "../offline/db";
 
 export interface AccountOperator {
   id: string;
@@ -24,6 +25,7 @@ interface Envelope<T> {
 
 export async function getPharmacyAccounts(): Promise<PharmacyAccount[]> {
   const resp = await apiClient.get<Envelope<PharmacyAccount[]>>("/pharmacy-accounts");
+  await setMeta("pharmacyAccounts", resp.data.data).catch(() => undefined);
   return resp.data.data;
 }
 

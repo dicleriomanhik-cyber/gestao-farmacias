@@ -214,6 +214,15 @@ export async function localResponse(path: string, params: Record<string, any> = 
     const pu = await localPurchase(p.slice(11));
     return pu ? envelope(pu) : null;
   }
+  if (p === "/pharmacy-accounts") {
+    const accs = await getMeta("pharmacyAccounts");
+    return accs ? envelope(accs) : null;
+  }
+  if (p.startsWith("/pharmacy-accounts/") && p.split("/").length === 3) {
+    const accs: any[] = (await getMeta("pharmacyAccounts")) ?? [];
+    const one = accs.find((x) => x.id === p.split("/")[2]);
+    return one ? envelope(one) : null;
+  }
   if (p === "/settings") {
     const st = await getMeta("settings");
     return st ? envelope(st) : null;
@@ -222,6 +231,8 @@ export async function localResponse(path: string, params: Record<string, any> = 
     const ph = (await getAll("pharmacy"))[0];
     return ph ? envelope(ph) : null;
   }
+  if (p === "/reports/finance") return envelope(await localFinance(params));
+  if (p === "/reports/finance/details") return envelope(await localFinanceDetails(params));
   if (p === "/reports/summary") return envelope(await localReportSummary(params));
   if (p === "/reports/sales") return envelope(await localReportSales(params));
   if (p === "/reports/expenses") return envelope(await localReportExpenses(params));
@@ -802,4 +813,163 @@ function supplierCashDerived(outbox: any[]): any[] {
     }
   }
   return out;
+}
+function lineCost(l: any): { has: boolean; cost: number } {
+  const lots: any[] = l.lots ?? [];
+  if (lots.length === 0 || lots.some((x) => x.unitCost === null || x.unitCost === undefined)) return { has: false, cost: 0 };
+  return { has: true, cost: lots.reduce((a, x) => a + Number(x.quantity || 0) * Number(x.unitCost), 0) };
+}
+
+function pctOf(a: number, b: number): number | null {
+  return b > 0 ? Math.round((a / b) * 10000) / 100 : null;
+}
+
+async function financeBlockLocal(from: Date, to: Date) {
+  const sales = (await getAll("sales")).filter((s) => s.status === "CONFIRMED" && inRange(s.createdAt, from, to));
+  const ids = new Set<string>(sales.map((s) => s.id));
+  const lines = (await getAll("sale_lines")).filter((l) => ids.has(l.saleId));
+  let revenue = 0;
+  let revenueCosted = 0;
+  let cogs = 0;
+  let noCost = 0;
+  for (const l of lines) {
+    const sub = Number(l.subtotal || 0);
+    revenue += sub;
+    const c = lineCost(l);
+    if (c.has) {
+      revenueCosted += sub;
+      cogs += c.cost;
+    } else noCost++;
+  }
+  const expenses = sumBy((await localExpenses()).filter((e: any) => e.status === "CONFIRMED" && inRange(e.expenseDate, from, to)), (e) => e.amount);
+  const returns = sumBy((await localReturns()).filter((r: any) => r.status === "CONFIRMED" && inRange(r.createdAt, from, to)), (r) => r.totalRefund);
+  const grossProfit = revenueCosted - cogs;
+  const netProfit = grossProfit - expenses - returns;
+  return {
+    revenue,
+    revenueCosted,
+    cogs,
+    grossProfit,
+    expenses,
+    returns,
+    netProfit,
+    marginGross: pctOf(grossProfit, revenueCosted),
+    marginNet: pctOf(netProfit, revenueCosted),
+    expensesOnSales: pctOf(expenses, revenue),
+    returnRate: pctOf(returns, revenue),
+    excluded: { lines: noCost, linesTotal: lines.length, revenue: Math.round((revenue - revenueCosted) * 100) / 100 },
+  };
+}
+
+export async function localFinance(params: Record<string, any> = {}) {
+  const { from, to } = reportRange(params);
+  const span = to.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - span);
+  const current = await financeBlockLocal(from, to);
+  const previous = await financeBlockLocal(prevFrom, prevTo);
+  const change = (a: number, b: number) => (b !== 0 ? Math.round(((a - b) / Math.abs(b)) * 1000) / 10 : null);
+  return {
+    period: { from: from.toISOString(), to: to.toISOString() },
+    previousPeriod: { from: prevFrom.toISOString(), to: prevTo.toISOString() },
+    current,
+    previous,
+    change: {
+      revenue: change(current.revenue, previous.revenue),
+      grossProfit: change(current.grossProfit, previous.grossProfit),
+      expenses: change(current.expenses, previous.expenses),
+      netProfit: change(current.netProfit, previous.netProfit),
+    },
+  };
+}
+
+export async function localFinanceDetails(params: Record<string, any> = {}) {
+  const { from, to } = reportRange(params);
+  const days = (to.getTime() - from.getTime()) / 86400000;
+  const month = days > 62;
+  const keyOf = (v: any) => {
+    const s = new Date(v).toISOString();
+    return month ? s.slice(0, 7) + "-01" : s.slice(0, 10);
+  };
+  const sales = (await getAll("sales")).filter((s) => s.status === "CONFIRMED" && inRange(s.createdAt, from, to));
+  const salesById = new Map<string, any>(sales.map((s: any) => [s.id, s] as [string, any]));
+  const lines = (await getAll("sale_lines")).filter((l) => salesById.has(l.saleId));
+  const products = await getAll("products");
+  const prodById = new Map<string, any>(products.map((p: any) => [p.id, p] as [string, any]));
+  const map = new Map<string, { k: string; revenue: number; grossProfit: number; expenses: number }>();
+  const bucket = (k: string) => {
+    let b = map.get(k);
+    if (!b) {
+      b = { k, revenue: 0, grossProfit: 0, expenses: 0 };
+      map.set(k, b);
+    }
+    return b;
+  };
+  const rank = new Map<string, any>();
+  for (const l of lines) {
+    const sale = salesById.get(l.saleId);
+    const b = bucket(keyOf(sale.createdAt));
+    const sub = Number(l.subtotal || 0);
+    const c = lineCost(l);
+    b.revenue += sub;
+    if (c.has) b.grossProfit += sub - c.cost;
+    let r = rank.get(l.productId);
+    if (!r) {
+      r = { id: l.productId, name: prodById.get(l.productId)?.name ?? l.product?.name ?? "", units: 0, revenue: 0, profit: 0, linesNoCost: 0 };
+      rank.set(l.productId, r);
+    }
+    r.units += Number(l.quantity || 0);
+    r.revenue += sub;
+    if (c.has) r.profit += sub - c.cost;
+    else r.linesNoCost += 1;
+  }
+  const exps = (await localExpenses()).filter((e: any) => e.status === "CONFIRMED" && inRange(e.expenseDate, from, to));
+  for (const e of exps) bucket(keyOf(e.expenseDate)).expenses += Number(e.amount || 0);
+  const now = new Date();
+  const limit = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+  const lots = (await getAll("stock_lots")).filter((l) => Number(l.quantityAvailable) > 0 && (l.status ?? "ACTIVE") === "ACTIVE");
+  let valueAtCost = 0;
+  let unitsNoCost = 0;
+  let expiringValue = 0;
+  let expiringLots = 0;
+  const unitsByProduct = new Map<string, number>();
+  for (const l of lots) {
+    const qty = Number(l.quantityAvailable);
+    unitsByProduct.set(l.productId, (unitsByProduct.get(l.productId) ?? 0) + qty);
+    const cu = l.realUnitCost != null ? Number(l.realUnitCost) : Number(l.unitCost) > 0 ? Number(l.unitCost) : null;
+    const exp = l.expiryDate ? new Date(l.expiryDate) : null;
+    const soon = !!exp && exp > now && exp <= limit;
+    if (soon) expiringLots++;
+    if (cu === null) unitsNoCost += qty;
+    else {
+      valueAtCost += qty * cu;
+      if (soon) expiringValue += qty * cu;
+    }
+  }
+  const sold = new Set<string>((await getAll("stock_movements")).filter((m) => m.type === "SALE" && inRange(m.createdAt, from, to)).map((m: any) => m.productId));
+  const noMovement = products
+    .filter((p: any) => p.status === "ACTIVE" && (unitsByProduct.get(p.id) ?? 0) > 0 && !sold.has(p.id))
+    .map((p: any) => ({ id: p.id, name: p.name, units: unitsByProduct.get(p.id) ?? 0 }))
+    .sort((a: any, b: any) => b.units - a.units)
+    .slice(0, 50);
+  const q = { startDate: params.startDate, endDate: params.endDate };
+  const salesRep: any = await localReportSales(q);
+  const expRep: any = await localReportExpenses(q);
+  const byOrigin = groupTotals(exps, (e) => e.paidFrom ?? "PHARMACY_CASH", (e) => e.amount);
+  return {
+    period: { from: from.toISOString(), to: to.toISOString() },
+    granularity: month ? "month" : "day",
+    series: Array.from(map.values())
+      .map((s) => ({ k: s.k, revenue: round2(s.revenue), grossProfit: round2(s.grossProfit), expenses: round2(s.expenses) }))
+      .sort((a, b) => a.k.localeCompare(b.k)),
+    byPaymentMethod: salesRep.byPaymentMethod,
+    expensesByCategory: expRep.byCategory,
+    expensesByOrigin: Array.from(byOrigin.entries()).map(([paidFrom, d]) => ({ paidFrom, count: d.count, total: d.total.toFixed(2) })),
+    products: Array.from(rank.values())
+      .sort((a, b) => b.units - a.units)
+      .slice(0, 50)
+      .map((p) => ({ ...p, revenue: round2(p.revenue), profit: round2(p.profit) })),
+    stock: { valueAtCost: round2(valueAtCost), unitsNoCost, expiringValue: round2(expiringValue), expiringLots, expiringDays: 60 },
+    noMovement,
+  };
 }

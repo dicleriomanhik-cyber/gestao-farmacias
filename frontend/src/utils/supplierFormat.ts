@@ -19,7 +19,7 @@ export function fmtDate(v?: string | null): string {
 }
 
 export function apiError(err: any, fallback: string): string {
-  if (err?.localMessage && err?.message) return String(err.message);
+  if (err && !err.response && !err.isAxiosError && err.message) return String(err.message);
   const msg = err?.response?.data?.error?.message;
   if (Array.isArray(msg)) return msg.join(" ");
   return msg ? String(msg) : fallback;

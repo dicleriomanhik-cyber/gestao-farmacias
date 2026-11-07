@@ -1,5 +1,5 @@
 import { apiClient } from "../services/api";
-import { openDb, putRecords, deleteRecord } from "./db";
+import { openDb, putRecords, deleteRecord, setMeta } from "./db";
 import { getPendingOperations } from "./queue";
 
 async function getStore(store: string): Promise<any[]> {
@@ -47,8 +47,8 @@ async function reapplyPendingSales(): Promise<void> {
     for (const line of (op.payload?.lines ?? []) as { productId: string; quantity: number }[]) {
       let falta = Number(line.quantity) || 0;
       const candidatos = lots
-        .filter((l) => l.productId === line.productId && l.status === "ACTIVE" && Number(l.quantityAvailable) > 0 && new Date(l.expiryDate).getTime() > agora)
-        .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+        .filter((l) => l.productId === line.productId && l.status === "ACTIVE" && Number(l.quantityAvailable) > 0 && (!l.expiryDate || new Date(l.expiryDate).getTime() > agora))
+        .sort((a, b) => (a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity) - (b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity));
       for (const lote of candidatos) {
         if (falta <= 0) break;
         const consome = Math.min(falta, Number(lote.quantityAvailable));
@@ -163,6 +163,8 @@ export async function bootstrapFromServer(): Promise<void> {
   if (suppliers && !(await hasOpenSupplierOps())) await replaceStore("suppliers", suppliers);
   const pharmacy = await apiClient.get("/pharmacy").then((r) => r.data.data).catch(() => null);
   if (pharmacy) await replaceStore("pharmacy", [pharmacy]);
+  const accs = await apiClient.get("/pharmacy-accounts").then((x) => x.data.data).catch(() => null);
+  if (accs) await setMeta("pharmacyAccounts", accs);
   const purchases = await fetchPaged("/purchases").catch(() => null);
   if (purchases && !(await hasOpenSupplierOps())) {
     const known = new Map<string, any>((await getStore("purchases")).map((x: any) => [x.id, x] as [string, any]));

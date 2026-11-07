@@ -478,7 +478,7 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
   const totalUnits = isMed ? Number(line.innerCount) * Number(line.unitsPerInner) : Number(line.unitsPerBox);
   if (!(totalUnits > 0)) throw new Error("A linha não tem a estrutura da caixa definida.");
   const expiry = data.expiryDate ?? null;
-  if (product.hasExpiry === true && !expiry) throw new Error("Indica a validade.");
+  if (product.hasExpiry === true && !expiry && !data.noExpiry) throw new Error("Indica a validade.");
   if (expiry && new Date(expiry).getTime() <= Date.now()) throw new Error("A validade deve ser no futuro.");
   const price = data.salePrice === undefined || data.salePrice === null || data.salePrice === "" ? null : Number(data.salePrice);
   if (price !== null && (!Number.isFinite(price) || price < 0)) throw new Error("Preço de venda inválido.");
@@ -495,7 +495,7 @@ export async function receiveLineBoxesLocal(data: any): Promise<any[]> {
     const op = await enqueueOperation("STOCK_BOX_CREATE", {
       purchaseLineId: line.id,
       qrCode: qr,
-      ...(expiry ? { expiryDate: expiry } : {}),
+      ...(expiry ? { expiryDate: expiry } : data.noExpiry ? { noExpiry: true } : {}),
       ...(price !== null ? { salePrice: price } : {}),
     });
     const lotId = "LOCAL-" + op.idempotencyKey;

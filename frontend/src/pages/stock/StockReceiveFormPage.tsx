@@ -8,7 +8,7 @@ import { confirmDialog } from "../../components/ui/confirmDialog";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import { MonthField } from "./StockBoxFormPage";
-import { fmtMoney } from "../../utils/supplierFormat";
+import { fmtMoney, apiError } from "../../utils/supplierFormat";
 import CustomSelect from "../../components/ui/CustomSelect";
 import useIsMobile from "../../hooks/useIsMobile";
 
@@ -94,7 +94,7 @@ export default function StockReceiveFormPage() {
       await createStockBoxesBatch({
         purchaseLineId: line.id,
         qrCodes: qrs,
-        ...(noExpiry ? {} : { expiryDate: monthEnd(expiry) }),
+        ...(noExpiry ? { noExpiry: true } : { expiryDate: monthEnd(expiry) }),
         salePrice: price,
       });
       toast.success(qrs.length + " caixa(s) recebida(s).");
@@ -104,7 +104,7 @@ export default function StockReceiveFormPage() {
       const l = p.lines?.find((x) => x.id === line.id);
       if (l && l.quantity - (l.received ?? 0) <= 0) setLineId("");
     } catch (err: any) {
-      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao receber a mercadoria."));
+      toast.error(apiError(err, "Erro ao receber a mercadoria."));
     } finally {
       setBusy(false);
     }
@@ -130,7 +130,7 @@ export default function StockReceiveFormPage() {
       toast.success(q + " caixa(s) danificada(s) registada(s).");
       await afterLineChange(line.id);
     } catch (err: any) {
-      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao registar caixas danificadas."));
+      toast.error(apiError(err, "Erro ao registar caixas danificadas."));
     } finally {
       setBusy(false);
     }
@@ -145,7 +145,7 @@ export default function StockReceiveFormPage() {
       toast.success("Linha fechada.");
       await afterLineChange(line.id);
     } catch (err: any) {
-      toast.error(String(err?.response?.data?.error?.message ?? "Erro ao fechar a linha."));
+      toast.error(apiError(err, "Erro ao fechar a linha."));
     } finally {
       setBusy(false);
     }

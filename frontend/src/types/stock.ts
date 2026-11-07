@@ -117,6 +117,7 @@ export interface StockBoxListParams {
 export interface StockBoxBatchRequest {
   purchaseLineId: string;
   qrCodes: string[];
+  noExpiry?: boolean;
   expiryDate?: string;
   salePrice?: number;
 }
