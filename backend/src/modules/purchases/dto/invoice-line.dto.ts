@@ -3,6 +3,11 @@ import { IsArray, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, MaxLength
 import { Type } from 'class-transformer';
 
 export class InvoiceLineDto {
+  @ApiPropertyOptional({ description: 'Linha existente da fatura (edicao de fatura confirmada).' })
+  @IsUUID()
+  @IsOptional()
+  lineId?: string;
+
   @ApiPropertyOptional({ description: 'Produto existente. Se omitido, usa productName + type (+ strength nos medicamentos).' })
   @IsUUID()
   @IsOptional()

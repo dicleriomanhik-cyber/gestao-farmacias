@@ -188,6 +188,7 @@ export class PurchasesService {
 
   async replaceLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[]) {
     const purchase = await this.findOne(pharmacyId, id);
+    if (purchase.status === 'CONFIRMED') return this.replaceConfirmedLines(pharmacyId, actorId, id, lines, purchase);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('S\u00f3 se alteram as linhas de uma fatura em rascunho.');
     if (purchase.stockLots.length > 0) throw new BadRequestException('Esta fatura j\u00e1 tem caixas registadas.');
     const inputs = lines.map((l) => lineInput(l));
@@ -204,6 +205,43 @@ export class PurchasesService {
     return this.findOne(pharmacyId, id);
   }
 
+  private async replaceConfirmedLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[], purchase: any) {
+    if (lines.length === 0) throw new BadRequestException('Acrescenta pelo menos uma linha.');
+    const existing: any[] = purchase.lines ?? [];
+    const lots: any[] = purchase.stockLots ?? [];
+    const locked = new Set<string>(existing.filter((l) => lots.some((x) => x.purchaseLineId === l.id) || l.quantityDamaged > 0 || l.closed).map((l) => l.id));
+    const kept = new Set<string>((lines as any[]).map((l) => l.lineId).filter((x) => !!x));
+    for (const l of lines as any[]) {
+      if (l.lineId && !existing.some((e) => e.id === l.lineId)) throw new BadRequestException('Linha invalida.');
+    }
+    for (const e of existing) {
+      if (!kept.has(e.id) && locked.has(e.id)) throw new BadRequestException('Uma linha com caixas recebidas, danificadas ou fechada nao pode ser removida.');
+    }
+    const inputs = lines.map((l) => lineInput(l));
+    await this.prisma.$transaction(async (tx) => {
+      const resolved = await resolveLineProducts(tx, pharmacyId, actorId, inputs);
+      const gone = existing.filter((e) => !kept.has(e.id)).map((e) => e.id);
+      if (gone.length > 0) await tx.purchaseLine.deleteMany({ where: { id: { in: gone }, purchaseId: id } });
+      for (let i = 0; i < resolved.length; i++) {
+        const lineId = (lines[i] as any).lineId as string | undefined;
+        if (lineId) {
+          if (locked.has(lineId)) continue;
+          await tx.purchaseLine.update({ where: { id: lineId }, data: resolved[i] });
+        } else {
+          await tx.purchaseLine.create({ data: { ...resolved[i], purchaseId: id } });
+        }
+      }
+      const all = await tx.purchaseLine.findMany({ where: { purchaseId: id }, select: { subtotal: true } });
+      const total = round2(all.reduce((s, l) => s + Number(l.subtotal), 0));
+      let updated = await tx.purchase.update({ where: { id }, data: { totalAmount: total } });
+      await recomputeLotCosts(tx, id);
+      if (purchase.paymentStatus !== 'PAID' || purchase.paidTotal > 0) {
+        updated = await tx.purchase.update({ where: { id }, data: { paymentStatus: statusFor(purchaseDueMzn(updated), purchase.paidTotal) } });
+      }
+      await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.lines.confirmed', entity: 'Purchase', entityId: id } });
+    });
+    return this.findOne(pharmacyId, id);
+  }
   async confirm(pharmacyId: string, actorId: string, id: string, pay?: { paidFrom: string; method: string }) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
