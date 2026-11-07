@@ -63,7 +63,7 @@ export class PurchasesController {
 
   @Put(':id/lines')
   @RequirePermissions(PERMISSIONS.PURCHASES_WRITE)
-  @ApiOperation({ summary: 'Substituir as linhas da fatura (rascunho)' })
+  @ApiOperation({ summary: 'Substituir as linhas da factura (rascunho)' })
   replaceLines(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: ReplaceLinesDto) {
     return this.service.replaceLines(pharmacyId, user.id, id, dto.lines);
   }

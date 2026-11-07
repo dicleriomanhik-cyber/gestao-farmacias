@@ -19,7 +19,7 @@ export class SalesService {
       where: { id: { in: productIds }, pharmacyId, status: 'ACTIVE' },
     });
     if (products.length !== productIds.length) {
-      throw new BadRequestException('Um ou mais produtos sao invalidos ou inativos.');
+      throw new BadRequestException('Um ou mais produtos sao invalidos ou inactivos.');
     }
 
     let subtotal = new Decimal(0);

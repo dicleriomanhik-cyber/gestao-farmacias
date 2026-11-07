@@ -20,7 +20,7 @@ export class PurchasesService {
       if (exists) return exists as any;
     }
     const dupDoc = await this.prisma.purchase.findFirst({ where: { pharmacyId, supplierId: dto.supplierId, documentNumber: dto.documentNumber }, select: { id: true } });
-    if (dupDoc) throw new BadRequestException('Ja existe uma fatura com este numero para este fornecedor.');
+    if (dupDoc) throw new BadRequestException('Ja existe uma factura com este numero para este fornecedor.');
     const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, pharmacyId } });
     if (!supplier) throw new BadRequestException('Fornecedor inválido ou não pertence a esta farmácia.');
     if (supplier.status === 'INACTIVE') throw new BadRequestException('Fornecedor inactivo não pode ser usado.');
@@ -198,8 +198,8 @@ export class PurchasesService {
   async replaceLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[], outerTx?: Prisma.TransactionClient) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status === 'CONFIRMED') return this.replaceConfirmedLines(pharmacyId, actorId, id, lines, purchase, outerTx);
-    if (purchase.status !== 'DRAFT') throw new BadRequestException('S\u00f3 se alteram as linhas de uma fatura em rascunho.');
-    if (purchase.stockLots.length > 0) throw new BadRequestException('Esta fatura j\u00e1 tem caixas registadas.');
+    if (purchase.status !== 'DRAFT') throw new BadRequestException('S\u00f3 se alteram as linhas de uma factura em rascunho.');
+    if (purchase.stockLots.length > 0) throw new BadRequestException('Esta factura j\u00e1 tem caixas registadas.');
     const inputs = lines.map((l) => lineInput(l));
     const run = async (tx: Prisma.TransactionClient) => {
       const resolved = await resolveLineProducts(tx, pharmacyId, actorId, inputs);

@@ -21,14 +21,14 @@ export class CashController {
 
   @Post('open')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
-  @ApiOperation({ summary: 'Abrir sessão de caixa' })
+  @ApiOperation({ summary: 'Abrir sessï¿½o de caixa' })
   open(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: OpenCashDto) {
     return this.service.openCash(pharmacyId, user.id, dto);
   }
 
   @Patch(':id/close')
   @RequirePermissions(PERMISSIONS.CASH_CLOSE)
-  @ApiOperation({ summary: 'Fechar sessão de caixa' })
+  @ApiOperation({ summary: 'Fechar sessï¿½o de caixa' })
   close(
     @Tenant() pharmacyId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -40,21 +40,21 @@ export class CashController {
 
   @Get('active')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
-  @ApiOperation({ summary: 'Obter sessão de caixa aberta' })
+  @ApiOperation({ summary: 'Obter sessï¿½o de caixa aberta' })
   getActive(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.getActiveSession(pharmacyId, user.id);
   }
 
   @Get('payments')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
-  @ApiOperation({ summary: 'Listar pagamentos da sessão de caixa ativa' })
+  @ApiOperation({ summary: 'Listar pagamentos da sessï¿½o de caixa activa' })
   getPayments(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.getPayments(pharmacyId, user.id);
   }
 
   @Get('movements')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
-  @ApiOperation({ summary: 'Listar movimentos da sessão ativa' })
+  @ApiOperation({ summary: 'Listar movimentos da sessï¿½o activa' })
   getMovements(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('all') all?: string) {
     return this.service.getMovements(pharmacyId, user.id, all === 'true');
   }
@@ -68,7 +68,7 @@ export class CashController {
 
   @Post('movements')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
-  @ApiOperation({ summary: 'Registar movimento manual de caixa (entrada/saída)' })
+  @ApiOperation({ summary: 'Registar movimento manual de caixa (entrada/saï¿½da)' })
   createMovement(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCashMovementDto) {
     return this.service.createMovement(pharmacyId, user.id, dto);
   }

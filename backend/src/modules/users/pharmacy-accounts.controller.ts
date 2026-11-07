@@ -65,7 +65,7 @@ export class PharmacyAccountsController {
 
   @Patch(':id/operators/:opId')
   @RequirePermissions(PERMISSIONS.USERS_WRITE)
-  @ApiOperation({ summary: 'Renomear ou ativar/desativar colaborador da farmácia' })
+  @ApiOperation({ summary: 'Renomear ou activar/desactivar colaborador da farmácia' })
   updateOperator(
     @Tenant() ownerId: string,
     @CurrentUser() user: AuthenticatedUser,

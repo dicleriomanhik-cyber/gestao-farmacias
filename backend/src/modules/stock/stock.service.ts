@@ -298,8 +298,8 @@ export class StockService {
         where: { id: dto.purchaseLineId },
         include: { purchase: { select: { pharmacyId: true, status: true } } },
       });
-      if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da fatura nao encontrada.');
-      if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A fatura precisa de estar confirmada para receber mercadoria.');
+      if (!line || line.purchase.pharmacyId !== pharmacyId) throw new NotFoundException('Linha da factura nao encontrada.');
+      if (line.purchase.status !== 'CONFIRMED') throw new BadRequestException('A factura precisa de estar confirmada para receber mercadoria.');
       const received = await tx.stockLot.count({ where: { purchaseLineId: line.id } });
       if (line.closed || received + line.quantityDamaged >= line.quantity) {
         throw new BadRequestException(`Linha ja recebida por completo (${received} de ${line.quantity} caixas).`);
@@ -402,7 +402,7 @@ export class StockService {
         referenceId: line ? line.purchaseId : lot.id,
         referenceType: line ? 'Purchase' : 'StockLot',
         userId: actorId,
-        notes: line ? 'Recepção de fatura (caixa)' : 'Entrada directa de caixa (createBox)',
+        notes: line ? 'Recepção de factura (caixa)' : 'Entrada directa de caixa (createBox)',
       },
     });
 

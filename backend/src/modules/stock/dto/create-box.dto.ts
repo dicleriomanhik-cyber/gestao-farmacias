@@ -49,12 +49,12 @@ export class CreateBoxDto {
   @IsOptional()
   totalUnits?: number;
 
-  @ApiPropertyOptional({ description: 'Linha da fatura confirmada que esta caixa recebe. Produto, estrutura e custo vem da linha.' })
+  @ApiPropertyOptional({ description: 'Linha da factura confirmada que esta caixa recebe. Produto, estrutura e custo vem da linha.' })
   @IsUUID()
   @IsOptional()
   purchaseLineId?: string;
 
-  @ApiPropertyOptional({ example: 25, description: 'Preco de venda por unidade; atualiza o produto.' })
+  @ApiPropertyOptional({ example: 25, description: 'Preco de venda por unidade; actualiza o produto.' })
   @IsNumber()
   @Min(0)
   @Type(() => Number)

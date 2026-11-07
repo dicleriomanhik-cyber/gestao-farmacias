@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (payload.type !== 'access') throw new UnauthorizedException('Tipo de token inválido.');
     // Releitura do BD: estado, roles e permissões atuais prevalecem sobre o token.
     const user = await this.users.findAuthenticatedUser(payload.sub);
-    if (!user) throw new UnauthorizedException('Utilizador inválido ou inativo.');
+    if (!user) throw new UnauthorizedException('Utilizador inválido ou inactivo.');
     if (user.pharmacyId !== payload.pharmacyId) {
       throw new UnauthorizedException('Contexto de farmácia divergente.');
     }

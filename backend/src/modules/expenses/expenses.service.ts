@@ -19,7 +19,7 @@ export class ExpensesService {
   private async assertPaidFromAllowed(pharmacyId: string, paidFrom: string, origin: string, method: string, tx: Prisma.TransactionClient) {
     if (!(PAID_FROM_METHODS[paidFrom] ?? []).includes(method)) throw new BadRequestException('Método de pagamento incompatível com a origem do dinheiro.');
     const s = await this.settings.get(pharmacyId, tx);
-    if (origin === 'COLLABORATOR' && !s.allowCashExpenses) throw new BadRequestException('Registo de despesas desativado pelo administrador.');
+    if (origin === 'COLLABORATOR' && !s.allowCashExpenses) throw new BadRequestException('Registo de despesas desactivado pelo administrador.');
     if (origin === 'COLLABORATOR' && !s.collaboratorExpenses) throw new BadRequestException('A farmácia não permite despesas registadas pelo colaborador.');
     if (paidFrom === 'PHARMACY_CASH' && !s.allowCashExpenses) throw new BadRequestException('A farmácia não permite pagar despesas pela caixa.');
   }

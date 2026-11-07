@@ -218,7 +218,7 @@ export class SyncService {
         },
       });
       await tx.stockMovement.create({
-        data: { pharmacyId, productId: product.id, lotId: lot.id, type: rline ? 'PURCHASE_ENTRY' : 'DIRECT_ENTRY', quantity: totalUnits, referenceId: rline ? rline.purchaseId : lot.id, referenceType: rline ? 'Purchase' : 'StockLot', userId, notes: rline ? 'Recepção de fatura (caixa)' : 'Entrada directa de caixa (createBox)' },
+        data: { pharmacyId, productId: product.id, lotId: lot.id, type: rline ? 'PURCHASE_ENTRY' : 'DIRECT_ENTRY', quantity: totalUnits, referenceId: rline ? rline.purchaseId : lot.id, referenceType: rline ? 'Purchase' : 'StockLot', userId, notes: rline ? 'Recepção de factura (caixa)' : 'Entrada directa de caixa (createBox)' },
       });
       await tx.auditLog.create({ data: { pharmacyId, userId, action: rline ? 'stock.box.receive' : 'stock.box.create', entity: 'StockLot', entityId: lot.id } });
       if (purchaseId) {

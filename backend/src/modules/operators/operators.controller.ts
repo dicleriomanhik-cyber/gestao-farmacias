@@ -19,7 +19,7 @@ export class OperatorsController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.SALES_READ)
-  @ApiOperation({ summary: 'Nome da farmácia e colaboradores ativos (POS)' })
+  @ApiOperation({ summary: 'Nome da farmácia e colaboradores activos (POS)' })
   listActive(@Tenant() pharmacyId: string) {
     return this.service.listActive(pharmacyId);
   }
@@ -40,7 +40,7 @@ export class OperatorsController {
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.USERS_WRITE)
-  @ApiOperation({ summary: 'Renomear ou ativar/desativar colaborador' })
+  @ApiOperation({ summary: 'Renomear ou activar/desactivar colaborador' })
   update(
     @Tenant() pharmacyId: string,
     @CurrentUser() user: AuthenticatedUser,

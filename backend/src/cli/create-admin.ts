@@ -57,7 +57,7 @@ async function main(): Promise<void> {
     });
   });
 
-  console.log('Administrador criado/atualizado. Password nunca foi impressa.');
+  console.log('Administrador criado/actualizado. Password nunca foi impressa.');
 }
 
 main()

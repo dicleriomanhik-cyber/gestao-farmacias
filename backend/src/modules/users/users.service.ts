@@ -11,7 +11,7 @@ import { UserStatus } from '@prisma/client';
 
 export class AccountDisabledError extends ForbiddenException {
   constructor() {
-    super({ message: 'Conta inativa ou suspensa.', code: 'ACCOUNT_DISABLED' });
+    super({ message: 'Conta inactiva ou suspensa.', code: 'ACCOUNT_DISABLED' });
   }
 }
 

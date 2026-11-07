@@ -3,7 +3,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsISO8601, IsNumber, Is
 import { Type } from 'class-transformer';
 
 export class CreateBoxesBatchDto {
-  @ApiProperty({ description: 'Linha da fatura confirmada.' })
+  @ApiProperty({ description: 'Linha da factura confirmada.' })
   @IsUUID()
   purchaseLineId!: string;
 

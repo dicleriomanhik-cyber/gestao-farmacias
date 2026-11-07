@@ -3,7 +3,7 @@ import { IsArray, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, MaxLength
 import { Type } from 'class-transformer';
 
 export class InvoiceLineDto {
-  @ApiPropertyOptional({ description: 'Linha existente da fatura (edicao de fatura confirmada).' })
+  @ApiPropertyOptional({ description: 'Linha existente da factura (edicao de factura confirmada).' })
   @IsUUID()
   @IsOptional()
   lineId?: string;

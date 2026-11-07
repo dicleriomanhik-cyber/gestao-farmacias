@@ -70,7 +70,7 @@ export class StockController {
 
   @Post('boxes/batch')
   @RequirePermissions(PERMISSIONS.STOCK_WRITE)
-  @ApiOperation({ summary: 'Receber varias caixas iguais de uma linha da fatura (lista de QR)' })
+  @ApiOperation({ summary: 'Receber varias caixas iguais de uma linha da factura (lista de QR)' })
   createBoxesBatch(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBoxesBatchDto) {
     return this.service.createBoxesBatch(pharmacyId, user.id, dto);
   }
