@@ -152,7 +152,7 @@ export default function StockLotListPage(_props: Props) {
             {groupedArray.length === 0 && (
               <tr>
                 <td colSpan={4} style={{ ...cell, textAlign: "center", color: "#64748b" }}>
-                  Nenhum produto encontrado.
+                  {query.trim() ? "Nenhum produto encontrado para \u00ab" + query.trim() + "\u00bb." : "Nenhum produto encontrado."}
                 </td>
               </tr>
             )}

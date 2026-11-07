@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { getProducts, deleteProduct } from "../../services/productService";
@@ -83,10 +83,16 @@ export default function StockProductListPage() {
       .finally(() => setLoading(false));
   }
 
+  const firstLoad = useRef(true);
   useEffect(() => {
-    load();
+    const silent = !firstLoad.current;
+    const t = setTimeout(() => {
+      load(page, search, silent);
+      firstLoad.current = false;
+    }, silent ? 300 : 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, search]);
 
   useDataChanged(() => load(page, search, true));
 
@@ -145,13 +151,10 @@ export default function StockProductListPage() {
             type="search"
             placeholder="Pesquisar produto..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, background: "#fff", color: "#1d2433", fontSize: "0.9rem", boxSizing: "border-box" }}
           />
         </div>
-        <button type="submit" className="btn btn-primary" style={{ padding: "8px 18px" }}>
-          Pesquisar
-        </button>
         <div style={{ textAlign: "right", minWidth: 110 }}>
           <div style={{ fontSize: "0.75rem", color: "#5b6478", marginBottom: 2 }}>Total de produtos</div>
           <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#2f5bd3" }}>{meta?.total ?? products.length}</div>
@@ -160,7 +163,7 @@ export default function StockProductListPage() {
 
       <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", overflowX: "auto" }}>
         {products.length === 0 ? (
-          <div style={{ padding: 20 }}><EmptyState message="Nenhum produto encontrado." /></div>
+          <div style={{ padding: 20 }}><EmptyState message={search.trim() ? "Nenhum produto encontrado para \u00ab" + search.trim() + "\u00bb." : "Nenhum produto encontrado."} /></div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 560 }}>
             <colgroup>

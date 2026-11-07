@@ -9,7 +9,6 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import CustomSelect from '../../components/ui/CustomSelect';
 import { formatDateTime } from "../../utils/formatDate";
-import { useToast } from "../../contexts/ToastContext";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -28,7 +27,6 @@ interface CashMovement {
 type DateFilter = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM" | "ALL";
 
 export default function AdminCashPage() {
-  const toast = useToast();
   const [session, setSession] = useState<CashSession | null>(null);
   const [totals, setTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -38,9 +36,6 @@ export default function AdminCashPage() {
   const [error, setError] = useState(false);
   const [showSales, setShowSales] = useState(true);
 
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [resetPassword, setResetPassword] = useState("");
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
@@ -83,22 +78,6 @@ export default function AdminCashPage() {
   useEffect(() => {
     load();
   }, []);
-
-  async function handleResetTestData() {
-    if (!resetPassword) return;
-    setResetting(true);
-    try {
-      await apiClient.post('/admin/reset-test-data', { password: resetPassword });
-      setShowResetConfirm(false);
-      setResetPassword("");
-      toast.success('Dados da farmácia reiniciados com sucesso.');
-      load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? 'Erro ao resetar dados.');
-    } finally {
-      setResetting(false);
-    }
-  }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Erro ao carregar a caixa." onRetry={load} />;
@@ -235,15 +214,6 @@ export default function AdminCashPage() {
             <p style={{ marginBottom: 0, fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
           </div>
 
-          {/* ZONA DE PERIGO */}
-          <div className="card" style={{ padding: "0.75rem", border: "1px solid #fecaca", backgroundColor: "#fef2f2" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#b91c1c", marginBottom: "0.5rem" }}>Zona de Perigo</h3>
-            <p style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "1rem" }}>Apaga toda a informação da farmácia: vendas, devoluções, despesas, caixas, fornecedores, compras, produtos e todo o stock. Mantém a conta, as definições e os utilizadores. Pede a palavra-passe do administrador.</p>
-            <button onClick={() => { setResetPassword(""); setShowResetConfirm(true); }} disabled={resetting} className="btn btn-danger" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: resetting ? "not-allowed" : "pointer", opacity: resetting ? 0.6 : 1 }}>
-              {resetting ? "A resetar…" : "Resetar Dados da Farmácia"}
-            </button>
-          </div>
-
           {/* VENDAS DO PERÍODO */}
           <div className="card" style={{ padding: "1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showSales ? "1rem" : 0 }}>
@@ -251,11 +221,7 @@ export default function AdminCashPage() {
                 <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>Vendas do Período</h2>
                 <button
                   onClick={() => setShowSales(!showSales)}
-                  style={{
-                    background: "none", border: "1px solid #cbd5e1", borderRadius: "6px",
-                    cursor: "pointer", padding: "0.25rem 0.5rem", fontSize: "0.85rem",
-                    color: "#475569", display: "flex", alignItems: "center", gap: "0.25rem"
-                  }}
+                  className="btn-soft" style={{ cursor: "pointer", border: "none" }}
                 >
                   {showSales ? "▲ Minimizar" : "▼ Expandir"}
                 </button>
@@ -305,20 +271,6 @@ export default function AdminCashPage() {
         </div>
       )}
 
-      {/* MODAL DE RESET */}
-      {showResetConfirm && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowResetConfirm(false)}>
-          <div className="card" style={{ backgroundColor: "white", borderRadius: "12px", padding: "1.5rem", maxWidth: "450px", width: "90%", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#b91c1c" }}>Resetar Dados da Farmácia</h2>
-            <p style={{ color: "#475569", marginBottom: "1.5rem" }}>Tens a certeza? Esta ação apaga TODA a informação da farmácia (vendas, devoluções, despesas, caixas, fornecedores, compras, produtos e stock) e não pode ser desfeita.</p>
-            <input type="password" className="input" autoComplete="current-password" placeholder="Palavra-passe do administrador" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} style={{ marginBottom: "1.5rem" }} />
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-              <button onClick={() => setShowResetConfirm(false)} disabled={resetting} style={{ padding: "0.55rem 1.1rem", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#0f172a", cursor: "pointer", fontSize: "0.9rem" }}>Cancelar</button>
-              <button onClick={handleResetTestData} disabled={resetting || !resetPassword} style={{ padding: "0.55rem 1.1rem", borderRadius: 999, border: "none", background: "#e11d1d", color: "#fff", cursor: resetting ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 600, opacity: resetting ? 0.7 : 1 }}>{resetting ? "A resetar…" : "Sim, Resetar"}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

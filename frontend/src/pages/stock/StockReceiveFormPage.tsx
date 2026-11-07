@@ -10,6 +10,7 @@ import ErrorState from "../../components/ui/ErrorState";
 import { MonthField } from "./StockBoxFormPage";
 import { fmtMoney } from "../../utils/supplierFormat";
 import CustomSelect from "../../components/ui/CustomSelect";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const monthEnd = (ym: string) => {
   const [y, m] = ym.split("-").map(Number);
@@ -22,6 +23,7 @@ const box: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 8, paddi
 
 export default function StockReceiveFormPage() {
   const toast = useToast();
+  const isMobile = useIsMobile();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [purchaseId, setPurchaseId] = useState("");
@@ -173,6 +175,23 @@ export default function StockReceiveFormPage() {
 
       {purchase && (
         <div style={box}>
+          {isMobile ? (
+            <div>
+              {lines.map((l) => {
+                const r = l.received ?? 0;
+                const dm = l.quantityDamaged ?? 0;
+                const done = !!l.closed || r + dm >= l.quantity;
+                return (
+                  <div key={l.id} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.75rem", marginBottom: "0.5rem", background: l.id === lineId ? "#e8efff" : "#fff" }}>
+                    <div style={{ fontWeight: 600 }}>{l.product?.name ?? "?"}{l.product?.strength ? " " + l.product.strength : ""}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#64748b", margin: "0.25rem 0" }}>{l.closed ? "Fechada \u2014 " : done ? "Completo \u2014 " : ""}recebido {r}{dm > 0 ? ", danificado " + dm : ""} de {l.quantity}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{fmtMoney(l.unitCost, cur)} por caixa</div>
+                    <button type="button" className="btn btn-secondary" disabled={done} style={{ marginTop: "0.5rem", width: "100%" }} onClick={() => { setLineId(l.id); setQrText(""); }}>Receber</button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
           <table className="table">
             <thead>
               <tr>
@@ -202,6 +221,7 @@ export default function StockReceiveFormPage() {
               })}
             </tbody>
           </table>
+          )}
         </div>
       )}
 

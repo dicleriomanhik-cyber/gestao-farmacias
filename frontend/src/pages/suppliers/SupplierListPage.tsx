@@ -47,14 +47,13 @@ export default function SupplierListPage() {
   }, [page]);
 
   useEffect(() => {
-    if (!isMobile) return;
     const t = setTimeout(() => {
       setPage(1);
       load(1, search, true);
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, isMobile]);
+  }, [search]);
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +61,7 @@ export default function SupplierListPage() {
     load(1, search);
   }
 
-  if (loading) return <LoadingState />;
+  if (loading && suppliers.length === 0 && !search) return <LoadingState />;
   if (error) return <ErrorState onRetry={() => load(page, search)} />;
   if (suppliers.length === 0 && page === 1 && !search) {
     return (
@@ -91,9 +90,9 @@ export default function SupplierListPage() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1 }}
         />
-        <button type="submit" className="btn btn-primary sup-search-btn">Pesquisar</button>
       </form>
 
+      {suppliers.length === 0 && search.trim() !== "" && (<p style={{ color: "#64748b", textAlign: "center", padding: "0.75rem 0" }}>Nenhum fornecedor encontrado para {"\u00ab"}{search}{"\u00bb"}.</p>)}
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
         <table className="table">
           <thead>

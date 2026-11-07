@@ -272,6 +272,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
             </tr>
           </thead>
           <tbody>
+            {visible.length === 0 && (<tr><td colSpan={6} style={{ textAlign: "center", color: "#64748b", padding: "1rem" }}>{search.trim() ? "Nenhum produto ou caixa encontrado para \u00ab" + search.trim() + "\u00bb." : "Nenhuma linha encontrada."}</td></tr>)}
             {visible.map((l) => {
               const raw = counts[l.id] ?? "";
               const diff = open ? (raw === "" ? null : Number(raw) - l.expectedQty) : l.appliedDiff;

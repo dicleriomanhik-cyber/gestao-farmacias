@@ -110,7 +110,7 @@ export default function StockBoxListPage() {
       {/* TABELA (COM SCROLL PRÓPRIO) */}
       <div ref={tableRef} style={{ height: tableHeight, minHeight: 0, flexShrink: 0, background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: 20 }}><EmptyState message="Nenhuma caixa encontrada." /></div>
+          <div style={{ padding: 20 }}><EmptyState message={search.trim() ? "Nenhuma caixa encontrada para \u00ab" + search.trim() + "\u00bb." : "Nenhuma caixa encontrada."} /></div>
         ) : (
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>

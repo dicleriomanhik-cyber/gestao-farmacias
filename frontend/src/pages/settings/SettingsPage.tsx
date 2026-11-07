@@ -6,6 +6,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import CustomSelect from "../../components/ui/CustomSelect";
 import DeleteAccountSection from "./DeleteAccountSection";
+import ResetDataSection from "./ResetDataSection";
 
 type BoolKey =
   | "allowCashExpenses"
@@ -149,6 +150,7 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+      <ResetDataSection />
       <DeleteAccountSection />
     </div>
   );
