@@ -14,7 +14,13 @@ import { InvoiceLineDto } from './dto/invoice-line.dto';
 export class PurchasesService {
   constructor(private prisma: PrismaService, private payments: SupplierPaymentsService) {}
 
-  async create(pharmacyId: string, actorId: string, dto: CreatePurchaseDto) {
+  async create(pharmacyId: string, actorId: string, dto: CreatePurchaseDto, outerTx?: Prisma.TransactionClient, newId?: string) {
+    if (newId) {
+      const exists = await this.prisma.purchase.findFirst({ where: { id: newId, pharmacyId } });
+      if (exists) return exists as any;
+    }
+    const dupDoc = await this.prisma.purchase.findFirst({ where: { pharmacyId, supplierId: dto.supplierId, documentNumber: dto.documentNumber }, select: { id: true } });
+    if (dupDoc) throw new BadRequestException('Ja existe uma fatura com este numero para este fornecedor.');
     const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, pharmacyId } });
     if (!supplier) throw new BadRequestException('Fornecedor inválido ou não pertence a esta farmácia.');
     if (supplier.status === 'INACTIVE') throw new BadRequestException('Fornecedor inactivo não pode ser usado.');
@@ -45,10 +51,11 @@ export class PurchasesService {
       };
     });
 
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const purchase = await tx.purchase.create({
         data: {
           pharmacyId,
+          ...(newId ? { id: newId } : {}),
           supplierId: dto.supplierId,
           documentNumber: dto.documentNumber,
           totalAmount,
@@ -60,7 +67,7 @@ export class PurchasesService {
           paymentStatus: paymentStatus as any,
           dueDate,
           status: 'DRAFT',
-          lines: { create: await resolveLineProducts(tx, pharmacyId, actorId, linesData) },
+          lines: { create: (await resolveLineProducts(tx, pharmacyId, actorId, linesData)).map((l, i) => ({ ...l, ...((lineList[i] as any)?.newLineId ? { id: (lineList[i] as any).newLineId } : {}) })) },
         },
         include: { lines: true },
       });
@@ -70,7 +77,8 @@ export class PurchasesService {
       });
 
       return purchase;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
   async findAll(pharmacyId: string, page: number = 1, limit: number = 20, status?: string, supplierId?: string) {
@@ -160,7 +168,7 @@ export class PurchasesService {
     return purchase;
   }
 
-  async update(pharmacyId: string, actorId: string, id: string, dto: UpdatePurchaseDto) {
+  async update(pharmacyId: string, actorId: string, id: string, dto: UpdatePurchaseDto, outerTx?: Prisma.TransactionClient) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status === 'CANCELLED') throw new BadRequestException('Compra cancelada não pode ser editada.');
     const draft = purchase.status === 'DRAFT';
@@ -173,7 +181,7 @@ export class PurchasesService {
     if (rest.dueDate !== undefined) data.dueDate = rest.dueDate ? new Date(rest.dueDate) : null;
     if (data.supplierId && !(await this.prisma.supplier.findFirst({ where: { id: data.supplierId, pharmacyId } }))) throw new BadRequestException('Fornecedor inválido.');
 
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       let updated = await tx.purchase.update({ where: { id }, data });
       await recomputeLotCosts(tx, id);
       if (!draft && (purchase.paymentStatus !== 'PAID' || purchase.paidTotal > 0)) {
@@ -183,29 +191,32 @@ export class PurchasesService {
         data: { pharmacyId, userId: actorId, action: 'purchase.update', entity: 'Purchase', entityId: id },
       });
       return updated;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
-  async replaceLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[]) {
+  async replaceLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[], outerTx?: Prisma.TransactionClient) {
     const purchase = await this.findOne(pharmacyId, id);
-    if (purchase.status === 'CONFIRMED') return this.replaceConfirmedLines(pharmacyId, actorId, id, lines, purchase);
+    if (purchase.status === 'CONFIRMED') return this.replaceConfirmedLines(pharmacyId, actorId, id, lines, purchase, outerTx);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('S\u00f3 se alteram as linhas de uma fatura em rascunho.');
     if (purchase.stockLots.length > 0) throw new BadRequestException('Esta fatura j\u00e1 tem caixas registadas.');
     const inputs = lines.map((l) => lineInput(l));
-    await this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const resolved = await resolveLineProducts(tx, pharmacyId, actorId, inputs);
       await tx.purchaseLine.deleteMany({ where: { purchaseId: id } });
-      if (resolved.length > 0) await tx.purchaseLine.createMany({ data: resolved.map((l) => ({ ...l, purchaseId: id })) });
+      if (resolved.length > 0) await tx.purchaseLine.createMany({ data: resolved.map((l, i) => ({ ...l, ...((lines[i]?.lineId ?? (lines[i] as any)?.newLineId) ? { id: lines[i]?.lineId ?? (lines[i] as any).newLineId } : {}), purchaseId: id })) });
       const total = round2(resolved.reduce((s, l) => s + l.subtotal, 0));
       await tx.purchase.update({ where: { id }, data: { totalAmount: total } });
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'purchase.lines', entity: 'Purchase', entityId: id },
       });
-    });
+    };
+    if (outerTx) { await run(outerTx); return { id } as any; }
+    await this.prisma.$transaction(run);
     return this.findOne(pharmacyId, id);
   }
 
-  private async replaceConfirmedLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[], purchase: any) {
+  private async replaceConfirmedLines(pharmacyId: string, actorId: string, id: string, lines: InvoiceLineDto[], purchase: any, outerTx?: Prisma.TransactionClient) {
     if (lines.length === 0) throw new BadRequestException('Acrescenta pelo menos uma linha.');
     const existing: any[] = purchase.lines ?? [];
     const lots: any[] = purchase.stockLots ?? [];
@@ -218,7 +229,7 @@ export class PurchasesService {
       if (!kept.has(e.id) && locked.has(e.id)) throw new BadRequestException('Uma linha com caixas recebidas, danificadas ou fechada nao pode ser removida.');
     }
     const inputs = lines.map((l) => lineInput(l));
-    await this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const resolved = await resolveLineProducts(tx, pharmacyId, actorId, inputs);
       const gone = existing.filter((e) => !kept.has(e.id)).map((e) => e.id);
       if (gone.length > 0) await tx.purchaseLine.deleteMany({ where: { id: { in: gone }, purchaseId: id } });
@@ -228,7 +239,7 @@ export class PurchasesService {
           if (locked.has(lineId)) continue;
           await tx.purchaseLine.update({ where: { id: lineId }, data: resolved[i] });
         } else {
-          await tx.purchaseLine.create({ data: { ...resolved[i], purchaseId: id } });
+          await tx.purchaseLine.create({ data: { ...resolved[i], ...((lines[i] as any).newLineId ? { id: (lines[i] as any).newLineId } : {}), purchaseId: id } });
         }
       }
       const all = await tx.purchaseLine.findMany({ where: { purchaseId: id }, select: { subtotal: true } });
@@ -239,15 +250,17 @@ export class PurchasesService {
         updated = await tx.purchase.update({ where: { id }, data: { paymentStatus: statusFor(purchaseDueMzn(updated), purchase.paidTotal) } });
       }
       await tx.auditLog.create({ data: { pharmacyId, userId: actorId, action: 'purchase.lines.confirmed', entity: 'Purchase', entityId: id } });
-    });
+    };
+    if (outerTx) { await run(outerTx); return { id } as any; }
+    await this.prisma.$transaction(run);
     return this.findOne(pharmacyId, id);
   }
-  async confirm(pharmacyId: string, actorId: string, id: string, pay?: { paidFrom: string; method: string }) {
+  async confirm(pharmacyId: string, actorId: string, id: string, pay?: { paidFrom: string; method: string }, outerTx?: Prisma.TransactionClient) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.status !== 'DRAFT') throw new BadRequestException('Apenas rascunhos podem ser confirmados.');
     if (Number(purchase.totalAmount) <= 0) throw new BadRequestException('Acrescenta pelo menos uma linha antes de confirmar a compra.');
 
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const updated: any = await tx.purchase.update({ where: { id }, data: { status: 'CONFIRMED' } }); updated.conference = purchase.conference;
       if (pay && purchase.paymentStatus === 'PAID' && purchase.dueMzn > 0) {
         await this.payments.pay(pharmacyId, actorId, { purchaseId: id, amount: purchase.dueMzn, paidFrom: pay.paidFrom, method: pay.method }, tx, true);
@@ -256,21 +269,23 @@ export class PurchasesService {
         data: { pharmacyId, userId: actorId, action: 'purchase.confirm', entity: 'Purchase', entityId: id },
       });
       return updated;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
-  async cancel(pharmacyId: string, actorId: string, id: string) {
+  async cancel(pharmacyId: string, actorId: string, id: string, outerTx?: Prisma.TransactionClient) {
     const purchase = await this.findOne(pharmacyId, id);
     if (purchase.paidTotal > 0) throw new BadRequestException('Compra com pagamentos não pode ser cancelada.');
     if (purchase.stockLots.length > 0) throw new BadRequestException('Compra com caixas registadas não pode ser cancelada.');
     if (purchase.status === 'CANCELLED') throw new BadRequestException('Compra já cancelada.');
 
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const updated = await tx.purchase.update({ where: { id }, data: { status: 'CANCELLED' } });
       await tx.auditLog.create({
         data: { pharmacyId, userId: actorId, action: 'purchase.cancel', entity: 'Purchase', entityId: id },
       });
       return updated;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 }

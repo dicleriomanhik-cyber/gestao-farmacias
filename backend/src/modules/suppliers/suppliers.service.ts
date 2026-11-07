@@ -9,8 +9,12 @@ import { paidSum, purchaseDueMzn, round2 } from '../purchases/purchase-math';
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(pharmacyId: string, actorId: string, dto: CreateSupplierDto) {
-    return this.prisma.$transaction(async (tx) => {
+  async create(pharmacyId: string, actorId: string, dto: CreateSupplierDto, outerTx?: Prisma.TransactionClient, newId?: string) {
+    const run = async (tx: Prisma.TransactionClient) => {
+      if (newId) {
+        const ex = await tx.supplier.findFirst({ where: { id: newId, pharmacyId } });
+        if (ex) return ex;
+      }
       // Separa explicitamente os campos para evitar conflito entre CreateInput/UncheckedCreateInput
       const { name, taxId, phone, whatsapp, email, address, city, province, notes, status } = dto;
       const supplier = await tx.supplier.create({
@@ -25,6 +29,7 @@ export class SuppliersService {
           province,
           notes,
           status,
+          ...(newId ? { id: newId } : {}),
           pharmacy: { connect: { id: pharmacyId } },
         },
       });
@@ -32,7 +37,8 @@ export class SuppliersService {
         data: { pharmacyId, userId: actorId, action: 'supplier.create', entity: 'Supplier', entityId: supplier.id },
       });
       return supplier;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 
   async findAll(pharmacyId: string, page: number = 1, limit: number = 20, search?: string) {
@@ -136,9 +142,9 @@ export class SuppliersService {
     return { supplier, summary: stats, purchases: purchaseRows, products: Array.from(productsMap.values()), payments };
   }
 
-  async update(pharmacyId: string, actorId: string, id: string, dto: UpdateSupplierDto) {
+  async update(pharmacyId: string, actorId: string, id: string, dto: UpdateSupplierDto, outerTx?: Prisma.TransactionClient) {
     await this.findOne(pharmacyId, id);
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const { name, taxId, phone, whatsapp, email, address, city, province, notes, status } = dto;
       const updated = await tx.supplier.update({
         where: { id },
@@ -148,6 +154,7 @@ export class SuppliersService {
         data: { pharmacyId, userId: actorId, action: 'supplier.update', entity: 'Supplier', entityId: id },
       });
       return updated;
-    });
+    };
+    return outerTx ? run(outerTx) : this.prisma.$transaction(run);
   }
 }

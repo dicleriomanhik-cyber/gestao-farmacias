@@ -12,6 +12,9 @@ import { SalesService } from '../sales/sales.service';
 import { CashService } from '../cash/cash.service';
 import { ExpensesService } from '../expenses/expenses.service';
 import { ReturnsService } from '../returns/returns.service';
+import { SuppliersService } from '../suppliers/suppliers.service';
+import { PurchasesService } from '../purchases/purchases.service';
+import { SupplierPaymentsService } from '../purchases/supplier-payments.service';
 import { SyncPushDto } from './dto/sync-push.dto';
 import { SyncSalePayloadDto } from './dto/sync-sale-payload.dto';
 import { SyncPullDto } from './dto/sync-pull.dto';
@@ -21,7 +24,7 @@ import { validateOrReject } from 'class-validator';
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const PENDING_ABANDON_MS = 5 * 60 * 1000;
-const ADMIN_OPS = ['EXPENSE', 'RETURN', 'CASH_CLOSE', 'EXPENSE_CONFIRM', 'EXPENSE_CANCEL', 'EXPENSE_UPDATE', 'RETURN_CONFIRM', 'RETURN_INSPECT', 'RETURN_CANCEL', 'REFUND', 'CATEGORY_CREATE', 'CATEGORY_UPDATE', 'PRODUCT_CREATE', 'STOCK_BOX_CREATE', 'PURCHASE_LINE_DAMAGED', 'PURCHASE_LINE_CLOSE'];
+const ADMIN_OPS = ['EXPENSE', 'RETURN', 'CASH_CLOSE', 'EXPENSE_CONFIRM', 'EXPENSE_CANCEL', 'EXPENSE_UPDATE', 'RETURN_CONFIRM', 'RETURN_INSPECT', 'RETURN_CANCEL', 'REFUND', 'CATEGORY_CREATE', 'CATEGORY_UPDATE', 'PRODUCT_CREATE', 'STOCK_BOX_CREATE', 'PURCHASE_LINE_DAMAGED', 'PURCHASE_LINE_CLOSE', 'SUPPLIER_CREATE', 'SUPPLIER_UPDATE', 'PURCHASE_CREATE', 'PURCHASE_UPDATE', 'PURCHASE_LINES_REPLACE', 'PURCHASE_CONFIRM', 'PURCHASE_CANCEL', 'SUPPLIER_PAYMENT_CREATE'];
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -45,7 +48,7 @@ async function loadReceiptLine(tx: Prisma.TransactionClient, pharmacyId: string,
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const UUID_FIELDS = ['saleId', 'saleLineId', 'salePaymentId', 'returnId', 'expenseId', 'cashSessionId', 'sessionId', 'categoryId', 'productId', 'purchaseId', 'purchaseLineId', 'lineId'];
+const UUID_FIELDS = ['saleId', 'saleLineId', 'salePaymentId', 'returnId', 'expenseId', 'cashSessionId', 'sessionId', 'categoryId', 'productId', 'purchaseId', 'purchaseLineId', 'lineId', 'supplierId', 'newId', 'newLineId'];
 
 function findInvalidId(payload: any): string | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -81,6 +84,9 @@ export class SyncService {
     private readonly config: ConfigService,
     private readonly expensesService: ExpensesService,
     private readonly returnsService: ReturnsService,
+    private readonly suppliersService: SuppliersService,
+    private readonly purchasesService: PurchasesService,
+    private readonly supplierPaymentsService: SupplierPaymentsService,
   ) {}
 
   private async resolveReturnId(tx: Prisma.TransactionClient, pharmacyId: string, payload: any): Promise<string> {
@@ -250,6 +256,46 @@ export class SyncService {
       await tx.purchase.update({ where: { id: line.purchaseId }, data: { updatedAt: new Date() } });
       await tx.auditLog.create({ data: { pharmacyId, userId, action: 'purchase.line.closed', entity: 'PurchaseLine', entityId: line.id } });
       return { lineId: line.id };
+    }
+    if (op.operationType === 'SUPPLIER_CREATE') {
+      const d = op.payload ?? {};
+      const s: any = await this.suppliersService.create(pharmacyId, userId, (d.data ?? {}) as any, tx, d.newId);
+      return { supplierId: s.id };
+    }
+    if (op.operationType === 'SUPPLIER_UPDATE') {
+      const d = op.payload ?? {};
+      const s: any = await this.suppliersService.update(pharmacyId, userId, String(d.supplierId ?? ''), (d.data ?? {}) as any, tx);
+      return { supplierId: s.id };
+    }
+    if (op.operationType === 'PURCHASE_CREATE') {
+      const d = op.payload ?? {};
+      const p: any = await this.purchasesService.create(pharmacyId, userId, d.data as any, tx, d.newId);
+      return { purchaseId: p.id };
+    }
+    if (op.operationType === 'PURCHASE_UPDATE') {
+      const d = op.payload ?? {};
+      await this.purchasesService.update(pharmacyId, userId, String(d.purchaseId ?? ''), (d.data ?? {}) as any, tx);
+      return { purchaseId: d.purchaseId };
+    }
+    if (op.operationType === 'PURCHASE_LINES_REPLACE') {
+      const d = op.payload ?? {};
+      await this.purchasesService.replaceLines(pharmacyId, userId, String(d.purchaseId ?? ''), (d.lines ?? []) as any, tx);
+      return { purchaseId: d.purchaseId };
+    }
+    if (op.operationType === 'PURCHASE_CONFIRM') {
+      const d = op.payload ?? {};
+      await this.purchasesService.confirm(pharmacyId, userId, String(d.purchaseId ?? ''), d.pay && d.pay.paidFrom && d.pay.method ? { paidFrom: d.pay.paidFrom, method: d.pay.method } : undefined, tx);
+      return { purchaseId: d.purchaseId };
+    }
+    if (op.operationType === 'PURCHASE_CANCEL') {
+      const d = op.payload ?? {};
+      await this.purchasesService.cancel(pharmacyId, userId, String(d.purchaseId ?? ''), tx);
+      return { purchaseId: d.purchaseId };
+    }
+    if (op.operationType === 'SUPPLIER_PAYMENT_CREATE') {
+      const d = op.payload ?? {};
+      const pay: any = await this.supplierPaymentsService.pay(pharmacyId, userId, { purchaseId: String(d.purchaseId ?? ''), amount: Number(d.amount), paidFrom: String(d.paidFrom ?? ''), method: String(d.method ?? ''), notes: d.notes || undefined }, tx);
+      return { paymentId: pay.id };
     }
     if (op.operationType === 'CATEGORY_CREATE') {
       const name = String(op.payload?.name ?? '').trim();
