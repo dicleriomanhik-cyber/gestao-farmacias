@@ -125,7 +125,7 @@ export default function AdminCashPage() {
   const totalSalesPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0) - totalRefundsPeriod;
 
   const totalOut = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
-  const totalIn = movements.filter((m) => m.type === "IN" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
+  const totalIn = movements.filter((m) => m.type === "IN" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0); const openingRefunds = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH" && /reembolso/i.test(String(m.reason)) && /valor inicial/i.test(String(m.reason))).reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalExpensesCash = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH" && String(m.reason).startsWith("Despesa")).reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalOutDigital = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") !== "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
 
@@ -134,7 +134,7 @@ export default function AdminCashPage() {
     : 0;
   
   const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0) - totalOutDigital;
-  const refundOf = (m: string) => movements.filter((x) => x.type === "OUT" && String(x.reason).startsWith("Reembolso") && (x.method ?? "CASH") === m).reduce((acc, x) => acc + parseFloat(x.amount), 0);
+  const refundOf = (m: string) => movements.filter((x) => x.type === "OUT" && String(x.reason).startsWith("Reembolso") && !/valor inicial/i.test(String(x.reason)) && (x.method ?? "CASH") === m).reduce((acc, x) => acc + parseFloat(x.amount), 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -179,7 +179,7 @@ export default function AdminCashPage() {
           <div className="cash-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
             <div className="card" style={{ padding: "0.75rem" }}>
               <h3 style={{ color: "#6b7280", fontSize: "0.75rem", margin: "0 0 0.25rem" }}>Valor Inicial</h3>
-              <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(session.openingBalance)} MT</p>
+              <p style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{money(parseFloat(session.openingBalance.toString()) - openingRefunds)} MT</p>
             </div>
             <div className="card" style={{ padding: "0.75rem", backgroundColor: cashInDrawer < 0 ? "#fef2f2" : "#eff6ff", border: cashInDrawer < 0 ? "1px solid #fecaca" : "1px solid #bfdbfe" }}>
               <h3 style={{ color: cashInDrawer < 0 ? "#b91c1c" : "#1e40af", fontSize: "0.75rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Saldo em Gaveta</h3>

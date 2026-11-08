@@ -34,7 +34,7 @@ export default function OperationalReturnPage() {
       setLoading(true);
       Promise.all([getSaleById(saleId), getReturns({ page: 1, limit: 100 })]).then(([s, rr]) => { const qty = returnedQtyBySaleLine((rr.data as any[]).filter((x: any) => x.saleId === saleId)); setReturnedQty(qty);
           setSale(s);
-          setLines((s.lines ?? []).filter((l) => Number(l.quantity) - (qty.get(l.id) ?? 0) > 0).map((l) => ({ saleLineId: l.id, quantity: 1 })));
+          setLines((s.lines ?? []).filter((l) => Number(l.quantity) - (qty.get(l.id) ?? 0) > 0).map((l) => ({ saleLineId: l.id, quantity: 0 })));
         })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
@@ -54,12 +54,12 @@ export default function OperationalReturnPage() {
   }, [saleId, tick]);
 
   function updateLineQty(saleLineId: string, qty: number) {
-    setLines((prev) => prev.map((l) => l.saleLineId === saleLineId ? { ...l, quantity: Math.max(1, qty) } : l));
+    setLines((prev) => prev.map((l) => l.saleLineId === saleLineId ? { ...l, quantity: Number.isFinite(qty) && qty > 0 ? qty : 0 } : l));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!saleId || !reason.trim()) return toast.error("Motivo é obrigatório.");
+    if (!saleId || !reason.trim()) return toast.error("Motivo é obrigatório."); const chosen = lines.filter((l) => l.quantity > 0); if (chosen.length === 0) return toast.error("Indique a quantidade a devolver."); for (const c of chosen) { const sl = (sale?.lines ?? []).find((x) => x.id === c.saleLineId); const max = sl ? Number(sl.quantity) - (returnedQty.get(sl.id) ?? 0) : 0; if (c.quantity > max) return toast.error("Quantidade acima do vendido: o m\u00e1ximo para " + (sl?.product?.name ?? "este produto") + " \u00e9 " + max + "."); }
     setSubmitting(true);
     try {
       const draft = await createReturn({
@@ -160,10 +160,10 @@ export default function OperationalReturnPage() {
               type="number"
               min="1"
               max={Number(line.quantity) - (returnedQty.get(line.id) ?? 0)}
-              value={lines.find((l) => l.saleLineId === line.id)?.quantity ?? 1}
+              value={(lines.find((l) => l.saleLineId === line.id)?.quantity ?? 0) || ""}
               onChange={(e) => updateLineQty(line.id, parseInt(e.target.value, 10))}
               className="input"
-              style={{ width: "80px", textAlign: "center" }}
+              placeholder={"m\u00e1x. " + (Number(line.quantity) - (returnedQty.get(line.id) ?? 0))} style={{ width: "80px", textAlign: "center" }}
             />
           </div>
         ))}
