@@ -378,6 +378,7 @@ export class ReportsService {
     return {
       summary: { totalProducts, totalLots, expiredLotsCount, nearExpiryLotsCount, totalStockValue: totalStockValue.toFixed(2) },
       products: productsResult.filter((p) => p.totalAvailable > 0),
+      lowStockProducts: productsResult.filter((p) => p.totalAvailable < LOW_STOCK_THRESHOLD).map((p) => ({ productId: p.productId, productName: p.productName, sku: p.sku, totalAvailable: p.totalAvailable })),
     };
   }
 }
