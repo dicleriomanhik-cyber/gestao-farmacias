@@ -59,7 +59,7 @@ export default function OperationalReturnPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!saleId || !reason.trim()) return toast.error("Motivo é obrigatório."); const chosen = lines.filter((l) => l.quantity > 0); if (chosen.length === 0) return toast.error("Indique a quantidade a devolver."); for (const c of chosen) { const sl = (sale?.lines ?? []).find((x) => x.id === c.saleLineId); const max = sl ? Number(sl.quantity) - (returnedQty.get(sl.id) ?? 0) : 0; if (c.quantity > max) return toast.error("Quantidade acima do vendido: o m\u00e1ximo para " + (sl?.product?.name ?? "este produto") + " \u00e9 " + max + "."); }
+    if (!saleId || !reason.trim()) return toast.error("Motivo é obrigatório."); const chosen = lines.filter((l) => l.quantity > 0); if (chosen.length === 0) { const f = e.currentTarget as HTMLFormElement; const first = Array.from(f.querySelectorAll<HTMLInputElement>("input[data-qty]")).find((i) => !i.value) ?? f.querySelector<HTMLInputElement>("input[data-qty]"); if (first) { first.setCustomValidity("Preencha a quantidade a devolver."); first.reportValidity(); } else { toast.error("Indique a quantidade a devolver."); } return; } for (const c of chosen) { const sl = (sale?.lines ?? []).find((x) => x.id === c.saleLineId); const max = sl ? Number(sl.quantity) - (returnedQty.get(sl.id) ?? 0) : 0; if (c.quantity > max) return toast.error("Quantidade acima do vendido: o m\u00e1ximo para " + (sl?.product?.name ?? "este produto") + " \u00e9 " + max + "."); }
     setSubmitting(true);
     try {
       const draft = await createReturn({
@@ -155,16 +155,19 @@ export default function OperationalReturnPage() {
         {(sale.lines ?? []).filter((line) => Number(line.quantity) - (returnedQty.get(line.id) ?? 0) > 0).map((line) => (
           <div key={line.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #e2e8f0" }}>
             <span>{line.product?.name ?? line.productId.substring(0, 8)}</span>
-            <span>{line.quantity} x {parseFloat(line.unitPrice).toFixed(2)} MT</span>
+            <span>{Number(line.quantity) - (returnedQty.get(line.id) ?? 0)} x {parseFloat(line.unitPrice).toFixed(2)} MT</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <input
               type="number"
-              min="1"
+              min="1" data-qty="1"
               max={Number(line.quantity) - (returnedQty.get(line.id) ?? 0)}
               value={(lines.find((l) => l.saleLineId === line.id)?.quantity ?? 0) || ""}
-              onChange={(e) => updateLineQty(line.id, parseInt(e.target.value, 10))}
+              onChange={(e) => { e.target.setCustomValidity(""); updateLineQty(line.id, parseInt(e.target.value, 10)); }}
               className="input"
-              placeholder={"m\u00e1x. " + (Number(line.quantity) - (returnedQty.get(line.id) ?? 0))} style={{ width: "80px", textAlign: "center" }}
+              style={{ width: "80px", textAlign: "center" }}
             />
+            <small style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "0.25rem" }}>Quantidade a devolver</small>
+            </div>
           </div>
         ))}
 
