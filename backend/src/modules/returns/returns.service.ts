@@ -150,31 +150,41 @@ export class ReturnsService {
       const lines = await tx.saleReturnLine.findMany({ where: { returnId } });
       
       for (const line of lines) {
-        await tx.quarantineStock.create({
-          data: {
-            pharmacyId,
-            productId: line.productId,
-            saleReturnLineId: line.id,
-            lotNumber: line.lotNumber || 'DESCONHECIDO',
-            expiryDate: line.expiryDate ? new Date(line.expiryDate) : new Date('2099-12-31'),
-            quantityReceived: line.quantity,
-            unitCost: 0,
-            status: 'PENDING_INSPECTION',
-          }
-        });
-
-        await tx.stockMovement.create({
-          data: {
-            pharmacyId,
-            productId: line.productId,
-            type: 'SALE_RETURN',
-            quantity: line.quantity,
-            referenceId: returnId,
-            referenceType: 'SaleReturn',
-            userId,
-            notes: 'Entrada em quarentena',
-          }
-        });
+        const jaDevolvido = (await tx.saleReturnLine.aggregate({
+          where: { saleLineId: line.saleLineId, id: { not: line.id }, return: { status: 'CONFIRMED' } },
+          _sum: { quantity: true },
+        }))._sum.quantity || 0;
+        let saltar = jaDevolvido;
+        let restante = line.quantity;
+        const vendidos = await tx.saleLineLot.findMany({ where: { saleLineId: line.saleLineId }, orderBy: { id: 'asc' } });
+        const destinos: Array<{ lotId: string | null; qty: number }> = [];
+        for (const v of vendidos) {
+          if (restante <= 0) break;
+          let disponivel = v.quantity;
+          if (saltar > 0) { const s = Math.min(saltar, disponivel); saltar -= s; disponivel -= s; }
+          const dar = Math.min(restante, disponivel);
+          if (dar > 0) { destinos.push({ lotId: v.lotId, qty: dar }); restante -= dar; }
+        }
+        if (restante > 0) {
+          const ultimo = await tx.stockLot.findFirst({ where: { pharmacyId, productId: line.productId }, orderBy: { createdAt: 'desc' } });
+          destinos.push({ lotId: ultimo ? ultimo.id : null, qty: restante });
+        }
+        for (const d of destinos) {
+          if (d.lotId) await tx.stockLot.update({ where: { id: d.lotId }, data: { quantityAvailable: { increment: d.qty } } });
+          await tx.stockMovement.create({
+            data: {
+              pharmacyId,
+              productId: line.productId,
+              lotId: d.lotId,
+              type: 'SALE_RETURN',
+              quantity: d.qty,
+              referenceId: returnId,
+              referenceType: 'SaleReturn',
+              userId,
+              notes: 'Stock reposto pela devolucao',
+            }
+          });
+        }
       }
 
       const updated = await tx.saleReturn.update({
@@ -207,6 +217,12 @@ export class ReturnsService {
       });
       if (reembolsos > 0) throw new BadRequestException('Não é possível cancelar: já existem reembolsos registados.');
 
+      const repostos = await tx.stockMovement.findMany({ where: { referenceType: 'SaleReturn', referenceId: returnId, type: 'SALE_RETURN', lotId: { not: null } } });
+      for (const m of repostos) {
+        const lote = await tx.stockLot.findUnique({ where: { id: m.lotId as string } });
+        if (!lote) continue;
+        await tx.stockLot.update({ where: { id: lote.id }, data: { quantityAvailable: Math.max(0, lote.quantityAvailable - m.quantity) } });
+      }
       await tx.quarantineStock.deleteMany({ where: { saleReturnLineId: { in: lineIds } } });
       await tx.stockMovement.deleteMany({ where: { referenceType: 'SaleReturn', referenceId: returnId, type: 'SALE_RETURN' } });
       await tx.saleReturn.update({ where: { id: returnId }, data: { status: 'CANCELLED' } });
