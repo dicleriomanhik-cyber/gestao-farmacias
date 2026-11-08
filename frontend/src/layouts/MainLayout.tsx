@@ -46,7 +46,7 @@ export default function MainLayout() {
 
       <nav className="app-nav">
         {navItems.map((item) => (
-          <NavLink key={item.path} to={item.path} end={item.path === "/"} className={({ isActive }) => (isActive || (item.path === "/stock/caixas" && pathname.startsWith("/stock")) ? "active" : undefined)}>
+          <NavLink key={item.path} to={item.path} end={item.path === "/"} className={({ isActive }) => (isActive || (item.path === "/stock/caixas" && pathname.startsWith("/stock")) || (item.path === "/caixa-admin" && (pathname.startsWith("/vendas") || pathname === "/caixa")) ? "active" : undefined)}>
             {item.label}
           </NavLink>
         ))}

@@ -154,6 +154,14 @@ export default function SupplierFormPage() {
         >
           {submitting ? "A guardar…" : "Guardar Fornecedor"}
         </button>
+        <button
+          type="button"
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/fornecedores"))}
+          className="btn btn-secondary"
+          style={{ width: "100%", padding: "0.75rem", marginTop: "0.5rem" }}
+        >
+          Cancelar
+        </button>
       </form>
     </div>
   );

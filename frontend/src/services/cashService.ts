@@ -1,5 +1,5 @@
 import { apiClient } from "./api";
-import { localActiveCashSession } from "../offline/readModel";
+import { localActiveCashSession, localLastClosedCashSession } from "../offline/readModel";
 import { openCashLocal, closeCashLocal } from "../offline/operationsLocal";
 import type { CashSession, CashOpenRequest, CashCloseRequest, Payment, PaymentRequest, PaymentMethod } from "../types/sales";
 
@@ -15,6 +15,15 @@ export async function getActiveCashSession(): Promise<CashSession | null> {
     return resp.data.data;
   } catch {
     return (await localActiveCashSession()) as CashSession | null;
+  }
+}
+
+export async function getLastClosedCashSession(): Promise<CashSession | null> {
+  try {
+    const resp = await apiClient.get<Envelope<CashSession | null>>("/cash/last-closed");
+    return resp.data.data;
+  } catch {
+    return (await localLastClosedCashSession()) as CashSession | null;
   }
 }
 
@@ -45,8 +54,8 @@ export async function registerPayment(data: PaymentRequest): Promise<Payment> {
   return resp.data.data;
 }
 
-export async function getPayments(): Promise<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }> {
-  const resp = await apiClient.get<Envelope<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }>>("/cash/payments");
+export async function getPayments(sessionId?: string): Promise<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }> {
+  const resp = await apiClient.get<Envelope<{ session: CashSession; payments: Payment[]; totalsByMethod: Record<PaymentMethod, number> }>>("/cash/payments", sessionId ? { params: { sessionId } } : undefined);
   return resp.data.data;
 }
 

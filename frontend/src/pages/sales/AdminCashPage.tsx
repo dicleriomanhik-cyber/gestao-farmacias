@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getActiveCashSession, getPayments } from "../../services/cashService";
+import { getActiveCashSession, getLastClosedCashSession, getPayments } from "../../services/cashService";
 
 import { getSales } from "../../services/saleService";
 import { apiClient } from "../../services/api";
@@ -35,6 +35,7 @@ export default function AdminCashPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showSales, setShowSales] = useState(true);
+  const [closedView, setClosedView] = useState(false);
 
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
@@ -50,16 +51,19 @@ export default function AdminCashPage() {
         getSales({ limit: 1000 }),
         
       ]);
-      setSession(active);
+      const closed = active ? null : await getLastClosedCashSession().catch(() => null);
+      const shown = active ?? closed;
+      setSession(shown);
+      setClosedView(!active && !!closed);
       setSales(salesRes.data);
       
 
-      if (active) {
-        const data = await getPayments();
+      if (shown) {
+        const data = await getPayments(active ? undefined : shown.id);
         setTotals(data.totalsByMethod);
         
         try {
-          const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements");
+          const resp = await apiClient.get<{ success: boolean; data: CashMovement[] }>("/cash/movements", active ? undefined : { params: { sessionId: shown.id } });
           setMovements(resp.data.data ?? []);
         } catch {
           setMovements([]);
@@ -209,7 +213,7 @@ export default function AdminCashPage() {
 
           <div className="card" style={{ padding: "0.75rem" }}>
             <p style={{ color: cashInDrawer < 0 ? "#b91c1c" : "#166534", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>
-              {cashInDrawer < 0 ? "⚠️ Caixa em saldo negativo — é necessário forçar o fecho." : "Caixa aberta normalmente."}
+              {closedView ? "Caixa fechada" + (session.closedAt ? " em " + formatDateTime(session.closedAt) : "") + (session.closedByOperatorName ? ", por " + session.closedByOperatorName : "") + "." : cashInDrawer < 0 ? "⚠️ Caixa em saldo negativo — é necessário forçar o fecho." : "Caixa aberta normalmente."}
             </p>
             <p style={{ marginBottom: 0, fontSize: "0.85rem" }}><strong>Aberta em:</strong> {formatDateTime(session.openedAt)}</p>
           </div>

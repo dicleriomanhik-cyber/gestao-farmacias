@@ -151,11 +151,13 @@ export async function localResponse(path: string, params: Record<string, any> = 
   if (p === "/sales") {
     return envelope(await localSales({ page: Number(params.page ?? 1), limit: Number(params.limit ?? 20), status: params.status }));
   }
+  if (p === "/cash/last-closed") return envelope(await localLastClosedCashSession());
   if (p === "/cash/active") return envelope(await localActiveCashSession());
-  if (p === "/cash/payments") return envelope(await localCashPayments());
+  if (p === "/cash/payments") return envelope(await localCashPayments(params.sessionId));
   if (p === "/cash/movements") {
     const todos = params.all === true || params.all === "true";
     const movs = await localCashMovements();
+    if (params.sessionId) return envelope(movs.filter((m: any) => m.cashSessionId === params.sessionId));
     if (todos) return envelope(movs);
     const activeId = (await localActiveCashSession())?.id;
     return envelope(movs.filter((m: any) => (m.cashSessionId ? m.cashSessionId === activeId : true)));
@@ -245,8 +247,8 @@ export async function localResponse(path: string, params: Record<string, any> = 
   return null;
 }
 
-export async function localCashPayments() {
-  const session = await localActiveCashSession();
+export async function localCashPayments(sessionId?: string) {
+  const session = sessionId ? ((await getAll("cash_sessions")).find((s) => s.id === sessionId) ?? null) : await localActiveCashSession();
   const all = await getAll("payments");
   const payments = session ? all.filter((p) => p.cashSessionId === session.id) : [];
   const totalsByMethod: Record<string, number> = { CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 };
@@ -972,4 +974,9 @@ export async function localFinanceDetails(params: Record<string, any> = {}) {
     stock: { valueAtCost: round2(valueAtCost), unitsNoCost, expiringValue: round2(expiringValue), expiringLots, expiringDays: 60 },
     noMovement,
   };
+}
+export async function localLastClosedCashSession() {
+  const sessions = (await getAll("cash_sessions")).filter((s) => s.status === "CLOSED");
+  sessions.sort((a, b) => (String(a.closedAt ?? "") < String(b.closedAt ?? "") ? 1 : -1));
+  return sessions[0] ?? null;
 }

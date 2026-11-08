@@ -144,7 +144,7 @@ export default function StockBoxListPage() {
                     <td style={cellStyle}><span style={{ fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: b.type === "MEDICINE" ? "#e8efff" : "#fff4e0", color: b.type === "MEDICINE" ? "#2f5bd3" : "#b45309" }}>{b.type === "MEDICINE" ? "Medicamento" : "Produto"}</span></td>
                     <td style={cellStyle}>{b.hasExpiry && b.expiryDate ? formatDate(b.expiryDate) : <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", color: "#6b7280" }}>Sem validade</span>}</td>
                     <td align="right" style={{ ...cellStyle, color: "#5b6478" }}>
-                      {b.innerCount !== null && b.unitsPerInner ? `${Math.ceil(b.quantityAvailable / b.unitsPerInner)} de ${b.innerCount}` : "—"}
+                      {b.innerCount !== null && b.unitsPerInner ? `${Math.ceil(b.quantityAvailable / b.unitsPerInner)} de ${b.innerCount}` : `${b.quantityAvailable} de ${b.totalUnits}`}
                     </td>
                     <td align="right" style={cellStyle}>
                       <b>{b.quantityAvailable}</b> de {b.totalUnits} {b.saleUnitLabel}{b.totalUnits === 1 ? "" : "s"}

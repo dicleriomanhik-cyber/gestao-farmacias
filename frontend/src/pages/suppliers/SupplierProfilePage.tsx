@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getSupplierSummary } from "../../services/supplierService";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getSupplierSummary, getSuppliers } from "../../services/supplierService";
+import CustomSelect from "../../components/ui/CustomSelect";
 import { getSettings } from "../../services/settingsService";
 import type { SupplierSummary } from "../../types/suppliers";
 import LoadingState from "../../components/ui/LoadingState";
@@ -15,6 +16,8 @@ const sectionTitle = { fontSize: "1.1rem", fontWeight: 600, margin: "1.5rem 0 0.
 
 export default function SupplierProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [all, setAll] = useState<{ id: string; name: string }[]>([]);
   const [data, setData] = useState<SupplierSummary | null>(null);
   const [payables, setPayables] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,12 @@ export default function SupplierProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    getSuppliers({ page: 1, limit: 100 })
+      .then((r) => setAll(r.data.map((s) => ({ id: s.id, name: s.name }))))
+      .catch(() => undefined);
+  }, []);
+
   if (loading) return <LoadingState />;
   if (error || !data) return <ErrorState message="Não foi possível carregar a ficha do fornecedor." onRetry={load} />;
 
@@ -45,6 +54,10 @@ export default function SupplierProfilePage() {
 
   return (
     <div style={{ overflowY: "auto" }}>
+      <div style={{ maxWidth: "320px", marginBottom: "1rem" }}>
+        <label style={{ display: "block", marginBottom: "0.35rem", fontSize: "0.85rem", color: "#64748b" }}>Fornecedor</label>
+        <CustomSelect value={supplier.id} onChange={(v) => { if (v && v !== supplier.id) navigate(`/fornecedores/${v}`); }} options={(all.length > 0 ? all : [{ id: supplier.id, name: supplier.name }]).map((s) => ({ value: s.id, label: s.name }))} />
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem", flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: 0 }}>{supplier.name}</h1>

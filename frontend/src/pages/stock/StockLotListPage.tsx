@@ -75,9 +75,8 @@ export default function StockLotListPage(_props: Props) {
 
   function formatDate(dateStr: string) {
     const d = new Date(dateStr);
-    const day = String(d.getUTCDate()).padStart(2, "0");
     const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-    return `${day}/${month}/${d.getUTCFullYear()}`;
+    return `${month}/${d.getUTCFullYear()}`;
   }
 
   const groups: Record<string, Group> = {};

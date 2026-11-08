@@ -40,7 +40,7 @@ export default function DeleteAccountSection() {
             type="password"
             className="input"
             autoComplete="current-password"
-            placeholder="Palavra-passe do administrador"
+            placeholder="Digite a palavra-passe do administrador"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{ flex: 1, minWidth: "220px" }}
