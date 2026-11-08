@@ -153,6 +153,11 @@ export default function ReportsPage() {
   const totalRefunds = allRefunds(returns).filter((f) => isWithinPeriod(f.createdAt)).reduce((acc, f) => acc + f.amount, 0);
   const totalSales = grossSales - totalRefunds;
   const totalExpenses = filteredExpensesList.reduce((acc, e) => acc + parseFloat(e.amount), 0);
+  const expiringLots = (stock?.products ?? []).flatMap((p) => p.lots.filter((l) => l.status === "NEAR_EXPIRY" || l.status === "EXPIRED").map((l) => ({ ...l, productName: p.productName })));
+  const expiredCount = expiringLots.filter((l) => l.status === "EXPIRED").length;
+  const lowStockProducts: { productId: string; productName: string; totalAvailable: number }[] = (stock as any)?.lowStockProducts ?? [];
+  const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const cardProps = (id: string) => ({ role: "button" as const, tabIndex: 0, onClick: () => goTo(id), onKeyDown: (e: { key: string }) => { if (e.key === "Enter" || e.key === " ") goTo(id); }, style: { padding: "1rem", cursor: "pointer" } });
 
 
   async function handleExportPDF() {
@@ -254,29 +259,39 @@ export default function ReportsPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem", marginTop: "1rem" }}>
-        <div className="card" style={{ padding: "1rem" }}>
+        <div className="card" {...cardProps("sec-vendas")}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{money(totalSales)} MT</p>
           <small style={{ color: "#6b7280" }}>{filteredSalesList.length} vendas{totalRefunds > 0 ? ` · devolvido ${money(totalRefunds)} MT` : ""}</small>
         </div>
         {canFinancial && (
-          <div className="card" style={{ padding: "1rem" }}>
+          <div className="card" {...cardProps("sec-despesas")}>
             <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Despesas</h3>
             <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#b91c1c" }}>{money(totalExpenses)} MT</p>
             <small style={{ color: "#6b7280" }}>{filteredExpensesList.length} despesas</small>
           </div>
         )}
-        <div className="card" style={{ padding: "1rem" }}>
+        <div className="card" {...cardProps("sec-expirar")}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lotes a Expirar</h3>
-          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: (summary?.stock.expiredLotsCount ?? 0) > 0 ? "#b91c1c" : "#166534" }}>
-            {summary?.stock.expiredLotsCount ?? 0}
-          </p>
-          <small style={{ color: "#6b7280" }}>Stock baixo: {summary?.stock.lowStockCount ?? 0}</small>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: expiringLots.length > 0 ? "#b91c1c" : "#166534" }}>{expiringLots.length}</p>
+          <small style={{ color: "#6b7280" }}>{expiredCount > 0 ? `${expiredCount} já expirados` : "a expirar em breve"}</small>
+        </div>
+        <div className="card" {...cardProps("sec-stockbaixo")}>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Stock Baixo</h3>
+          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: lowStockProducts.length > 0 ? "#b45309" : "#166534" }}>{lowStockProducts.length}</p>
+          <small style={{ color: "#6b7280" }}>produtos com pouco stock</small>
         </div>
       </div>
 
+      {canFinancial && filteredExpensesList.length === 0 && (
+        <div id="sec-despesas" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", scrollMarginTop: "140px" }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Despesas</h2>
+          <p style={{ color: "#6b7280" }}>Sem despesas no período.</p>
+        </div>
+      )}
+
       {canFinancial && filteredExpensesList.length > 0 && (
-        <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>
+        <div id="sec-despesas" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto", scrollMarginTop: "140px" }}>
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Despesas</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
@@ -305,8 +320,15 @@ export default function ReportsPage() {
         </div>
       )}
 
+      {filteredSalesList.length === 0 && (
+        <div id="sec-vendas" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", scrollMarginTop: "140px" }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Vendas</h2>
+          <p style={{ color: "#6b7280" }}>Sem vendas no período.</p>
+        </div>
+      )}
+
       {filteredSalesList.length > 0 && (
-        <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>
+        <div id="sec-vendas" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto", scrollMarginTop: "140px" }}>
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Vendas</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
@@ -352,6 +374,51 @@ export default function ReportsPage() {
           </table>
         </div>
       )}
+
+      <div id="sec-expirar" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto", scrollMarginTop: "140px" }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Lotes a Expirar</h2>
+        {expiringLots.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>Nenhum lote a expirar.</p>
+        ) : (
+          <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <thead>
+              <tr><th style={{ width: "34%" }}>Produto</th><th style={{ width: "18%" }}>Lote</th><th style={{ width: "16%" }}>Validade</th><th style={{ width: "14%" }}>Quantidade</th><th style={{ width: "18%" }}>Estado</th></tr>
+            </thead>
+            <tbody>
+              {expiringLots.map((l) => (
+                <tr key={l.id}>
+                  <td>{l.productName}</td>
+                  <td>{l.lotNumber}</td>
+                  <td>{l.expiryDate ? formatDate(l.expiryDate) : "\u2014"}</td>
+                  <td>{l.quantityAvailable}</td>
+                  <td style={{ fontWeight: 600, color: l.status === "EXPIRED" ? "#b91c1c" : "#b45309" }}>{l.status === "EXPIRED" ? "Expirado" : "A expirar"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div id="sec-stockbaixo" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto", scrollMarginTop: "140px" }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Stock Baixo</h2>
+        {lowStockProducts.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>Nenhum produto com stock baixo.</p>
+        ) : (
+          <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <thead>
+              <tr><th style={{ width: "70%" }}>Produto</th><th style={{ width: "30%" }}>Disponível</th></tr>
+            </thead>
+            <tbody>
+              {lowStockProducts.map((p) => (
+                <tr key={p.productId}>
+                  <td>{p.productName}</td>
+                  <td>{p.totalAvailable}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {stock && (
         <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>

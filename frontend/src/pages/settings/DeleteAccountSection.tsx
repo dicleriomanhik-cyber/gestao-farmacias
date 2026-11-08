@@ -35,7 +35,7 @@ export default function DeleteAccountSection() {
           Eliminar conta
         </button>
       ) : (
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", maxWidth: "520px" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center" }}>
           <input
             type="password"
             className="input"
@@ -43,12 +43,12 @@ export default function DeleteAccountSection() {
             placeholder="Digite a palavra-passe do administrador"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ flex: 1, minWidth: "220px" }}
+            style={{ flex: 1, minWidth: 0 }}
           />
-          <button type="button" className="btn" disabled={busy || !password} style={{ background: "#e11d1d", color: "#fff", border: "none", fontWeight: 600 }} onClick={() => void confirmDelete()}>
+          <button type="button" className="btn" disabled={busy || !password} style={{ background: "#e11d1d", color: "#fff", border: "none", fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap" }} onClick={() => void confirmDelete()}>
             {busy ? "A eliminar..." : "Confirmar eliminação"}
           </button>
-          <button type="button" className="btn" disabled={busy} style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }} onClick={() => { setOpen(false); setPassword(""); }}>
+          <button type="button" className="btn" disabled={busy} style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0", flexShrink: 0 }} onClick={() => { setOpen(false); setPassword(""); }}>
             Cancelar
           </button>
         </div>
