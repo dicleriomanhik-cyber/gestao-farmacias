@@ -272,7 +272,7 @@ export default function ReportsPage() {
           </div>
         )}
         <div className="card" {...cardProps("sec-expirar")}>
-          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Lotes a Expirar</h3>
+          <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Caixas a Expirar</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: expiringLots.length > 0 ? "#b91c1c" : "#166534" }}>{expiringLots.length}</p>
           <small style={{ color: "#6b7280" }}>{expiredCount > 0 ? `${expiredCount} já expirados` : "a expirar em breve"}</small>
         </div>
@@ -376,13 +376,13 @@ export default function ReportsPage() {
       )}
 
       <div id="sec-expirar" className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto", scrollMarginTop: "140px" }}>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Lotes a Expirar</h2>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Caixas a Expirar</h2>
         {expiringLots.length === 0 ? (
-          <p style={{ color: "#6b7280" }}>Nenhum lote a expirar.</p>
+          <p style={{ color: "#6b7280" }}>Nenhuma caixa a expirar.</p>
         ) : (
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "34%" }}>Produto</th><th style={{ width: "18%" }}>Lote</th><th style={{ width: "16%" }}>Validade</th><th style={{ width: "14%" }}>Quantidade</th><th style={{ width: "18%" }}>Estado</th></tr>
+              <tr><th style={{ width: "34%" }}>Produto</th><th style={{ width: "18%" }}>Caixa</th><th style={{ width: "16%" }}>Validade</th><th style={{ width: "14%" }}>Quantidade</th><th style={{ width: "18%" }}>Estado</th></tr>
             </thead>
             <tbody>
               {expiringLots.map((l) => (
@@ -425,7 +425,7 @@ export default function ReportsPage() {
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Stock</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
             <span><strong>Produtos:</strong> {stock.summary.totalProducts}</span>
-            <span><strong>Lotes:</strong> {stock.summary.totalLots}</span>
+            <span><strong>Caixas:</strong> {stock.summary.totalLots}</span>
             <span><strong>Valor:</strong> {money(stock.summary.totalStockValue)} MT</span>
             <span><strong>Expirados:</strong> {stock.summary.expiredLotsCount}</span>
           </div>

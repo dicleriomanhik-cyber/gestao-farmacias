@@ -37,7 +37,7 @@ export default function StockCreateFormPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!productId) return toast.error("Selecciona um produto.");
-    if (!lotNumber.trim()) return toast.error("Número do lote é obrigatório.");
+    if (!lotNumber.trim()) return toast.error("Número da caixa é obrigatório.");
     if (expiryDate && new Date(expiryDate).getTime() <= Date.now()) return toast.error("Validade j\u00e1 expirada: n\u00e3o \u00e9 poss\u00edvel registar produto fora do prazo.");
     if (!expiryDate) return toast.error("Data de validade é obrigatória.");
     const qty = parseInt(quantity, 10);
@@ -54,10 +54,10 @@ export default function StockCreateFormPage() {
         quantity: qty,
         unitCost: cost,
       });
-      toast.success("Lote criado com sucesso.");
+      toast.success("Caixa criada com sucesso.");
       navigate("/stock/lotes");
     } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? "Erro ao criar lote.");
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao criar caixa.");
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +70,7 @@ export default function StockCreateFormPage() {
 
   return (
     <div>
-      <PageHeader title="Adicionar Stock (Novo Lote)" />
+      <PageHeader title="Adicionar Stock (Nova Caixa)" />
       <form onSubmit={handleSubmit} className="card" style={{ padding: "1.5rem", maxWidth: "600px", margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
           <label style={{ fontWeight: 500 }}>Produto</label>
@@ -87,8 +87,8 @@ export default function StockCreateFormPage() {
           />
         </div>
 
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número do Lote</label>
-        <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: LOTE-2026-001" />
+        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Número da Caixa</label>
+        <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} placeholder="Ex: CAIXA-2026-001" />
 
         <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Validade</label>
         <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1rem" }} />
@@ -100,7 +100,7 @@ export default function StockCreateFormPage() {
         <input type="number" step="0.01" min="0" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1.5rem" }} placeholder="Ex: 100.00" />
 
         <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
-          {submitting ? "A guardar…" : "Criar Lote"}
+          {submitting ? "A guardar…" : "Criar Caixa"}
         </button>
       </form>
     </div>

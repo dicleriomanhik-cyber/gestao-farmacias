@@ -36,7 +36,7 @@ export default function StockAdjustFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!lotId) return toast.error("Selecciona um lote.");
+    if (!lotId) return toast.error("Selecciona uma caixa.");
     const qtyNum = parseInt(quantity, 10);
     if (isNaN(qtyNum) || qtyNum === 0) return toast.error("Quantidade deve ser diferente de zero.");
     if (!reason.trim()) return toast.error("Motivo é obrigatório.");
@@ -59,13 +59,13 @@ export default function StockAdjustFormPage() {
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message="Não foi possível carregar os lotes." onRetry={load} />;
+  if (error) return <ErrorState message="Não foi possível carregar as caixas." onRetry={load} />;
 
   if (lots.length === 0) {
     return (
       <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
-        <p style={{ color: "#6b7280", marginBottom: "1rem" }}>Não há lotes em stock para ajustar.</p>
-        <button onClick={() => navigate("/stock/lotes")} className="btn btn-primary">Voltar aos Lotes</button>
+        <p style={{ color: "#6b7280", marginBottom: "1rem" }}>Não há caixas em stock para ajustar.</p>
+        <button onClick={() => navigate("/stock/lotes")} className="btn btn-primary">Voltar às Caixas</button>
       </div>
     );
   }
@@ -80,12 +80,12 @@ export default function StockAdjustFormPage() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Ajustar Stock</h1>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Lote</label>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>Caixa</label>
           <CustomSelect
             options={lotOptions}
             value={lotId}
             onChange={setLotId}
-            placeholder="Selecciona um lote"
+            placeholder="Selecciona uma caixa"
           />
         </div>
 

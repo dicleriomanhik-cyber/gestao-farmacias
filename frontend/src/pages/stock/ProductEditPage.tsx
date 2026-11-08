@@ -131,7 +131,7 @@ export default function ProductEditPage() {
 
         {initialExpiry && (
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Validade do lote</label>
+            <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.9rem" }}>Validade da caixa</label>
             <MonthField value={expiryDate} onChange={setExpiryDate} style={{ width: "100%", padding: "8px 10px", border: "1px solid #d9dee9", borderRadius: 6, font: "inherit", background: "#fff", boxSizing: "border-box", fontSize: "0.9rem" }} />
           </div>
         )}
