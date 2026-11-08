@@ -287,6 +287,7 @@ export default function PosPage() {
     );
   }
 
+  const visiveis = stockMap ? products.filter((p) => (stockMap[p.id] ?? 0) > 0 || (expiredMap[p.id] ?? 0) > 0) : products;
   const cardStyle = {
     backgroundColor: "white",
     borderRadius: "12px",
@@ -330,10 +331,10 @@ export default function PosPage() {
         <div style={{ flex: isMobile ? "none" : 1, minHeight: 0, maxHeight: isMobile ? "50vh" : undefined, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem", paddingRight: "0.5rem" }}>
           {loading ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>A pesquisar…</p>
-          ) : products.length === 0 ? (
+          ) : visiveis.length === 0 ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>Nenhum produto encontrado.</p>
           ) : (
-            products.map((p) => (
+            visiveis.map((p) => (
               <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc", flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: "normal", lineHeight: 1.2 }}>{p.name}</div>{stockMap && (<div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.2, marginTop: "0.1rem" }}>{stockMap[p.id] ?? 0} {p.type === "MEDICINE" ? "carteiras" : "unidades"}{(stockMap[p.id] ?? 0) === 0 && (expiredMap[p.id] ?? 0) > 0 ? " \u00b7 fora do prazo" : ""} disponíveis</div>)}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>

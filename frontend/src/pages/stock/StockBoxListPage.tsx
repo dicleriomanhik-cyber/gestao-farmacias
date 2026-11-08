@@ -62,7 +62,7 @@ export default function StockBoxListPage() {
   useDataChanged(() => load(true));
 
   const filtered = boxes.filter((b) =>
-    `${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())
+    (state === "DEPLETED" || Number(b.quantityAvailable) > 0) && `${b.productName} ${b.qrCode}`.toLowerCase().includes(search.toLowerCase())
   );
 
   function copyToClipboard(text: string) {

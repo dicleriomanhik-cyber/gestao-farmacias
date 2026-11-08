@@ -81,6 +81,7 @@ export default function StockLotListPage(_props: Props) {
 
   const groups: Record<string, Group> = {};
   for (const lot of lots) {
+    if (!(Number(lot.quantityAvailable) > 0)) continue;
     const product = lot.product as LotProduct | undefined;
     const productName = product?.name ?? "Desconhecido";
 
