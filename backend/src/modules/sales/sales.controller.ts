@@ -74,7 +74,7 @@ export class SalesController {
 
   @Get('pos/stock')
   @RequirePermissions(PERMISSIONS.SALES_READ)
-  @ApiOperation({ summary: 'Stock do POS (colaborador) � somente leitura' })
+  @ApiOperation({ summary: 'Stock do POS (colaborador) é somente leitura' })
   getPosStock(@Tenant() pharmacyId: string) {
     return this.stockService.getPosStock(pharmacyId);
   }

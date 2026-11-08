@@ -53,7 +53,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou Código de Barras j� existe nesta farmácia.');
+        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
       }
       throw e;
     }
@@ -142,7 +142,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou Código de Barras j� existe nesta farmácia.');
+        throw new ConflictException('SKU ou Código de Barras já existe nesta farmácia.');
       }
       throw e;
     }

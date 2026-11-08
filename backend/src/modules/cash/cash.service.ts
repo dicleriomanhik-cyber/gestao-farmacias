@@ -52,8 +52,8 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string; openingBalance: Decimal; status: string }>;
       const session = sessions[0];
-      if (!session) throw new NotFoundException('Sess�o de caixa não encontrada.');
-      if (session.status !== 'OPEN') throw new BadRequestException('Sess�o j� fechada.');
+      if (!session) throw new NotFoundException('Sessão de caixa não encontrada.');
+      if (session.status !== 'OPEN') throw new BadRequestException('Sessão já fechada.');
 
       const opener: string | null = (session as any).openedByOperatorId ?? null;
       if (opener && dto.operatorId && dto.operatorId !== opener) throw new BadRequestException('S\u00f3 quem abriu a caixa pode fech\u00e1-la.');
@@ -107,7 +107,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('N�o tem sessão de caixa aberta.');
+    if (!session) throw new NotFoundException('Não tem sessão de caixa aberta.');
 
     const payments = await this.prisma.salePayment.findMany({
       where: { cashSessionId: session.id },
@@ -143,7 +143,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('N�o tem sessão de caixa aberta.');
+    if (!session) throw new NotFoundException('Não tem sessão de caixa aberta.');
 
     return this.prisma.cashMovement.findMany({
       where: { cashSessionId: session.id },
@@ -222,7 +222,7 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string }>;
       const session = sessions[0];
-      if (!session) throw new BadRequestException('N�o tem sessão de caixa aberta.');
+      if (!session) throw new BadRequestException('Não tem sessão de caixa aberta.');
 
       const movement = await tx.cashMovement.create({
         data: { cashSessionId: session.id, type: dto.type, amount: dto.amount, reason: dto.reason, userId },

@@ -26,7 +26,7 @@ export class SyncPaymentPayloadDto {
   @Type(() => Number)
   amount!: number;
 
-  @ApiProperty({ description: 'UUID v4 — igual a idempotencyKey do SyncOperation' })
+  @ApiProperty({ description: 'UUID v4 Ã© igual a idempotencyKey do SyncOperation' })
   @IsUUID('4')
   idempotencyKey!: string;
 }
