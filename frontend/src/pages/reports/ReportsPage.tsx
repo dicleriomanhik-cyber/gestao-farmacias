@@ -21,6 +21,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
 import { formatDate } from '../../utils/formatDate';
+import { allRefunds } from "../../utils/refundStatus";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -151,7 +152,9 @@ export default function ReportsPage() {
   const totalOrigins = byOrigin.reduce((a, r) => a + r.total, 0);
   const filteredReturnsList = returns.filter(r => isWithinPeriod(r.createdAt));
 
-  const totalSales = filteredSalesList.reduce((acc, s) => acc + parseFloat(s.total), 0);
+  const grossSales = filteredSalesList.reduce((acc, s) => acc + parseFloat(s.total), 0);
+  const totalRefunds = allRefunds(returns).filter((f) => isWithinPeriod(f.createdAt)).reduce((acc, f) => acc + f.amount, 0);
+  const totalSales = grossSales - totalRefunds;
   const totalExpenses = filteredExpensesList.reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
 
@@ -257,7 +260,7 @@ export default function ReportsPage() {
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{money(totalSales)} MT</p>
-          <small style={{ color: "#6b7280" }}>{filteredSalesList.length} vendas</small>
+          <small style={{ color: "#6b7280" }}>{filteredSalesList.length} vendas{totalRefunds > 0 ? ` · devolvido ${money(totalRefunds)} MT` : ""}</small>
         </div>
         {canFinancial && (
           <div className="card" style={{ padding: "1rem" }}>

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getActiveCashSession, getLastClosedCashSession, getPayments } from "../../services/cashService";
 
 import { getSales } from "../../services/saleService";
+import { getReturns } from "../../services/returnService";
+import { allRefunds } from "../../utils/refundStatus";
 import { apiClient } from "../../services/api";
 import type { CashSession, PaymentMethod, Sale } from "../../types/sales";
 
@@ -32,6 +34,7 @@ export default function AdminCashPage() {
   const [movements, setMovements] = useState<CashMovement[]>([]);
   
   const [sales, setSales] = useState<Sale[]>([]);
+  const [returnsList, setReturnsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showSales, setShowSales] = useState(true);
@@ -56,6 +59,7 @@ export default function AdminCashPage() {
       setSession(shown);
       setClosedView(!active && !!closed);
       setSales(salesRes.data);
+      try { const r = await getReturns({ page: 1, limit: 1000 }); setReturnsList(Array.isArray(r?.data) ? r.data : []); } catch { setReturnsList([]); }
       
 
       if (shown) {
@@ -117,7 +121,8 @@ export default function AdminCashPage() {
 
   const filteredSales = sales.filter(s => s.status === "CONFIRMED" && isWithinPeriod(s.createdAt));
   
-  const totalSalesPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
+  const totalRefundsPeriod = allRefunds(returnsList).filter((f) => isWithinPeriod(f.createdAt)).reduce((acc, f) => acc + f.amount, 0);
+  const totalSalesPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0) - totalRefundsPeriod;
 
   const totalOut = movements.filter((m) => m.type === "OUT" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
   const totalIn = movements.filter((m) => m.type === "IN" && (m.method ?? "CASH") === "CASH").reduce((acc, m) => acc + parseFloat(m.amount), 0);
@@ -129,6 +134,7 @@ export default function AdminCashPage() {
     : 0;
   
   const totalAllMethods = cashInDrawer + (totals.CARD || 0) + (totals.MPESA || 0) + (totals.EMOLA || 0) - totalOutDigital;
+  const refundOf = (m: string) => movements.filter((x) => x.type === "OUT" && String(x.reason).startsWith("Reembolso") && (x.method ?? "CASH") === m).reduce((acc, x) => acc + parseFloat(x.amount), 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -194,19 +200,19 @@ export default function AdminCashPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Dinheiro (líquido)</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#166534" }}>{money(totals.CASH - refundOf("CASH"))} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Cartão</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e40af" }}>{money(totals.CARD)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e40af" }}>{money(totals.CARD - refundOf("CARD"))} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>M-Pesa</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#b45309" }}>{money(totals.MPESA)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#b45309" }}>{money(totals.MPESA - refundOf("MPESA"))} MT</div>
               </div>
               <div style={{ backgroundColor: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b" }}>e-Mola</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA)} MT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#7c3aed" }}>{money(totals.EMOLA - refundOf("EMOLA"))} MT</div>
               </div>
             </div>
           </div>

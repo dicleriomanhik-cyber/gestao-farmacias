@@ -12,6 +12,17 @@ export function refundedAmount(r: any, l: any): number {
   return sum;
 }
 
+export function allRefunds(returns: any[]): { id: string; amount: number; method: string; createdAt: string }[] {
+  const byId = new Map<string, any>();
+  for (const r of returns ?? []) {
+    if (r.status === "CANCELLED") continue;
+    for (const f of [...(r.refunds ?? []), ...((r.lines ?? []).flatMap((l: any) => l.refunds ?? []))]) {
+      if (COUNTED.includes(f.status)) byId.set(f.id, f);
+    }
+  }
+  return [...byId.values()].map((f) => ({ id: f.id, amount: parseFloat(f.amount), method: f.method, createdAt: f.createdAt }));
+}
+
 export function fullyRefundedSaleIds(returns: SaleReturn[]): Set<string> {
   const ids = new Set<string>();
   for (const r of returns as any[]) {

@@ -4,6 +4,8 @@ import { useAuth } from '../../hooks/useAuth';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { getSales } from "../../services/saleService";
 import { getExpenses } from "../../services/expenseService";
+import { getReturns } from "../../services/returnService";
+import { allRefunds } from "../../utils/refundStatus";
 import { getActiveCashSession, getPayments } from "../../services/cashService";
 import { apiClient } from "../../services/api";
 import type { Sale, CashSession, PaymentMethod } from "../../types/sales";
@@ -19,6 +21,7 @@ interface CashMovement {
   type: "IN" | "OUT";
   amount: string;
   reason: string;
+  method?: string;
   createdAt: string;
 }
 
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [cashTotals, setCashTotals] = useState<Record<PaymentMethod, number>>({ CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 });
   const [movements, setMovements] = useState<CashMovement[]>([]);
+  const [returnsList, setReturnsList] = useState<any[]>([]);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("DAILY");
   const [customStart, setCustomStart] = useState("");
@@ -50,7 +54,8 @@ export default function DashboardPage() {
       getSales({ limit: 1000 }),
       getExpenses({ limit: 1000 }),
       getActiveCashSession(),
-    ]).then(async ([salesRes, expRes, cashRes]) => {
+      getReturns({ page: 1, limit: 1000 }),
+    ]).then(async ([salesRes, expRes, cashRes, retRes]) => {
       if (!mounted) return;
 
       if (salesRes.status === "fulfilled") {
@@ -69,6 +74,7 @@ export default function DashboardPage() {
       }
 
       if (expRes.status === "fulfilled") setExpenses(expRes.value.data);
+      if (retRes.status === "fulfilled") setReturnsList(Array.isArray(retRes.value?.data) ? retRes.value.data : []);
 
       if (cashRes.status === "fulfilled" && cashRes.value) {
         setCashSession(cashRes.value);
@@ -121,7 +127,10 @@ export default function DashboardPage() {
 
   const totalSales = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
-  const profit = totalSales - totalExpenses;
+  const periodRefunds = allRefunds(returnsList).filter((f) => isWithinPeriod(f.createdAt));
+  const totalRefunds = periodRefunds.reduce((acc, f) => acc + f.amount, 0);
+  const netSales = totalSales - totalRefunds;
+  const profit = netSales - totalExpenses;
 
   // Totais por método de pagamento (filtrados)
   const methodTotals: Record<PaymentMethod, number> = { CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0 };
@@ -129,6 +138,10 @@ export default function DashboardPage() {
     s.payments?.forEach(p => {
       methodTotals[p.method] += parseFloat(p.amount);
     });
+  });
+
+  periodRefunds.forEach((f) => {
+    if (f.method in methodTotals) methodTotals[f.method as PaymentMethod] -= f.amount;
   });
 
   // Saldo em caixa (usando os totais de cashSession)
@@ -197,9 +210,9 @@ export default function DashboardPage() {
         <div className="card" style={{ padding: "1rem" }}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Vendas no Período</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>
-            {loading ? "…" : `${money(totalSales)} MT`}
+            {loading ? "…" : `${money(netSales)} MT`}
           </p>
-          <small style={{ color: "#6b7280" }}>{filteredSales.length} vendas</small>
+          <small style={{ color: "#6b7280" }}>{filteredSales.length} vendas{totalRefunds > 0 ? ` · devolvido ${money(totalRefunds)} MT` : ""}</small>
         </div>
 
         <div className="card" style={{ padding: "1rem" }}>
