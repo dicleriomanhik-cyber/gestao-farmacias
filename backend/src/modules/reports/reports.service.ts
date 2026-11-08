@@ -230,9 +230,9 @@ export class ReportsService {
         where: { pharmacyId, status: 'CONFIRMED', expenseDate: { gte: from, lte: to } },
         _sum: { amount: true },
       }),
-      this.prisma.saleReturn.aggregate({
-        where: { pharmacyId, status: 'CONFIRMED', createdAt: { gte: from, lte: to } },
-        _sum: { totalRefund: true },
+      this.prisma.returnRefund.aggregate({
+        where: { returnLine: { return: { pharmacyId, status: { not: 'CANCELLED' } } }, status: { in: ['PENDING', 'COMPLETED'] }, createdAt: { gte: from, lte: to } },
+        _sum: { amount: true },
       }),
     ]);
     const r = rows[0];
@@ -240,7 +240,7 @@ export class ReportsService {
     const revenueCosted = n(r?.revenue_costed);
     const cogs = n(r?.cogs);
     const expenses = n(exp._sum.amount);
-    const returns = n(ret._sum.totalRefund);
+    const returns = n(ret._sum.amount);
     const grossProfit = revenueCosted - cogs;
     const netProfit = grossProfit - expenses - returns;
     const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 10000) / 100 : null);
