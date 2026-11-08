@@ -52,7 +52,7 @@ export default function OperationalReturnDetailPage() {
   const [quantityToRelease, setQuantityToRelease] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState<string>("");
   const [selectedLine, setSelectedLine] = useState<string>("");
-  const [refundMethod, setRefundMethod] = useState<"CASH" | "CARD" | "MPESA" | "EMOLA" | "OPENING">("CASH");
+  const [refundMethod, setRefundMethod] = useState<"" | "CASH" | "CARD" | "MPESA" | "EMOLA" | "OPENING">("");
   const concluidaRef = useRef(false);
   const retRef = useRef<SaleReturn | null>(null);
 
@@ -99,7 +99,7 @@ export default function OperationalReturnDetailPage() {
           setPayments(p);
           if (p.length > 0) {
             setSelectedPayment(p[0].id);
-            setRefundMethod(p[0].method as "CASH" | "CARD" | "MPESA" | "EMOLA");
+            
           }
         } catch {
           setPayments([]);
@@ -153,9 +153,7 @@ export default function OperationalReturnDetailPage() {
     const payment = payments.find((p) => p.id === selectedPayment);
     if (!payment) return toast.error("Pagamento não encontrado.");
     
-    if (refundMethod !== "OPENING" && refundMethod !== payment.method) {
-      return toast.error(`O método de reembolso (${methodLabels[refundMethod]}) tem de ser igual ao pagamento original (${methodLabels[payment.method]}).`);
-    }
+    if (!refundMethod) { return toast.error("Seleccione o método de reembolso."); }
 
     if (!cashSession) {
       return toast.error("É necessário abrir a caixa antes de reembolsar.");
@@ -189,7 +187,7 @@ export default function OperationalReturnDetailPage() {
   if (error) return <ErrorState message="Devolução não encontrada." onRetry={() => window.location.reload()} />;
   if (!ret) return <ErrorState message="Devolução não encontrada." onRetry={() => window.location.reload()} />;
 
-  const selectedPaymentData = payments.find((p) => p.id === selectedPayment);
+  const refundOptions = [{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }, { value: "OPENING", label: "Valor inicial" }];
 
   return (
     <div>
@@ -262,13 +260,9 @@ export default function OperationalReturnDetailPage() {
           <div style={{ marginBottom: "1rem" }}><CustomSelect value={selectedPayment} onChange={setSelectedPayment} options={payments.map((p) => ({ value: p.id, label: `${methodLabels[p.method] ?? p.method} — ${parseFloat(p.amount).toFixed(2)} MT` }))} /></div>
 
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Método de reembolso:</label>
-          <div style={{ marginBottom: "1rem" }}><CustomSelect value={refundMethod} onChange={(v) => setRefundMethod(v as any)} options={[{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }, { value: "OPENING", label: "Valor inicial (dinheiro da caixa)" }]} /></div>
+          <div style={{ display: "flex", flexWrap: "nowrap", gap: "0.5rem", marginBottom: "1rem" }}>{refundOptions.map((o) => (<button key={o.value} type="button" onClick={() => setRefundMethod(o.value as any)} style={{ flex: 1, minWidth: 0, padding: "0.6rem 0.4rem", borderRadius: "8px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", border: refundMethod === o.value ? "2px solid #16a34a" : "1px solid #cbd5e1", background: refundMethod === o.value ? "#dcfce7" : "#fff", color: refundMethod === o.value ? "#166534" : "#334155" }}>{o.label}</button>))}</div>{refundMethod === "OPENING" && <p style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "1rem" }}>Sai do dinheiro da caixa (valor inicial mais vendas em dinheiro).</p>}
 
-          {selectedPaymentData && refundMethod !== "OPENING" && refundMethod !== selectedPaymentData.method && (
-            <p style={{ color: "#b91c1c", fontSize: "0.85rem", marginBottom: "1rem" }}>
-              ⚠️ O método de reembolso tem de ser igual ao pagamento original ({methodLabels[selectedPaymentData.method]}).
-            </p>
-          )}
+          
 
           <button onClick={handleRefund} disabled={actionLoading} className="btn btn-success">{actionLoading ? "A processar…" : "Registar Reembolso"}</button>
         </div>
