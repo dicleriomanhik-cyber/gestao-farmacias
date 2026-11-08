@@ -21,7 +21,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
 import { formatDate } from '../../utils/formatDate';
-import { allRefunds } from "../../utils/refundStatus";
+import { allRefunds, refundedAmount } from "../../utils/refundStatus";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -73,6 +73,7 @@ export default function ReportsPage() {
   const [stock, setStock] = useState<ReportStockData | null>(null);
   const [returns, setReturns] = useState<SaleReturn[]>([]);
   const [selectedReturn, setSelectedReturn] = useState<SaleReturn | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const canFinancial = canAccessFinancialReports(user?.permissions);
@@ -145,12 +146,7 @@ export default function ReportsPage() {
   const filteredSalesList = sales?.sales.filter(s => isWithinPeriod(s.createdAt)) ?? [];
   const periodExpensesList = expenses?.expenses.filter(e => isWithinPeriod(e.expenseDate)) ?? [];
   const filteredExpensesList = paidFromFilter === "ALL" ? periodExpensesList : periodExpensesList.filter(e => (e.paidFrom ?? "OTHER") === paidFromFilter);
-  const byOrigin = Object.entries(PAID_FROM_LABELS).map(([key, label]) => {
-    const rows = periodExpensesList.filter(e => (e.paidFrom ?? "OTHER") === key);
-    return { key, label, count: rows.length, total: rows.reduce((a, e) => a + parseFloat(e.amount), 0) };
-  }).filter(r => r.count > 0);
-  const totalOrigins = byOrigin.reduce((a, r) => a + r.total, 0);
-  const filteredReturnsList = returns.filter(r => isWithinPeriod(r.createdAt));
+  const filteredReturnsList = returns.filter(r => isWithinPeriod(r.createdAt) && r.status !== "CANCELLED" && (r.lines ?? []).some((l: any) => refundedAmount(r, l) > 0));
 
   const grossSales = filteredSalesList.reduce((acc, s) => acc + parseFloat(s.total), 0);
   const totalRefunds = allRefunds(returns).filter((f) => isWithinPeriod(f.createdAt)).reduce((acc, f) => acc + f.amount, 0);
@@ -278,50 +274,31 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {canFinancial && byOrigin.length > 0 && (
-        <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Despesas por Origem</h2>
-          <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
-            <thead>
-              <tr><th style={{ width: "50%" }}>Origem</th><th style={{ width: "15%" }}>Despesas</th><th style={{ width: "20%" }}>Total</th><th style={{ width: "15%" }}>%</th></tr>
-            </thead>
-            <tbody>
-              {byOrigin.map((r) => (
-                <tr key={r.key}>
-                  <td>{r.label}</td>
-                  <td>{r.count}</td>
-                  <td>{money(r.total)} MT</td>
-                  <td>{totalOrigins > 0 ? ((r.total / totalOrigins) * 100).toFixed(1) : "0.0"}%</td>
-                </tr>
-              ))}
-              <tr style={{ fontWeight: "bold" }}>
-                <td>Total</td>
-                <td>{periodExpensesList.length}</td>
-                <td>{money(totalOrigins)} MT</td>
-                <td>100.0%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {canFinancial && filteredExpensesList.length > 0 && (
         <div className="card" style={{ padding: "1rem", marginBottom: "1.5rem", overflowX: "auto" }}>
           <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Despesas</h2>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
-              <tr><th style={{ width: "15%" }}>Data</th><th style={{ width: "40%" }}>Descrição</th><th style={{ width: "20%" }}>Categoria</th><th style={{ width: "15%" }}>Método</th><th style={{ width: "10%" }}>Valor</th></tr>
+              <tr><th style={{ width: "13%" }}>Data</th><th style={{ width: "19%" }}>Categoria</th><th style={{ width: "12%" }}>Método</th><th style={{ width: "24%" }}>Pago com</th><th style={{ width: "14%" }}>Valor</th><th style={{ width: "8%" }}>%</th><th style={{ width: "10%" }}>Acções</th></tr>
             </thead>
             <tbody>
               {filteredExpensesList.map((e) => (
                 <tr key={e.id}>
                   <td>{formatDate(e.expenseDate)}</td>
-                  <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.description}>{e.description}</td>
                   <td>{e.category}</td>
                   <td>{e.method}</td>
+                  <td>{PAID_FROM_LABELS[e.paidFrom ?? "OTHER"] ?? e.paidFrom}</td>
                   <td>{money(e.amount)} MT</td>
+                  <td>{totalExpenses > 0 ? ((parseFloat(e.amount) / totalExpenses) * 100).toFixed(1) : "0.0"}%</td>
+                  <td><button onClick={() => setSelectedExpense(e)} className="btn-soft">Ver</button></td>
                 </tr>
               ))}
+              <tr style={{ fontWeight: "bold" }}>
+                <td colSpan={4}>Total ({filteredExpensesList.length} despesas)</td>
+                <td>{money(totalExpenses)} MT</td>
+                <td>100.0%</td>
+                <td></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -398,6 +375,50 @@ export default function ReportsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedExpense && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => setSelectedExpense(null)}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: "white", borderRadius: "12px", padding: "1.5rem",
+              maxWidth: "600px", width: "90%", maxHeight: "80vh",
+              overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem", color: "#1e293b" }}>Detalhes da despesa</h2>
+            <p><strong>Data:</strong> {formatDate(selectedExpense.expenseDate)}</p>
+            <p><strong>Categoria:</strong> {selectedExpense.category}</p>
+            <p><strong>Método:</strong> {selectedExpense.method}</p>
+            <p><strong>Pago com:</strong> {PAID_FROM_LABELS[selectedExpense.paidFrom ?? "OTHER"] ?? selectedExpense.paidFrom}</p>
+            <p><strong>Valor:</strong> {money(selectedExpense.amount)} MT</p>
+            <p style={{ marginTop: "1rem" }}><strong>Descrição:</strong></p>
+            <p style={{ backgroundColor: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {selectedExpense.description}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+              <button
+                onClick={() => setSelectedExpense(null)}
+                style={{
+                  padding: "0.5rem 1rem", backgroundColor: "#e2e8f0",
+                  color: "#1e293b", border: "none", borderRadius: "6px",
+                  fontWeight: "500", cursor: "pointer",
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
