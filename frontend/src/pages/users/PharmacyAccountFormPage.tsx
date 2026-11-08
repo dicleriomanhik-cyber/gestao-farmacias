@@ -136,6 +136,7 @@ export default function PharmacyAccountFormPage() {
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}><button type="button" className="btn btn-secondary" onClick={() => window.history.back()}>Voltar</button></div>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
         {isEditing ? "Editar farmácia" : "Nova farmácia"}
       </h1>

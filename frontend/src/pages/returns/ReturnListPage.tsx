@@ -4,6 +4,7 @@ import type { SaleReturn } from "../../types/returns";
 import LoadingState from "../../components/ui/LoadingState";
 
 import ErrorState from "../../components/ui/ErrorState";
+import ScrollTable from "../../components/ui/ScrollTable";
 
 import CustomSelect from '../../components/ui/CustomSelect';
 
@@ -183,7 +184,7 @@ export default function ReturnListPage() {
           <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma devolução encontrada para este período.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+        <ScrollTable reserve={meta && meta.totalPages > 1 ? 84 : 28}>
           <table className="table" style={{ tableLayout: "fixed", width: "100%" }}>
             <thead>
               <tr>
@@ -236,7 +237,7 @@ export default function ReturnListPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
 
       {meta && meta.totalPages > 1 && (

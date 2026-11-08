@@ -243,7 +243,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+          <button className="btn btn-secondary" onClick={onBack}>Voltar</button>
           <span style={{ marginLeft: "0.75rem", fontWeight: 600, color: STATUS_COLORS[inv.status] }}>{STATUS_LABELS[inv.status]}</span>
           <span style={{ marginLeft: "0.75rem", color: "#64748b" }}>{fmtDate(inv.createdAt)}{inv.notes ? " · " + inv.notes : ""}</span>
         </div>

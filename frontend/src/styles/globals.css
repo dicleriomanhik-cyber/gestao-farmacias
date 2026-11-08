@@ -114,3 +114,19 @@ tr:hover { background-color: #f1f3f5; }
 .users-table th:nth-child(3), .users-table td:nth-child(3) { width: 26%; }
 .users-table th:nth-child(4), .users-table td:nth-child(4) { width: 14%; }
 .users-table th:nth-child(5), .users-table td:nth-child(5) { width: 16%; }
+
+/* ===== Tabelas com cabeçalho fixo e scroll só nas linhas (ScrollTable) ===== */
+.scroll-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  box-shadow: inset 0 -1px 0 #e5e7eb;
+}
+@media (max-width: 768px) {
+  .app-content .scroll-table table {
+    display: table;
+    overflow: visible;
+    width: 100%;
+  }
+}

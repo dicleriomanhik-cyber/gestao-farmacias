@@ -396,26 +396,30 @@ function FinanceSummary() {
 
 export default function FinancePage() {
   const [tab, setTab] = useState<"SUMMARY" | "INVENTORY">("SUMMARY");
-  const tabBtn = (k: "SUMMARY" | "INVENTORY", label: string) => (
-    <button
-      onClick={() => setTab(k)}
-      style={{
-        padding: "0.6rem 1.25rem",
-        border: "none",
-        background: "none",
-        cursor: "pointer",
-        fontWeight: 600,
-        color: tab === k ? "#2563eb" : "#64748b",
-        borderBottom: tab === k ? "2px solid #2563eb" : "2px solid transparent",
-        marginBottom: "-1px",
-      }}
-    >
-      {label}
-    </button>
-  );
+  const tabBtn = (k: "SUMMARY" | "INVENTORY", label: string) => {
+    const active = tab === k;
+    return (
+      <button
+        type="button"
+        onClick={() => setTab(k)}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 999,
+          border: "1px solid " + (active ? "var(--brand)" : "#d9dee9"),
+          fontSize: 14,
+          cursor: "pointer",
+          font: "inherit",
+          background: active ? "var(--brand)" : "#ffffff",
+          color: active ? "#ffffff" : "#1d2433",
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <div style={{ display: "flex", gap: "0.25rem", borderBottom: "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {tabBtn("SUMMARY", "Resumo")}
         {tabBtn("INVENTORY", "Inventário")}
       </div>

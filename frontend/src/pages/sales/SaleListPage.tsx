@@ -7,6 +7,7 @@ import { getReturns } from "../../services/returnService";
 import { returnedQtyBySaleLine, refundedBySale, saleReturnState } from "../../utils/refundStatus";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
+import ScrollTable from "../../components/ui/ScrollTable";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from '../../components/ui/PageHeader';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -210,7 +211,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
           <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma venda encontrada para este filtro.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+        <ScrollTable reserve={meta && meta.totalPages > 1 ? 84 : 28}>
           <table className="table">
             <thead>
               <tr>
@@ -253,7 +254,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
               })}
             </tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
 
       {meta && meta.totalPages > 1 && filteredSales.length > 0 && (

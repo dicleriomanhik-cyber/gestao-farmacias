@@ -4,6 +4,7 @@ import type { StockLot } from "../../types/stock";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
+import ScrollTable from "../../components/ui/ScrollTable";
 import { useDataChanged } from "../../offline/dataChanged";
 
 interface Props {
@@ -133,15 +134,7 @@ export default function StockLotListPage(_props: Props) {
         />
       </div>
 
-      <div
-        className="card"
-        style={{
-          padding: 0,
-          overflowX: "auto",
-          overflowY: "auto",
-          maxHeight: "calc(100vh - 170px)",
-        }}
-      >
+      <ScrollTable>
         <table className="table" style={{ margin: 0 }}>
           <thead>
             <tr>
@@ -208,7 +201,7 @@ export default function StockLotListPage(_props: Props) {
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollTable>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { getExpenses, confirmExpense, cancelExpense } from "../../services/expen
 import type { Expense, ExpenseCategory, ExpenseMethod, ExpensePaidFrom } from "../../types/expenses";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import ScrollTable from "../../components/ui/ScrollTable";
 
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useToast } from "../../contexts/ToastContext";
@@ -225,7 +226,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
           <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhuma despesa encontrada para este período.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+        <ScrollTable>
           <table className="table">
             <thead>
               <tr>
@@ -284,7 +285,7 @@ export default function ExpenseListPage({ isOperational = false }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
 
       {cancelId && (

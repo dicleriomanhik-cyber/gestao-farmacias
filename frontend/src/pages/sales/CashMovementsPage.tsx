@@ -6,6 +6,7 @@ import { apiClient } from "../../services/api";
 import { formatDateTime } from "../../utils/formatDate";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
+import ScrollTable from "../../components/ui/ScrollTable";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -53,7 +54,7 @@ export default function CashMovementsPage() {
           <p style={{ fontSize: "1.1rem", margin: 0 }}>Nenhum movimento registado.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+        <ScrollTable>
           <table className="table">
             <thead>
               <tr>
@@ -87,7 +88,7 @@ export default function CashMovementsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
 
       {/* MODAL DE DETALHES */}

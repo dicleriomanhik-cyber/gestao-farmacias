@@ -512,7 +512,7 @@ export default function ReportsPage() {
               Devolução {selectedReturn.returnNumber}
             </h2>
             <p><strong>Venda:</strong> {selectedReturn.sale?.saleNumber ?? "—"}</p>
-            <p><strong>Estado:</strong> {selectedReturn.status}</p>
+            <p><strong>Estado:</strong> {({ DRAFT: "Rascunho", CONFIRMED: "Confirmada", COMPLETED: "Conclu\u00edda", CANCELLED: "Cancelada" } as Record<string, string>)[selectedReturn.status] ?? selectedReturn.status}</p>
             <p><strong>Colaborador:</strong> {opName(selectedReturn)}</p>
             <p><strong>Total Reembolso:</strong> {parseFloat(selectedReturn.totalRefund).toFixed(2)} MT</p>
             <p style={{ marginTop: "1rem" }}><strong>Motivo:</strong></p>

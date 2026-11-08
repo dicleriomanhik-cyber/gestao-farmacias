@@ -150,7 +150,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   }
 
   const backLink = isOperational ? "/pos/historico" : "/vendas";
-  const backLabel = isOperational ? "Voltar ao Histórico" : "Voltar às Vendas";
+  const backLabel = "Voltar";
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message="Não foi possível carregar a venda." onRetry={load} />;
@@ -163,7 +163,7 @@ export default function SaleDetailPage({ isOperational = false }: Props) {
   return (
     <div className="card" style={{ padding: "1.5rem", maxWidth: "1000px", margin: "0 auto" }}>
       <div style={{ marginBottom: "1rem" }}>
-        <Link to={backLink} style={{ color: "#2563eb", textDecoration: "none", fontWeight: 500 }}>
+        <Link to={backLink} className="btn btn-secondary">
           {backLabel}
         </Link>
       </div>

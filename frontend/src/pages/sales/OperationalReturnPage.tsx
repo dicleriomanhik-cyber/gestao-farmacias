@@ -11,6 +11,7 @@ import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import PageHeader from "../../components/ui/PageHeader";
 import EmptyState from "../../components/ui/EmptyState";
+import ScrollTable from "../../components/ui/ScrollTable";
 
 export default function OperationalReturnPage() {
   const { saleId } = useParams<{ saleId: string }>();
@@ -108,8 +109,8 @@ export default function OperationalReturnPage() {
         {filteredSales.length === 0 ? (
           <EmptyState message={dateFilter === "DAILY" ? "Nenhuma venda disponível para devolução hoje." : "Nenhuma venda disponível para devolução."} />
         ) : (
-          <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
-            <p style={{ marginBottom: "1rem", color: "#64748b" }}>Seleccione a venda que deseja devolver:</p>
+          <><p style={{ marginBottom: "0.75rem", color: "#64748b" }}>Seleccione a venda que deseja devolver:</p>
+          <ScrollTable>
             <table className="table">
               <thead>
                 <tr>
@@ -136,7 +137,7 @@ export default function OperationalReturnPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollTable></>
         )}
       </div>
     );

@@ -334,7 +334,6 @@ export default function PosPage() {
       {/* Coluna da esquerda: produtos */}
       <div style={{ ...cardStyle, padding: "1.25rem" }}>
         <div style={{ marginBottom: "0.75rem", flexShrink: 0 }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0 0 0.25rem" }}>Produtos</h1>
           <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>Pesquise e adicione produtos à venda</p>
         </div>
 
