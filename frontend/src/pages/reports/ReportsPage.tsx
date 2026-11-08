@@ -22,6 +22,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { canAccessFinancialReports } from "../../utils/permissions";
 import { formatDate } from '../../utils/formatDate';
 import { allRefunds, refundedAmount } from "../../utils/refundStatus";
+import { categoryLabel, methodLabel } from "../../utils/expenseLabels";
 
 function money(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return "0.00";
@@ -182,7 +183,7 @@ export default function ReportsPage() {
 
     doc.setFontSize(14);
     doc.text("Despesas", 14, y);
-    autoTable(doc, { startY: y + 4, head: [["Data", "Descrição", "Categoria", "Método", "Valor"]], body: filteredExpensesList.map(e => [formatDate(e.expenseDate), e.description, e.category, e.method, parseFloat(e.amount).toFixed(2) + " MT"]), styles: { fontSize: 9 }, headStyles: { fillColor: [153, 27, 27] } });
+    autoTable(doc, { startY: y + 4, head: [["Data", "Descrição", "Categoria", "Método", "Valor"]], body: filteredExpensesList.map(e => [formatDate(e.expenseDate), e.description, categoryLabel(e.category), methodLabel(e.method), parseFloat(e.amount).toFixed(2) + " MT"]), styles: { fontSize: 9 }, headStyles: { fillColor: [153, 27, 27] } });
     y = (doc as any).lastAutoTable.finalY + 10;
 
     doc.setFontSize(14);
@@ -285,8 +286,8 @@ export default function ReportsPage() {
               {filteredExpensesList.map((e) => (
                 <tr key={e.id}>
                   <td>{formatDate(e.expenseDate)}</td>
-                  <td>{e.category}</td>
-                  <td>{e.method}</td>
+                  <td>{categoryLabel(e.category)}</td>
+                  <td>{methodLabel(e.method)}</td>
                   <td>{PAID_FROM_LABELS[e.paidFrom ?? "OTHER"] ?? e.paidFrom}</td>
                   <td>{money(e.amount)} MT</td>
                   <td>{totalExpenses > 0 ? ((parseFloat(e.amount) / totalExpenses) * 100).toFixed(1) : "0.0"}%</td>
@@ -398,8 +399,8 @@ export default function ReportsPage() {
           >
             <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1rem", color: "#1e293b" }}>Detalhes da despesa</h2>
             <p><strong>Data:</strong> {formatDate(selectedExpense.expenseDate)}</p>
-            <p><strong>Categoria:</strong> {selectedExpense.category}</p>
-            <p><strong>Método:</strong> {selectedExpense.method}</p>
+            <p><strong>Categoria:</strong> {categoryLabel(selectedExpense.category)}</p>
+            <p><strong>Método:</strong> {methodLabel(selectedExpense.method)}</p>
             <p><strong>Pago com:</strong> {PAID_FROM_LABELS[selectedExpense.paidFrom ?? "OTHER"] ?? selectedExpense.paidFrom}</p>
             <p><strong>Valor:</strong> {money(selectedExpense.amount)} MT</p>
             <p style={{ marginTop: "1rem" }}><strong>Descrição:</strong></p>
