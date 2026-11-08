@@ -45,18 +45,25 @@ export class CashController {
     return this.service.getActiveSession(pharmacyId, user.id);
   }
 
+  @Get('last-closed')
+  @RequirePermissions(PERMISSIONS.CASH_OPEN)
+  @ApiOperation({ summary: 'Obter a última sessão de caixa fechada' })
+  getLastClosed(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getLastClosedSession(pharmacyId, user.id);
+  }
+
   @Get('payments')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
   @ApiOperation({ summary: 'Listar pagamentos da sessão de caixa activa' })
-  getPayments(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.service.getPayments(pharmacyId, user.id);
+  getPayments(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('sessionId') sessionId?: string) {
+    return this.service.getPayments(pharmacyId, user.id, sessionId);
   }
 
   @Get('movements')
   @RequirePermissions(PERMISSIONS.CASH_OPEN)
   @ApiOperation({ summary: 'Listar movimentos da sessão activa' })
-  getMovements(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('all') all?: string) {
-    return this.service.getMovements(pharmacyId, user.id, all === 'true');
+  getMovements(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('all') all?: string, @Query('sessionId') sessionId?: string) {
+    return this.service.getMovements(pharmacyId, user.id, all === 'true', sessionId);
   }
 
   @Post('payments')

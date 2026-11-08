@@ -103,7 +103,23 @@ export class CashService {
     });
   }
 
-  async getPayments(pharmacyId: string, userId: string) {
+  async getLastClosedSession(pharmacyId: string, userId: string) {
+    return this.prisma.cashSession.findFirst({ where: { pharmacyId, userId, status: 'CLOSED' }, orderBy: { closedAt: 'desc' } });
+  }
+
+  async getPaymentsOf(pharmacyId: string, sessionId: string) {
+    const session = await this.prisma.cashSession.findFirst({ where: { id: sessionId, pharmacyId } });
+    if (!session) throw new NotFoundException('Sessão de caixa não encontrada.');
+    const payments = await this.prisma.salePayment.findMany({ where: { cashSessionId: session.id }, orderBy: { createdAt: 'desc' } });
+    const totalsByMethod: Record<string, number> = { CASH: 0, CARD: 0, MPESA: 0, EMOLA: 0, TRANSFER: 0, OTHER: 0 };
+    payments.forEach((p) => {
+      if (totalsByMethod[p.method] !== undefined) totalsByMethod[p.method] += parseFloat(p.amount.toString());
+    });
+    return { session, payments, totalsByMethod };
+  }
+
+  async getPayments(pharmacyId: string, userId: string, sessionId?: string) {
+    if (sessionId) return this.getPaymentsOf(pharmacyId, sessionId);
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
@@ -132,7 +148,12 @@ export class CashService {
     return { session, payments, totalsByMethod };
   }
 
-  async getMovements(pharmacyId: string, userId: string, all = false) {
+  async getMovements(pharmacyId: string, userId: string, all = false, sessionId?: string) {
+    if (sessionId) {
+      const own = await this.prisma.cashSession.findFirst({ where: { id: sessionId, pharmacyId }, select: { id: true } });
+      if (!own) throw new NotFoundException('Sessão de caixa não encontrada.');
+      return this.prisma.cashMovement.findMany({ where: { cashSessionId: sessionId }, orderBy: { createdAt: 'desc' } });
+    }
     if (all) {
       return this.prisma.cashMovement.findMany({
         where: { cashSession: { pharmacyId } },
