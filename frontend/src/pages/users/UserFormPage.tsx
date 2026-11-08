@@ -151,9 +151,12 @@ export default function UserFormPage() {
           <strong>Função:</strong> {isAdmin ? "Administrador" : "Colaborador"}
         </div>
 
-        <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>Voltar</button>
+          <button type="submit" disabled={submitting} className="btn btn-primary">
           {submitting ? "A guardar…" : isEditing ? "Guardar alterações" : "Criar conta"}
         </button>
+        </div>
       </form>
       </div>
       {isEditing && !isAdmin && <OperatorsPanel />}

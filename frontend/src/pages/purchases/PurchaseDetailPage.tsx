@@ -174,7 +174,7 @@ export default function PurchaseDetailPage() {
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "960px", margin: "0 auto", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: 0 }}>Compra {purchase.documentNumber}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}><button type="button" className="btn btn-secondary" onClick={() => window.history.back()}>Voltar</button><h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: 0 }}>Compra {purchase.documentNumber}</h1></div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           {settings?.usePayables && <Badge kind="payment" value={purchase.paymentStatus} />}
           <Badge kind="purchase" value={purchase.status} />

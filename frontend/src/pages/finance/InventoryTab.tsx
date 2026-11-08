@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
 import { confirmDialog } from "../../components/ui/confirmDialog";
+import ScrollTable from "../../components/ui/ScrollTable";
 import {
   cancelInventory,
   completeInventory,
@@ -259,7 +260,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
         <input type="text" placeholder="Procurar produto ou código da caixa" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: "220px", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px", boxSizing: "border-box" }} />
         {open && <span style={{ color: "#475569" }}>Contadas: {stats.counted}/{inv.lines.length} · Divergentes: {stats.divergent}</span>}
       </div>
-      <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>
+      <ScrollTable>
         <table className="table" style={{ width: "100%" }}>
           <thead>
             <tr>
@@ -297,7 +298,7 @@ function InventoryDetailView({ id, onBack }: { id: string; onBack: () => void })
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollTable>
     </div>
   );
 }
