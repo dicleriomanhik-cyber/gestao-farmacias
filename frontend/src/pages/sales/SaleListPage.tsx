@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { getSales } from "../../services/saleService";
 import { formatDateTime } from "../../utils/formatDate";
 import { getReturns } from "../../services/returnService";
-import { fullyRefundedSaleIds } from "../../utils/refundStatus";
+import { returnedQtyBySaleLine, refundedBySale, saleReturnState } from "../../utils/refundStatus";
 import type { Sale, SaleStatus, PaginatedMeta } from "../../types/sales";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
@@ -27,7 +27,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   const [meta, setMeta] = useState<PaginatedMeta | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "CONFIRMED" | "RETURNED">("ALL");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); const [refundMap, setRefundMap] = useState<Map<string, number>>(new Map()); const [partialIds, setPartialIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState(false);
 
   // Filtros de data
@@ -46,7 +46,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
       .then(([salesRes, returnsRes]) => {
         setSales(salesRes.data);
         setMeta(salesRes.meta);
-        setReturnedSaleIds(fullyRefundedSaleIds(returnsRes.data));
+        { const qm = returnedQtyBySaleLine(returnsRes.data); const full = new Set<string>(); const part = new Set<string>(); for (const s of salesRes.data as any[]) { const st = saleReturnState(s, qm); if (st === "FULL") full.add(s.id); else if (st === "PARTIAL") part.add(s.id); } setReturnedSaleIds(full); setPartialIds(part); setRefundMap(refundedBySale(returnsRes.data)); }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -76,9 +76,9 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
   // --- LÓGICA DE FILTRAGEM ---
   let filteredSales = sales.filter(s => s.status !== "CANCELLED");
   if (statusFilter === "CONFIRMED") {
-    filteredSales = filteredSales.filter((s) => !returnedSaleIds.has(s.id) && s.status === "CONFIRMED");
+    filteredSales = filteredSales.filter((s) => !returnedSaleIds.has(s.id) && !partialIds.has(s.id) && s.status === "CONFIRMED");
   } else if (statusFilter === "RETURNED") {
-    filteredSales = filteredSales.filter((s) => returnedSaleIds.has(s.id));
+    filteredSales = filteredSales.filter((s) => returnedSaleIds.has(s.id) || partialIds.has(s.id));
   }
 
   const now = new Date();
@@ -109,7 +109,7 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
     }
   }
 
-  const totalPeriod = filteredSales.reduce((acc, s) => acc + parseFloat(s.total), 0);
+  const totalPeriod = filteredSales.reduce((acc, s) => acc + Math.max(0, parseFloat(s.total) - (refundMap.get(s.id) ?? 0)), 0);
   const totalCount = filteredSales.length;
 
   if (loading && sales.length === 0) return <LoadingState />;
@@ -224,17 +224,17 @@ export default function SaleListPage({ hideNewSaleButton = false, isOperational 
             </thead>
             <tbody>
               {filteredSales.map((s) => {
-                const isReturned = returnedSaleIds.has(s.id);
+                const isReturned = returnedSaleIds.has(s.id); const isPartial = partialIds.has(s.id); const refunded = refundMap.get(s.id) ?? 0; const net = Math.max(0, parseFloat(s.total) - refunded);
                 return (
                   <tr key={s.id}>
                     <td>{s.saleNumber}</td>
                     <td>{formatDateTime(s.createdAt)}</td>
                     {isOperational && <td>{s.operatorName || "—"}</td>}
-                    <td>{parseFloat(s.total).toFixed(2)} MT</td>
+                    <td>{net.toFixed(2)} MT{refunded > 0 && <div style={{ fontSize: "0.75rem", color: "#92400e" }}>reembolsado {refunded.toFixed(2)} MT · venda {parseFloat(s.total).toFixed(2)} MT</div>}</td>
                     <td>
-                      {isReturned ? (
+                      {(isReturned || isPartial) ? (
                         <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.875rem", backgroundColor: "#fef3c7", color: "#92400e" }}>
-                          Reembolsada
+                          {isReturned ? "Reembolsada" : "Parcialmente reembolsada"}
                         </span>
                       ) : (
                         statusBadge(s.status)

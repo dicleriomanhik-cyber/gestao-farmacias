@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { getSaleById, getSales } from "../../services/saleService";
 import { getReturns, createReturn } from "../../services/returnService";
 import { useDataChanged } from "../../offline/dataChanged";
-import { fullyRefundedSaleIds } from "../../utils/refundStatus";
+import { returnedQtyBySaleLine, refundedBySale, saleReturnState } from "../../utils/refundStatus";
 import { formatDateTime } from "../../utils/formatDate";
 import type { Sale } from "../../types/sales";
 import { useToast } from "../../contexts/ToastContext";
@@ -18,7 +18,7 @@ export default function OperationalReturnPage() {
   const toast = useToast();
   const [sale, setSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [returnedSaleIds, setReturnedSaleIds] = useState<Set<string>>(new Set());
+  const [returnedSaleIds, setReturnedSaleIds] = useState<Set<string>>(new Set()); const [returnsAll, setReturnsAll] = useState<any[]>([]); const [returnedQty, setReturnedQty] = useState<Map<string, number>>(new Map());
   const [reason, setReason] = useState("");
   const [lines, setLines] = useState<{ saleLineId: string; quantity: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,10 +32,9 @@ export default function OperationalReturnPage() {
   useEffect(() => {
     if (saleId) {
       setLoading(true);
-      getSaleById(saleId)
-        .then((s) => {
+      Promise.all([getSaleById(saleId), getReturns({ page: 1, limit: 100 })]).then(([s, rr]) => { const qty = returnedQtyBySaleLine((rr.data as any[]).filter((x: any) => x.saleId === saleId)); setReturnedQty(qty);
           setSale(s);
-          setLines((s.lines ?? []).map((l) => ({ saleLineId: l.id, quantity: 1 })));
+          setLines((s.lines ?? []).filter((l) => Number(l.quantity) - (qty.get(l.id) ?? 0) > 0).map((l) => ({ saleLineId: l.id, quantity: 1 })));
         })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
@@ -47,7 +46,7 @@ export default function OperationalReturnPage() {
       ])
         .then(([salesRes, returnsRes]) => {
           setSales(salesRes.data);
-          setReturnedSaleIds(fullyRefundedSaleIds(returnsRes.data));
+          { const qm = returnedQtyBySaleLine(returnsRes.data); const full = new Set<string>(); for (const s of salesRes.data as any[]) { if (saleReturnState(s, qm) === "FULL") full.add(s.id); } setReturnedSaleIds(full); setReturnsAll(returnsRes.data); }
         })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
@@ -90,7 +89,7 @@ export default function OperationalReturnPage() {
     }
 
     // Remover vendas já devolvidas
-    filteredSales = filteredSales.filter(s => !returnedSaleIds.has(s.id));
+    filteredSales = filteredSales.filter(s => !returnedSaleIds.has(s.id)); const qtyAll = returnedQtyBySaleLine(returnsAll); const refAll = refundedBySale(returnsAll); const remainingOf = (l: any) => Number(l.quantity) - (qtyAll.get(l.id) ?? 0);
 
     return (
       <div>
@@ -125,9 +124,9 @@ export default function OperationalReturnPage() {
                 {filteredSales.map((s) => (
                   <tr key={s.id}>
                     <td>{s.saleNumber}</td>
-                    <td>{(s.lines ?? []).map((l) => l.product?.name ?? "").join(", ")}</td>
+                    <td>{(s.lines ?? []).filter((l: any) => remainingOf(l) > 0).map((l: any) => (l.product?.name ?? "") + (remainingOf(l) > 1 ? " (x" + remainingOf(l) + ")" : "")).join(", ")}</td>
                     <td>{formatDateTime(s.createdAt)}</td>
-                    <td>{parseFloat(s.total).toFixed(2)} MT</td>
+                    <td>{Math.max(0, parseFloat(s.total) - (refAll.get(s.id) ?? 0)).toFixed(2)} MT</td>
                     <td>
                       <Link to={`/pos/devolucoes/nova/${s.id}`} className="btn btn-primary" style={{ padding: "0.25rem 0.75rem" }}>
                         Selecionar
@@ -153,14 +152,14 @@ export default function OperationalReturnPage() {
         <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} required className="input" style={{ width: "100%", marginBottom: "1.5rem" }} />
 
         <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "1rem" }}>Linhas a devolver</h3>
-        {(sale.lines ?? []).map((line) => (
+        {(sale.lines ?? []).filter((line) => Number(line.quantity) - (returnedQty.get(line.id) ?? 0) > 0).map((line) => (
           <div key={line.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #e2e8f0" }}>
             <span>{line.product?.name ?? line.productId.substring(0, 8)}</span>
             <span>{line.quantity} x {parseFloat(line.unitPrice).toFixed(2)} MT</span>
             <input
               type="number"
               min="1"
-              max={line.quantity}
+              max={Number(line.quantity) - (returnedQty.get(line.id) ?? 0)}
               value={lines.find((l) => l.saleLineId === line.id)?.quantity ?? 1}
               onChange={(e) => updateLineQty(line.id, parseInt(e.target.value, 10))}
               className="input"

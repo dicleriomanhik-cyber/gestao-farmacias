@@ -252,7 +252,7 @@ export async function createRefundLocal(returnId: string, data: any): Promise<an
     ...returnRef(current),
     saleLineId: line.saleLineId,
     salePaymentId: data.salePaymentId,
-    method: data.method,
+    method: data.method, fromOpeningBalance: data.fromOpeningBalance === true,
     amount: Number(data.amount),
     ...cashRef,
   });

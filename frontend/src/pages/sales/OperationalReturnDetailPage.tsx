@@ -52,7 +52,7 @@ export default function OperationalReturnDetailPage() {
   const [quantityToRelease, setQuantityToRelease] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState<string>("");
   const [selectedLine, setSelectedLine] = useState<string>("");
-  const [refundMethod, setRefundMethod] = useState<"CASH" | "CARD" | "MPESA" | "EMOLA">("CASH");
+  const [refundMethod, setRefundMethod] = useState<"CASH" | "CARD" | "MPESA" | "EMOLA" | "OPENING">("CASH");
   const concluidaRef = useRef(false);
   const retRef = useRef<SaleReturn | null>(null);
 
@@ -153,7 +153,7 @@ export default function OperationalReturnDetailPage() {
     const payment = payments.find((p) => p.id === selectedPayment);
     if (!payment) return toast.error("Pagamento não encontrado.");
     
-    if (refundMethod !== payment.method) {
+    if (refundMethod !== "OPENING" && refundMethod !== payment.method) {
       return toast.error(`O método de reembolso (${methodLabels[refundMethod]}) tem de ser igual ao pagamento original (${methodLabels[payment.method]}).`);
     }
 
@@ -168,7 +168,7 @@ export default function OperationalReturnDetailPage() {
         await createRefund(id, {
           returnLineId: l.id,
           salePaymentId: selectedPayment,
-          method: refundMethod,
+          method: refundMethod === "OPENING" ? "CASH" : refundMethod, fromOpeningBalance: refundMethod === "OPENING",
           amount: Number((parseFloat(l.subtotal) - refundedAmount(ret, l)).toFixed(2)),
           cashSessionId: cashSession?.id,
         });
@@ -262,9 +262,9 @@ export default function OperationalReturnDetailPage() {
           <div style={{ marginBottom: "1rem" }}><CustomSelect value={selectedPayment} onChange={setSelectedPayment} options={payments.map((p) => ({ value: p.id, label: `${methodLabels[p.method] ?? p.method} — ${parseFloat(p.amount).toFixed(2)} MT` }))} /></div>
 
           <label style={{ display: "block", marginBottom: "0.5rem" }}>Método de reembolso:</label>
-          <div style={{ marginBottom: "1rem" }}><CustomSelect value={refundMethod} onChange={(v) => setRefundMethod(v as any)} options={[{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }]} /></div>
+          <div style={{ marginBottom: "1rem" }}><CustomSelect value={refundMethod} onChange={(v) => setRefundMethod(v as any)} options={[{ value: "CASH", label: "Dinheiro" }, { value: "CARD", label: "Cartão" }, { value: "MPESA", label: "M-Pesa" }, { value: "EMOLA", label: "e-Mola" }, { value: "OPENING", label: "Valor inicial (dinheiro da caixa)" }]} /></div>
 
-          {selectedPaymentData && refundMethod !== selectedPaymentData.method && (
+          {selectedPaymentData && refundMethod !== "OPENING" && refundMethod !== selectedPaymentData.method && (
             <p style={{ color: "#b91c1c", fontSize: "0.85rem", marginBottom: "1rem" }}>
               ⚠️ O método de reembolso tem de ser igual ao pagamento original ({methodLabels[selectedPaymentData.method]}).
             </p>

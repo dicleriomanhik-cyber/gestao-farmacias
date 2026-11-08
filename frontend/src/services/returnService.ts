@@ -95,7 +95,7 @@ export async function createRefund(
     salePaymentId: string;
     method: "CASH" | "CARD" | "MPESA" | "EMOLA";
     amount: number;
-    cashSessionId?: string;
+    cashSessionId?: string; fromOpeningBalance?: boolean;
   }
 ): Promise<ReturnRefund> {
   try {

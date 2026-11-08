@@ -33,3 +33,34 @@ export function fullyRefundedSaleIds(returns: SaleReturn[]): Set<string> {
   }
   return ids;
 }
+
+export function returnedQtyBySaleLine(returns: any[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of returns ?? []) {
+    if (r.status !== "CONFIRMED") continue;
+    for (const l of r.lines ?? []) m.set(l.saleLineId, (m.get(l.saleLineId) ?? 0) + Number(l.quantity));
+  }
+  return m;
+}
+
+export function refundedBySale(returns: any[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of returns ?? []) {
+    if (r.status === "CANCELLED") continue;
+    for (const l of r.lines ?? []) m.set(r.saleId, (m.get(r.saleId) ?? 0) + refundedAmount(r, l));
+  }
+  return m;
+}
+
+export function saleReturnState(sale: any, qty: Map<string, number>): "NONE" | "PARTIAL" | "FULL" {
+  const lines: any[] = sale.lines ?? [];
+  if (lines.length === 0) return "NONE";
+  let any = false;
+  let all = true;
+  for (const l of lines) {
+    const q = qty.get(l.id) ?? 0;
+    if (q > 0) any = true;
+    if (q < Number(l.quantity)) all = false;
+  }
+  return all ? "FULL" : any ? "PARTIAL" : "NONE";
+}
