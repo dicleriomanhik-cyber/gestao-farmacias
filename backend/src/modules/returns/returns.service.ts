@@ -341,9 +341,7 @@ export class ReturnsService {
         });
         if (!salePayment) throw new BadRequestException('Pagamento original não encontrado.');
 
-        if (!dto.fromOpeningBalance && salePayment.method !== dto.method) {
-          throw new BadRequestException(`Método de reembolso (${dto.method}) não coincide com o pagamento original (${salePayment.method}).`);
-        }
+        
 
         if (dto.idempotencyKey) {
           const existing = await tx.returnRefund.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
