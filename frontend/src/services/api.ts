@@ -125,7 +125,7 @@ apiClient.interceptors.response.use(
 
       const data = await refreshTokens();
       if (!data?.accessToken || !data?.refreshToken) {
-        throw new Error("Resposta de refresh invÃ¡lida");
+        throw new Error("Resposta de refresh inválida");
       }
 
       accessToken = data.accessToken;
