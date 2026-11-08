@@ -62,10 +62,23 @@ export default function PosPage() {
     return () => window.removeEventListener("resize", measure);
   }, [loading, completedSale]);
 
+  function msgStock(nome: string, disp: number) {
+    if (disp <= 0) return `${nome}: sem stock dispon\u00edvel.`;
+    return `${nome}: stock insuficiente. ${disp === 1 ? "S\u00f3 existe 1 dispon\u00edvel." : `S\u00f3 existem ${disp} dispon\u00edveis.`}`;
+  }
+
   function tryAdd(p: Product) {
     if (stockMap && (stockMap[p.id] ?? 0) <= 0 && (expiredMap[p.id] ?? 0) > 0) {
       toast.error(`${p.name}: fora do prazo, n\u00e3o pode ser vendido.`);
       return;
+    }
+    if (stockMap) {
+      const disp = stockMap[p.id] ?? 0;
+      const noCarrinho = cart.find((i) => i.productId === p.id)?.quantity ?? 0;
+      if (noCarrinho + 1 > disp) {
+        toast.error(msgStock(p.name, disp));
+        return;
+      }
     }
     addItem(p);
   }
@@ -143,6 +156,13 @@ export default function PosPage() {
 
   function updateQuantity(productId: string, qty: number) {
     if (isNaN(qty) || qty < 1) return;
+    const linha = cart.find((i) => i.productId === productId);
+    const disp = stockMap ? (stockMap[productId] ?? 0) : null;
+    if (linha && disp !== null && qty > disp) {
+      toast.error(msgStock(linha.productName, disp));
+      qty = disp;
+      if (qty < 1) return;
+    }
     setCart((prev) => prev.map((i) => i.productId === productId ? { ...i, quantity: qty } : i));
   }
 
