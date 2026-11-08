@@ -191,7 +191,7 @@ export default function OperationalReturnDetailPage() {
 
   return (
     <div>
-      <PageHeader title={`Devolução ${ret.returnNumber}`} actions={<Link to="/pos/devolucoes" className="btn btn-secondary">Voltar</Link>} />
+      <PageHeader title={`Devolução ${ret.returnNumber}`} back={<Link to="/pos/devolucoes" className="btn btn-secondary">Voltar</Link>} />
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
         <p><strong>Venda:</strong> {ret.sale?.saleNumber ?? "—"}</p>

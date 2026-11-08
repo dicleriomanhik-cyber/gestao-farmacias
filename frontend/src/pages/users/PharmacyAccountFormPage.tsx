@@ -136,6 +136,7 @@ export default function PharmacyAccountFormPage() {
 
   return (
     <div className="card" style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
+      <div style={{ marginBottom: "1rem" }}><button type="button" className="btn btn-secondary" onClick={() => window.history.back()}>Voltar</button></div>
       
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
         {isEditing ? "Editar farmácia" : "Nova farmácia"}
@@ -242,7 +243,6 @@ export default function PharmacyAccountFormPage() {
         )}
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-secondary" onClick={() => window.history.back()}>Voltar</button>
           <button type="submit" disabled={submitting} className="btn btn-primary">
           {submitting ? "A guardar…" : isEditing ? "Guardar alterações" : "Registar farmácia"}
         </button>

@@ -49,7 +49,7 @@ export default function StockMovementListPage() {
     <div>
       <PageHeader
         title="Movimentos de Stock"
-        actions={<Link to="/stock/lotes" className="btn btn-secondary">Voltar às Caixas</Link>}
+        back={<Link to="/stock/lotes" className="btn btn-secondary">Voltar</Link>}
       />
 
       <div className="card" style={{ padding: "1rem", overflowX: "auto" }}>

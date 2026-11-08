@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getReturnById } from "../../services/returnService";
 import type { SaleReturn } from "../../types/returns";
@@ -42,7 +42,7 @@ export default function ReturnDetailPage() {
 
   return (
     <div>
-      <PageHeader title={`Devolução ${ret.returnNumber}`} actions={<Link to="/devolucoes" className="btn btn-secondary">Voltar</Link>} />
+      <PageHeader title={`Devolução ${ret.returnNumber}`} back={<Link to="/devolucoes" className="btn btn-secondary">Voltar</Link>} />
 
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
         <p><strong>Venda:</strong> {ret.sale?.saleNumber ?? "—"}</p>

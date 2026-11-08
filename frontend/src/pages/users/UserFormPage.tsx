@@ -82,6 +82,7 @@ export default function UserFormPage() {
 
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto" }}><div className="card" style={{ padding: "2rem" }}>
+      <div style={{ marginBottom: "1rem" }}><button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>Voltar</button></div>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
         {isEditing ? (isAdmin ? "Editar conta de administrador" : "Editar conta de colaborador") : "Nova conta de colaborador"}
       </h1>
@@ -152,7 +153,6 @@ export default function UserFormPage() {
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>Voltar</button>
           <button type="submit" disabled={submitting} className="btn btn-primary">
           {submitting ? "A guardar…" : isEditing ? "Guardar alterações" : "Criar conta"}
         </button>
