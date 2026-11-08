@@ -258,7 +258,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem", marginTop: "1rem" }}>
+      <div className="hover-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem", marginTop: "1rem" }}>
         <div className="card" {...cardProps("sec-vendas")}>
           <h3 style={{ color: "#6b7280", fontSize: "0.875rem" }}>Total Vendas</h3>
           <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#166534" }}>{money(totalSales)} MT</p>

@@ -130,3 +130,12 @@ tr:hover { background-color: #f1f3f5; }
     width: 100%;
   }
 }
+
+/* ===== Cartões que se movem ao passar o cursor ===== */
+.hover-cards > .card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.hover-cards > .card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 20px -6px rgba(15, 23, 42, 0.18) !important;
+}
