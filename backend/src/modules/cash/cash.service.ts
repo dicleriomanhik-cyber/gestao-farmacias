@@ -30,7 +30,7 @@ export class CashService {
         where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
       });
       if (existing && returnExisting) return existing;
-      if (existing) throw new ConflictException('J� existe uma sess�o de caixa aberta.');
+      if (existing) throw new ConflictException('Já existe uma sessão de caixa aberta.');
 
       const session = await tx.cashSession.create({
         data: { pharmacyId, userId, openingBalance: dto.openingBalance, status: 'OPEN', ...(await this.operatorFields(tx, pharmacyId, dto.operatorId, !outerTx, 'opened')) },
@@ -52,7 +52,7 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string; openingBalance: Decimal; status: string }>;
       const session = sessions[0];
-      if (!session) throw new NotFoundException('Sess�o de caixa n�o encontrada.');
+      if (!session) throw new NotFoundException('Sess�o de caixa não encontrada.');
       if (session.status !== 'OPEN') throw new BadRequestException('Sess�o j� fechada.');
 
       const opener: string | null = (session as any).openedByOperatorId ?? null;
@@ -107,7 +107,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('N�o tem sess�o de caixa aberta.');
+    if (!session) throw new NotFoundException('N�o tem sessão de caixa aberta.');
 
     const payments = await this.prisma.salePayment.findMany({
       where: { cashSessionId: session.id },
@@ -143,7 +143,7 @@ export class CashService {
     const session = await this.prisma.cashSession.findFirst({
       where: { pharmacyId, userId, status: 'OPEN' }, orderBy: { openedAt: 'desc' },
     });
-    if (!session) throw new NotFoundException('N�o tem sess�o de caixa aberta.');
+    if (!session) throw new NotFoundException('N�o tem sessão de caixa aberta.');
 
     return this.prisma.cashMovement.findMany({
       where: { cashSessionId: session.id },
@@ -222,7 +222,7 @@ export class CashService {
         FOR UPDATE
       ` as Array<{ id: string }>;
       const session = sessions[0];
-      if (!session) throw new BadRequestException('N�o tem sess�o de caixa aberta.');
+      if (!session) throw new BadRequestException('N�o tem sessão de caixa aberta.');
 
       const movement = await tx.cashMovement.create({
         data: { cashSessionId: session.id, type: dto.type, amount: dto.amount, reason: dto.reason, userId },

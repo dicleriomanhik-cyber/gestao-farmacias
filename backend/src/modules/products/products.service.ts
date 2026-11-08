@@ -37,7 +37,7 @@ export class ProductsService {
     this.validateProductShape(dto);
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inv�lida.');
+      if (!cat) throw new BadRequestException('Categoria inválida.');
     }
 
     try {
@@ -53,7 +53,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou C�digo de Barras j� existe nesta farm�cia.');
+        throw new ConflictException('SKU ou Código de Barras j� existe nesta farmácia.');
       }
       throw e;
     }
@@ -125,7 +125,7 @@ export class ProductsService {
 
     if (dto.categoryId) {
       const cat = await this.prisma.category.findFirst({ where: { id: dto.categoryId, pharmacyId } });
-      if (!cat) throw new BadRequestException('Categoria inv�lida.');
+      if (!cat) throw new BadRequestException('Categoria inválida.');
     }
 
     try {
@@ -142,7 +142,7 @@ export class ProductsService {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('SKU ou C�digo de Barras j� existe nesta farm�cia.');
+        throw new ConflictException('SKU ou Código de Barras j� existe nesta farmácia.');
       }
       throw e;
     }

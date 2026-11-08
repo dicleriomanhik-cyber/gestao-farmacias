@@ -17,7 +17,7 @@ export interface PackDerivation {
  * Deriva o estado das caixinhas de uma caixa de medicamento.
  * @param totalUnits Total de unidades de venda que a caixa tinha originalmente.
  * @param unitsPerInner Carteiras por caixinha.
- * @param quantityAvailable Unidades de venda actualmente disponíveis na caixa.
+ * @param quantityAvailable Unidades de venda actualmente disponÃ­veis na caixa.
  */
 export function derivePackState(
   totalUnits: number,

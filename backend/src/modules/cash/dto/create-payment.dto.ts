@@ -26,7 +26,7 @@ export class CreatePaymentDto {
   @Type(() => Number)
   amount!: number;
 
-  @ApiProperty({ description: 'Chave de idempotencia (UUID v4) — obrigatoria' })
+  @ApiProperty({ description: 'Chave de idempotencia (UUID v4) Ã© obrigatoria' })
   @IsUUID('4')
   idempotencyKey!: string;
 }
