@@ -1,5 +1,6 @@
 import { openDb, getMeta } from "./db";
 import { dueOf, paidOf, outstandingOf, round2 } from "./purchaseMath";
+import { allRefunds } from "../utils/refundStatus";
 
 function getAll(store: string): Promise<any[]> {
   return openDb().then(
@@ -844,7 +845,7 @@ async function financeBlockLocal(from: Date, to: Date) {
     } else noCost++;
   }
   const expenses = sumBy((await localExpenses()).filter((e: any) => e.status === "CONFIRMED" && inRange(e.expenseDate, from, to)), (e) => e.amount);
-  const returns = sumBy((await localReturns()).filter((r: any) => r.status === "CONFIRMED" && inRange(r.createdAt, from, to)), (r) => r.totalRefund);
+  const returns = allRefunds(await localReturns()).filter((f) => inRange(f.createdAt, from, to)).reduce((acc, f) => acc + f.amount, 0);
   const grossProfit = revenueCosted - cogs;
   const netProfit = grossProfit - expenses - returns;
   return {
