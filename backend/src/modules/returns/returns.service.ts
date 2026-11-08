@@ -341,7 +341,7 @@ export class ReturnsService {
         });
         if (!salePayment) throw new BadRequestException('Pagamento original não encontrado.');
 
-        if (salePayment.method !== dto.method) {
+        if (!dto.fromOpeningBalance && salePayment.method !== dto.method) {
           throw new BadRequestException(`Método de reembolso (${dto.method}) não coincide com o pagamento original (${salePayment.method}).`);
         }
 
@@ -375,6 +375,14 @@ export class ReturnsService {
         if (!cashSessionId) throw new BadRequestException('Sessão de caixa obrigatória para reembolso.');
         const session = await tx.cashSession.findFirst({ where: { id: cashSessionId, pharmacyId, status: 'OPEN' } });
         if (!session) throw new BadRequestException('Sessão de caixa inválida ou fechada.');
+        if (dto.fromOpeningBalance) {
+          if (dto.method !== 'CASH') throw new BadRequestException('O valor inicial s\u00f3 pode ser usado em dinheiro.');
+          const cp = await tx.salePayment.aggregate({ where: { cashSessionId, method: 'CASH' }, _sum: { amount: true } });
+          const mi = await tx.cashMovement.aggregate({ where: { cashSessionId, type: 'IN' }, _sum: { amount: true } });
+          const mo = await tx.cashMovement.aggregate({ where: { cashSessionId, type: 'OUT', method: 'CASH' }, _sum: { amount: true } });
+          const available = new Decimal(session.openingBalance).add(cp._sum.amount || 0).add(mi._sum.amount || 0).sub(mo._sum.amount || 0);
+          if (new Decimal(dto.amount).gt(available)) throw new BadRequestException(`Valor inicial insuficiente (dispon\u00edvel ${available.toFixed(2)}).`);
+        }
         const status = 'COMPLETED' as const;
 
         const refund = await tx.returnRefund.create({
@@ -396,7 +404,7 @@ export class ReturnsService {
             type: 'OUT',
             method: dto.method,
             amount: dto.amount,
-            reason: `Reembolso devolução ${saleReturn.returnNumber}`,
+            reason: `Reembolso devolução ${saleReturn.returnNumber}${dto.fromOpeningBalance ? " (valor inicial)" : ""}`,
             userId,
           }
         });

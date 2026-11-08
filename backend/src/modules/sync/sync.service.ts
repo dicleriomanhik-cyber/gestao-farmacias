@@ -362,7 +362,7 @@ export class SyncService {
       const line = await tx.saleReturnLine.findFirst({ where: { returnId, saleLineId: op.payload.saleLineId } });
       if (!line) throw new BadRequestException('Linha de devolucao nao encontrada.');
       const cashSessionId = await this.resolveCashSessionId(tx, pharmacyId, op.payload);
-      const refund = await this.returnsService.refund(pharmacyId, userId, returnId, { returnLineId: line.id, salePaymentId: op.payload.salePaymentId, method: op.payload.method, amount: Number(op.payload.amount), cashSessionId, idempotencyKey: op.idempotencyKey } as any);
+      const refund = await this.returnsService.refund(pharmacyId, userId, returnId, { returnLineId: line.id, salePaymentId: op.payload.salePaymentId, method: op.payload.method, fromOpeningBalance: op.payload.fromOpeningBalance === true, amount: Number(op.payload.amount), cashSessionId, idempotencyKey: op.idempotencyKey } as any);
       return { refundId: refund.id };
     }
     if (op.operationType === 'EXPENSE_CONFIRM') {
