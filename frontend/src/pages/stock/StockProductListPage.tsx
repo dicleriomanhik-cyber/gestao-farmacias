@@ -185,9 +185,13 @@ export default function StockProductListPage() {
                 const expiry = getNearestExpiry(p.id);
                 const expired = !!expiry && isExpired(expiry);
                 const soon = !!expiry && !expired && isExpiringSoon(expiry);
+                const dosLotes = lots.filter((l) => l.productId === p.id);
+                const disp = dosLotes.reduce((s, l) => s + (Number(l.quantityAvailable) || 0), 0);
+                const rec = dosLotes.reduce((s, l) => s + (Number(l.totalUnits) || Number(l.quantityReceived) || 0), 0);
+                const esgotar = disp > 0 && rec > 0 && disp / rec <= 0.1;
                 return (
                   <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                    <td style={{ ...cell, fontWeight: 500 }}>{p.name}</td>
+                    <td style={{ ...cell, fontWeight: 500 }}>{p.name}{esgotar && <span style={{ marginLeft: 8, fontSize: "0.75rem", fontWeight: 700, color: "#c2410c" }}>(A esgotar)</span>}</td>
                     <td style={{ ...cell, fontWeight: expired || soon ? 700 : 400, color: expired ? "#b91c1c" : soon ? "#ca8a04" : "inherit" }}>
                       {expiry ? formatDate(expiry) : "—"}
                       {expired && " (Expirado)"}

@@ -21,6 +21,7 @@ interface Group {
   subtitle: string | null;
   isMedicine: boolean;
   totalQuantity: number;
+  totalReceived: number;
   earliestExpiry: string | null;
   status: string;
 }
@@ -91,6 +92,7 @@ export default function StockLotListPage(_props: Props) {
         subtitle: product?.dosageForm || null,
         isMedicine: product?.type === "MEDICINE",
         totalQuantity: 0,
+        totalReceived: 0,
         earliestExpiry: lot.expiryDate,
         status: lot.status,
       };
@@ -98,6 +100,7 @@ export default function StockLotListPage(_props: Props) {
 
     const group = groups[productName];
     group.totalQuantity += lot.quantityAvailable;
+    group.totalReceived += Number(lot.totalUnits) || Number(lot.quantityReceived) || 0;
 
     if (lot.expiryDate) {
       if (!group.earliestExpiry || new Date(lot.expiryDate) < new Date(group.earliestExpiry)) {
@@ -159,6 +162,7 @@ export default function StockLotListPage(_props: Props) {
             {groupedArray.map((group) => {
               const expired = group.earliestExpiry ? isExpired(group.earliestExpiry) : false;
               const soon = group.earliestExpiry ? isExpiringSoon(group.earliestExpiry) : false;
+              const esgotar = group.totalQuantity > 0 && group.totalReceived > 0 && group.totalQuantity / group.totalReceived <= 0.1;
 
               return (
                 <tr key={group.productName}>
@@ -171,7 +175,7 @@ export default function StockLotListPage(_props: Props) {
                   <td style={{ ...divided, textAlign: "left" }}>
                     <span style={{ fontWeight: "bold", fontSize: "1.1rem" }}>{group.totalQuantity}</span>{" "}
                     <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                      {group.isMedicine ? "carteiras" : "unidades"}
+                      {group.isMedicine ? "carteiras" : "unidades"}{esgotar && (<b style={{ marginLeft: 8, fontSize: "0.75rem", color: "#c2410c" }}>(A esgotar)</b>)}
                     </span>
                   </td>
                   <td
