@@ -250,7 +250,7 @@ export class ReturnsService {
 
       if (dto.condition === 'RESELLABLE') {
         if (q.lotNumber === 'DESCONHECIDO' || !q.expiryDate) {
-          throw new BadRequestException('Não é possível libertar artigo sem lote e validade verificáveis.');
+          throw new BadRequestException('Não é possível libertar artigo sem caixa e validade verificáveis.');
         }
 
         let lot = await tx.stockLot.findFirst({

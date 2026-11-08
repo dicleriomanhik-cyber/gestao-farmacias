@@ -7,7 +7,7 @@ export class CreateLotDto {
   @IsUUID()
   productId!: string;
 
-  @ApiProperty({ example: 'LOTE-2026-001' })
+  @ApiProperty({ example: 'CAIXA-2026-001' })
   @IsString()
   @MaxLength(100)
   lotNumber!: string;

@@ -196,7 +196,7 @@ export class SyncService {
         purchaseId = d.purchaseId;
       }
       const dupLot = await tx.stockLot.findFirst({ where: { pharmacyId, OR: [{ qrCode }, { productId: product.id, lotNumber: qrCode }] }, select: { id: true } });
-      if (dupLot) throw new BadRequestException('QR Code ou lote duplicado nesta farmacia.');
+      if (dupLot) throw new BadRequestException('QR Code ou número de caixa duplicado nesta farmacia.');
       const lot = await tx.stockLot.create({
         data: {
           pharmacyId,

@@ -125,7 +125,7 @@ export class StockService {
         });
         if (existing) {
           throw new BadRequestException(
-            `JÃ¡ existe um lote com o nÃºmero "${dto.lotNumber}" para este produto.`,
+            `JÃ¡ existe uma caixa com o nÃºmero "${dto.lotNumber}" para este produto.`,
           );
         }
 
@@ -154,7 +154,7 @@ export class StockService {
             referenceId: lot.id,
             referenceType: 'StockLot',
             userId: actorId,
-            notes: 'Entrada directa de lote',
+            notes: 'Entrada directa de caixa',
           },
         });
 
@@ -177,7 +177,7 @@ export class StockService {
         error.code === 'P2002'
       ) {
         throw new BadRequestException(
-          `JÃ¡ existe um lote com o nÃºmero "${dto.lotNumber}" para este produto.`,
+          `JÃ¡ existe uma caixa com o nÃºmero "${dto.lotNumber}" para este produto.`,
         );
       }
       throw error;
@@ -193,7 +193,7 @@ export class StockService {
         FOR UPDATE
       ` as Array<{ id: string; productId: string; quantityAvailable: number }>;
       const lot = lots[0];
-      if (!lot) throw new NotFoundException('Lote nÃ£o encontrado.');
+      if (!lot) throw new NotFoundException('Caixa nÃ£o encontrada.');
 
       if (dto.expiryDate && new Date(dto.expiryDate).getTime() <= Date.now()) { throw new BadRequestException('Validade já expirada: não é possível registar produto fora do prazo.'); }
       if (dto.quantity === 0 && !dto.expiryDate) { throw new BadRequestException('Ajuste com quantidade zero requer nova validade.'); }

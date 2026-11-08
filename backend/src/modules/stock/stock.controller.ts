@@ -22,14 +22,14 @@ export class StockController {
 
   @Post('receive')
   @RequirePermissions(PERMISSIONS.STOCK_WRITE)
-  @ApiOperation({ summary: 'Receber mercadoria (criar lote e dar entrada)' })
+  @ApiOperation({ summary: 'Receber mercadoria (criar caixa e dar entrada)' })
   receive(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: ReceiveStockDto) {
     return this.service.receiveStock(pharmacyId, user.id, dto);
   }
 
   @Post('lots')
   @RequirePermissions(PERMISSIONS.STOCK_WRITE)
-  @ApiOperation({ summary: 'Registar lote directamente com validade' })
+  @ApiOperation({ summary: 'Registar caixa directamente com validade' })
   createLot(
     @Tenant() pharmacyId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -40,14 +40,14 @@ export class StockController {
 
   @Post('adjust')
   @RequirePermissions(PERMISSIONS.STOCK_ADJUST)
-  @ApiOperation({ summary: 'Ajustar stock de um lote' })
+  @ApiOperation({ summary: 'Ajustar stock de uma caixa' })
   adjust(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Body() dto: AdjustStockDto) {
     return this.service.adjustStock(pharmacyId, user.id, dto);
   }
 
   @Get('lots')
   @RequirePermissions(PERMISSIONS.STOCK_READ)
-  @ApiOperation({ summary: 'Consultar lotes (ordem FEFO)' })
+  @ApiOperation({ summary: 'Consultar caixas (ordem FEFO)' })
   @ApiQuery({ name: 'productId', required: false })
   getLots(@Tenant() pharmacyId: string, @CurrentUser() user: AuthenticatedUser, @Query('productId') productId?: string) {
     return this.service.getLots(pharmacyId, productId, user.permissions ?? []);

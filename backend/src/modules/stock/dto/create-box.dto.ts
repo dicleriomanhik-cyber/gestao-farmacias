@@ -18,7 +18,7 @@ export class CreateBoxDto {
   @MaxLength(120)
   qrCode!: string;
 
-  @ApiPropertyOptional({ example: 'LOTE-2026-001', description: 'Se omitido, assume qrCode.' })
+  @ApiPropertyOptional({ example: 'CAIXA-2026-001', description: 'Se omitido, assume qrCode.' })
   @IsString()
   @IsOptional()
   lotNumber?: string;
